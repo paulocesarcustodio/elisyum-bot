@@ -1,0 +1,200 @@
+# 🚀 Guia de Deploy do Elisyum Bot
+
+## 📋 Pré-requisitos no Servidor
+
+### 1. Instalar Node.js (v20+)
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### 2. Instalar Yarn
+```bash
+npm install -g yarn
+```
+
+### 3. Instalar FFmpeg (necessário para conversão de áudio/vídeo)
+```bash
+sudo apt update
+sudo apt install -y ffmpeg
+```
+
+### 4. Instalar yt-dlp (para downloads do YouTube)
+```bash
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+```
+
+## 🔧 Deploy Inicial
+
+### 1. Clonar o repositório
+```bash
+cd ~
+git clone https://github.com/paulocesarcustodio/elisyum-bot.git
+cd elisyum-bot
+```
+
+### 2. Instalar dependências (incluindo dev)
+```bash
+yarn install
+```
+
+### 3. Baixar yt-dlp local (backup)
+```bash
+node install-ytdlp.js
+```
+
+### 4. Compilar o projeto
+```bash
+yarn build
+```
+Ou manualmente:
+```bash
+./node_modules/.bin/tsc
+./node_modules/.bin/copyfiles -u 2 src/media/* dist/media
+```
+
+### 5. Iniciar o bot
+```bash
+yarn start
+```
+
+## 🔄 Atualizar Deploy
+
+### Atualização simples (sem mudanças em dependências)
+```bash
+cd ~/elisyum-bot
+git pull origin main
+yarn build
+yarn start
+```
+
+### Atualização completa (com novas dependências)
+```bash
+cd ~/elisyum-bot
+git pull origin main
+yarn install
+yarn build
+yarn start
+```
+
+## 🛠️ Comandos Úteis
+
+### Verificar instalação
+```bash
+node --version    # Deve ser v20+
+yarn --version    # Deve ser 1.22+
+ffmpeg -version   # Deve existir
+yt-dlp --version  # Deve existir
+```
+
+### Limpar e rebuildar
+```bash
+yarn clean
+yarn build
+```
+
+### Verificar tipos TypeScript
+```bash
+yarn tsc --noEmit
+```
+
+### Ver logs em tempo real
+```bash
+yarn start
+# Ou para manter rodando em background:
+nohup yarn start > bot.log 2>&1 &
+```
+
+## 🐛 Solução de Problemas
+
+### Erro: "rimraf: not found" ou "tsc: not found"
+**Causa:** `yarn install --prod` remove dependências de desenvolvimento
+
+**Solução:**
+```bash
+yarn install  # Reinstala TODAS as dependências
+yarn build
+```
+
+### Erro: "Cannot find module '/root/elisyum-bot/dist/app.js'"
+**Causa:** Projeto não foi compilado
+
+**Solução:**
+```bash
+yarn install  # Garante que tem TypeScript
+yarn build    # Compila o projeto
+```
+
+### Erro: "ffmpeg exited with code 1"
+**Causa:** FFmpeg não instalado
+
+**Solução:**
+```bash
+sudo apt install -y ffmpeg
+```
+
+### Erro: "spawn yt-dlp ENOENT"
+**Causa:** yt-dlp não instalado ou não encontrado
+
+**Solução:**
+```bash
+# Instalar globalmente
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+
+# OU usar o local (já está no projeto)
+node install-ytdlp.js
+```
+
+## 📦 Estrutura após Build
+
+```
+elisyum-bot/
+├── dist/              # Código compilado (gerado pelo build)
+│   ├── app.js        # Ponto de entrada
+│   ├── commands/
+│   ├── utils/
+│   └── media/        # Assets copiados
+├── src/              # Código fonte TypeScript
+├── storage/          # Dados do bot (sessão, grupos, etc)
+├── node_modules/     # Dependências
+├── yt-dlp           # Binário do yt-dlp local
+└── package.json
+```
+
+## 🔐 PM2 (Recomendado para Produção)
+
+### Instalar PM2
+```bash
+npm install -g pm2
+```
+
+### Iniciar com PM2
+```bash
+cd ~/elisyum-bot
+pm2 start yarn --name "elisyum-bot" -- start
+```
+
+### Gerenciar com PM2
+```bash
+pm2 status              # Ver status
+pm2 logs elisyum-bot    # Ver logs
+pm2 restart elisyum-bot # Reiniciar
+pm2 stop elisyum-bot    # Parar
+pm2 delete elisyum-bot  # Remover
+```
+
+### Auto-start no boot
+```bash
+pm2 startup
+pm2 save
+```
+
+## 📝 Notas Importantes
+
+1. **Sempre use `yarn install` (sem --prod) no servidor** para ter as ferramentas de build
+2. **Compile antes de iniciar** com `yarn build`
+3. **FFmpeg é obrigatório** para comandos de áudio/vídeo
+4. **yt-dlp pode ser global ou local** (o bot tenta ambos)
+5. **Use PM2 em produção** para restart automático
