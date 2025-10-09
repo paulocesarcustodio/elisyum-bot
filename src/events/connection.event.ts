@@ -11,10 +11,10 @@ import { cleanCreds } from '../helpers/session.auth.helper.js'
 export async function connectionQr(qr: string){
     if (qr) {
         await new Promise<void>(resolve => {
-            qrcode.generate(qr, {small: true}, (qrcode) => {
-                console.log(qrcode)
-                resolve()
-            })
+            qrcode.generate(qr, {small: true}, (qrcode: string) => {
+                    console.log(qrcode)
+                    resolve()
+                })
         })
     }
 }

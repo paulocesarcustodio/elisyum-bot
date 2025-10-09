@@ -40,7 +40,7 @@ export async function stickerToImage(stickerBuffer: Buffer){
             ffmpeg(inputWebpPath)
             .save(outputPngPath)
             .on('end', () => resolve())
-            .on('error', (err) => reject(err))
+            .on('error', (err: Error) => reject(err))
         })
 
         const imageBuffer = fs.readFileSync(outputPngPath)
@@ -105,8 +105,8 @@ async function pngConvertion(mediaBuffer : Buffer){
             ffmpeg(inputMediaPath)
             .save(outputMediaPath)
             .on('end', () => resolve())
-            .on('error', (err) => reject(err))
-        }).catch((err)=>{
+            .on('error', (err: Error) => reject(err))
+        }).catch((err: any)=>{
             fs.unlinkSync(inputMediaPath)
             throw err
         })
@@ -160,8 +160,8 @@ async function webpConvertion(mediaBuffer : Buffer, isAnimated: boolean, fps: nu
             .outputOptions(options)
             .save(outputMediaPath)
             .on('end', () => resolve())
-            .on('error', (err) => reject(err))
-        }).catch((err)=>{
+            .on('error', (err: Error) => reject(err))
+        }).catch((err: any)=>{
             fs.unlinkSync(inputMediaPath)
             throw err
         })

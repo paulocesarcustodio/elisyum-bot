@@ -73,8 +73,9 @@ export async function musicRecognition (mediaBuffer : Buffer){
                 const formData = new FormData()
                 formData.append('access_key', key.access_key)
                 formData.append('data_type', 'audio')
+                if (!audioBuffer) throw new Error('Audio buffer is undefined')
                 formData.append('sample', audioBuffer)
-                formData.append('sample_bytes', audioBuffer.length)
+                formData.append('sample_bytes', (audioBuffer as Buffer).length)
                 formData.append('signature_version', 1)
                 formData.append('signature', signature)
                 formData.append('timestamp', timestamp)
@@ -173,8 +174,8 @@ export async function audioModified (audioBuffer: Buffer, type: AudioModificatio
             .outputOptions(options)
             .save(outputAudioPath)
             .on('end', () => resolve())
-            .on("error", (err) => reject(err))
-        }).catch((err)=>{
+            .on("error", (err: Error) => reject(err))
+        }).catch((err: any)=>{
             fs.unlinkSync(inputAudioPath)
             throw err
         })

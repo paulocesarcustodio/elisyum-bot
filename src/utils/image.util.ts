@@ -4,7 +4,7 @@ import format from 'format-duration'
 import google from '@victorsouzaleal/googlethis'
 import FormData from 'form-data'
 import getEmojiMixUrl, { checkSupported } from 'emoji-mixer'
-import {ImageUploadService} from 'node-upload-images'
+import ImageUploadService from 'node-upload-images'
 import { AnimeRecognition, ImageSearch } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 
@@ -119,9 +119,10 @@ export async function removeBackground(imageBuffer: Buffer){
 export async function animeRecognition(imageBuffer : Buffer){ 
     try {
         const URL_BASE = 'https://api.trace.moe/search?anilistInfo'
-        const requestConfig = {
+        const requestConfig: RequestInit = {
             method: "POST",
-            body: imageBuffer,
+            // Node Buffer is acceptable at runtime, cast to any for TypeScript
+            body: imageBuffer as unknown as any,
             headers: { 
                 "Content-type": "image/jpeg" 
             },
@@ -141,7 +142,8 @@ export async function animeRecognition(imageBuffer : Buffer){
             return null
         }
 
-        const {result : animes} = await animesResponse.json()
+    const animesJson: any = await animesResponse.json()
+    const {result : animes} = animesJson
         const msInitial = Math.round(animes[0].from * 1000) 
         const msFinal = Math.round(animes[0].to * 1000)
         const animeInfo : AnimeRecognition = {

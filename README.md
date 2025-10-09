@@ -29,7 +29,12 @@
 
 Antes da instalação você tem que instalar os programas abaixo, no Windows é só instalar pelo link indicado e no Linux você tem que pesquisar qual é o comando para instalar na sua distribuição.
 - Git 64-bit - [DOWNLOAD](https://git-scm.com/downloads/win)<br>
-- Node.js LTS - [DOWNLOAD](https://nodejs.org/en/)<br><br>
+- Node.js LTS - [DOWNLOAD](https://nodejs.org/en/)<br>
+- FFmpeg - [DOWNLOAD](https://ffmpeg.org/download.html) (necessário para conversão de áudio/vídeo)<br>
+  - **Windows**: Baixe o build e adicione ao PATH do sistema
+  - **Linux/Ubuntu/Debian**: `sudo apt install ffmpeg`
+  - **Linux/Fedora**: `sudo dnf install ffmpeg`
+  - **macOS**: `brew install ffmpeg`<br><br>
 
 Faça o download do **.zip** da última versão lançada [AQUI](https://github.com/victorsouzaleal/lbot-whatsapp/releases/latest), extraia o **.zip** e abra o **terminal/prompt de comando** dentro do local extraído.
 

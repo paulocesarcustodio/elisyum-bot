@@ -28,8 +28,17 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     const waitReply = buildText(downloadCommands.play.msgs.wait, videoInfo.title, videoInfo.duration_formatted)
     await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
 
-    const audioBuffer = await convertUtil.convertMp4ToMp3('url', videoInfo.url)
+    // Constrói a URL completa do YouTube
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
+    console.log('[playCommand] Downloading video:', youtubeUrl)
+    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+    console.log('[playCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+    console.log('[playCommand] Converting to MP3...')
+    const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
+    console.log('[playCommand] Conversion complete, size:', (audioBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+    console.log('[playCommand] Sending audio to WhatsApp...')
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
+    console.log('[playCommand] Audio sent successfully!')
 }
 
 export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -49,7 +58,15 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
 
     const waitReply = buildText(downloadCommands.yt.msgs.wait, videoInfo.title, videoInfo.duration_formatted)
     await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
-    await waUtil.replyFileFromUrl(client, message.chat_id, 'videoMessage', videoInfo.url, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+    
+    // Constrói a URL completa do YouTube e baixa o vídeo
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
+    console.log('[ytCommand] Downloading video:', youtubeUrl)
+    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+    console.log('[ytCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+    console.log('[ytCommand] Sending video to WhatsApp...')
+    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+    console.log('[ytCommand] Video sent successfully!')
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){

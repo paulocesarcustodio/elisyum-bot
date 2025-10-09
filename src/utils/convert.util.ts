@@ -32,7 +32,7 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
             .outputOptions(['-vn', '-codec:a libmp3lame', '-q:a 3'])
             .save(outputAudioPath)
             .on('end', () => resolve())
-            .on("error", (err) => reject(err))
+            .on("error", (err: Error) => reject(err))
         }).catch((err) =>{
             fs.unlinkSync(inputVideoPath)
             throw err
@@ -89,7 +89,7 @@ export async function convertVideoToWhatsApp(sourceType: 'buffer' | 'url',  vide
             ])
             .save(outputVideoPath)
             .on('end', () => resolve())
-            .on("error", (err) => reject(err))
+            .on("error", (err: Error) => reject(err))
         }).catch((err) =>{
             fs.unlinkSync(inputVideoPath)
             throw err
@@ -142,7 +142,7 @@ export async function convertVideoToThumbnail(sourceType : "file"|"buffer"|"url"
             .outputOptions(["-vf scale=32:-1", "-vframes 1", "-f image2"])
             .save(outputThumbnailPath)
             .on('end', () => resolve())
-            .on('error', (err) => reject(err))
+            .on('error', (err: Error) => reject(err))
         }).catch((err)=>{
             if (sourceType != 'file' && inputPath) {
                 fs.unlinkSync(inputPath)
@@ -200,8 +200,8 @@ export async function extractAudioFromVideo(sourceType : "file"|"buffer"|"url", 
         .audioBitrate('192k')
         .format('mp3')
         .save(outputAudioPath)
-        .on('end', () => resolve())
-        .on('error', (err) => reject(err))
+    .on('end', () => resolve())
+    .on('error', (err: Error) => reject(err))
     }).catch((err)=>{
         if (sourceType != 'file' && inputVideoPath) {
             fs.unlinkSync(inputVideoPath)

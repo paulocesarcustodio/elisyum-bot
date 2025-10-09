@@ -4,10 +4,8 @@ import { getFbVideoInfo } from 'fb-downloader-scrapper'
 import Tiktok from '@tobyg74/tiktok-api-dl'
 import axios from 'axios'
 import yts from 'yt-search'
-import ytdl from '@distube/ytdl-core'
 import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import crypto from 'node:crypto'
 
 export async function xMedia (url: string){
     try {
@@ -118,58 +116,147 @@ export async function instagramMedia (url: string){
     }
 }
 
-
-
-export async function youtubeMedia (text : string){
+export async function youtubeMedia (text: string){
     try {
-        const yt_agent = ytdl.createAgent([{
-            name: 'cookie1', 
-            value: 'GPS=1; YSC=CkypMSpfgiI; VISITOR_INFO1_LIVE=4nF8vxPW1gU; VISITOR_PRIVACY_METADATA=CgJCUhIEGgAgZA%3D%3D; PREF=f6=40000000&tz=America.Sao_Paulo;'+
-            'SID=g.a000lggw9yBHfdDri-OHg79Bkk2t6L2X7cbwK7jv8BYZZa4Q1hDbH4SZC5IHPqi_QBmSiigPHAACgYKAYgSARASFQHGX2Mi3N21zLYOMAku61_CaeccrxoVAUF8yKo3X97N4REFyHP4du4RIo1b0076;'+
-            '__Secure-1PSIDTS=sidts-CjIB3EgAEmNr03Tidygwml9aTrgDf0woi14K6jndMv5Ox5uI22tYDMNEYiaAoEF0KjGYgRAA; __Secure-3PSIDTS=sidts-CjIB3EgAEmNr03Tidygwml9aTrgDf0woi14K6jndMv5Ox5uI22tYDMNEYiaAoEF0KjGYgRAA;'+
-            '__Secure-1PSID=g.a000lggw9yBHfdDri-OHg79Bkk2t6L2X7cbwK7jv8BYZZa4Q1hDbYpnHl6jq9y45aoBaqMd96QACgYKAR4SARASFQHGX2MiqFuOgRtuIS_FKmulaCrckxoVAUF8yKpX5r8ISh5S5eQ4eofBuyCg0076;'+
-            '__Secure-3PSID=g.a000lggw9yBHfdDri-OHg79Bkk2t6L2X7cbwK7jv8BYZZa4Q1hDb_8Q3teG8nn23ceeF8jiOvwACgYKAY0SARASFQHGX2MiwBtnenbu4CRMpjQza-asfhoVAUF8yKoFXx_Zxl4MvxGnWSSsnv1z0076;'+ 
-            'HSID=AWgIQn3iifuaU_eRW; SSID=AR8Jlj2XTnPAmL5kf; APISID=l6PTqM9Dy8G_2E6P/A-sAusHOyG1pQ3T75; SAPISID=OSmwE6VjdFmB1u5-/A2N-7DiRQUreUSpgT; __Secure-1PAPISID=OSmwE6VjdFmB1u5-/A2N-7DiRQUreUSpgT;'+
-            '__Secure-3PAPISID=OSmwE6VjdFmB1u5-/A2N-7DiRQUreUSpgT; LOGIN_INFO=AFmmF2swRQIgShGx2tfQkQV4F8lyKnh4mwj54yTOPJqEdI44sDTtsrwCIQD870Le1gTMDFpz7rRHS6Fk0HzraG_SxHw_PdyLjUDXxg:QUQ3MjNmeVpqbVhSQlNCMnFFZXBKQkhCTHJxY1NXOVlYcG50SHNNOGxGZGZ3Z2ZobWwyOW95WGJ2LVplelNaZ0RfbGU3Tm1uYktDdHBnVm9fd3N3T0NncVpTN0ZaNlRoTTVETDJHSjV6QkxUWmdYWGx0eVFYeEFqa0gxUGdBYUJKbG5oQ2pBd3RBb0ROWXBwcFQwYkpBRktEQXlWbmZIbHJB;'+ 
-            'SIDCC=AKEyXzXkXTftuhPOtObUSCLHxp1byOAtlesMkptSGp8hyE3d97Dvy2UHd4-2ePWBpzUbQhV6; __Secure-1PSIDCC=AKEyXzXlrhkCIONPS4jCvhmtFb8nAKr8fEFCCFEFqN8BKyrw8tKHFh3-r8EWjrqjAKH9Z9fq0A; __Secure-3PSIDCC=AKEyXzWLIbNbh8dxdyKhTafkyKIbEBwVKGR4lNRhhYX5u_v1k4vBnu4eAS9lgpP-JK2PgiSDJw'
-        }])
+        let videoUrl : string | undefined
 
-        const isURLValid = ytdl.validateURL(text)
-        let videoId : string | undefined
+        // Verifica se é uma URL válida do YouTube
+        const urlPattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/
+        const isURLValid = urlPattern.test(text)
 
         if(isURLValid) {
-            videoId = ytdl.getVideoID(text)
+            videoUrl = text
         } else {
+            // Busca o vídeo por título
             const {videos} = await yts(text)
 
             if(!videos.length) {
-                videoId = undefined
-            } else {
-                videoId = videos[0].videoId
+                return null
             }
+            
+            videoUrl = `https://www.youtube.com/watch?v=${videos[0].videoId}`
         }
 
-        if(!videoId) {
+        if(!videoUrl) {
             return null
         }
 
-        const videoInfo = await ytdl.getInfo(videoId, {agent: yt_agent})
-        const formats = ytdl.filterFormats(videoInfo.formats, 'videoandaudio')
-        const format = ytdl.chooseFormat(formats, {quality: 'highest'})
+        // Obtém informações do vídeo usando yt-dlp (import dinâmico para compatibilidade CJS/ESM)
+        const ytDlpPath = new URL('../../yt-dlp', import.meta.url).pathname
+        const YTDlpModule: any = await import('yt-dlp-wrap')
+        
+        // O constructor está em YTDlpModule.default.default (double default export)
+        const YTDlpWrap = YTDlpModule.default?.default || YTDlpModule.default || YTDlpModule
+        
+        if (typeof YTDlpWrap !== 'function') {
+            throw new Error('YTDlpWrap constructor not found in module')
+        }
+        
+        const ytDlpWrap = new YTDlpWrap(ytDlpPath)
+        const videoInfoRaw = await ytDlpWrap.getVideoInfo(videoUrl)
+        
+        // Verifica se é live
+        if (videoInfoRaw.is_live) {
+            const ytInfo : YTInfo = {
+                id_video : videoInfoRaw.id,
+                title:  videoInfoRaw.title,
+                description: videoInfoRaw.description || '',
+                duration: 0,
+                channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
+                is_live: true,
+                duration_formatted: '00:00',
+                url: ''
+            }
+            return ytInfo
+        }
+
+        // Pega a melhor qualidade de vídeo+áudio
+        const formats = videoInfoRaw.formats || []
+        const videoAndAudioFormats = formats.filter((f: any) => f.vcodec !== 'none' && f.acodec !== 'none')
+        
+        let bestFormat
+        if (videoAndAudioFormats.length > 0) {
+            bestFormat = videoAndAudioFormats.sort((a: any, b: any) => {
+                const qualityA = a.height || 0
+                const qualityB = b.height || 0
+                return qualityB - qualityA
+            })[0]
+        } else {
+            bestFormat = formats[0]
+        }
+
         const ytInfo : YTInfo = {
-            id_video : videoInfo.videoDetails.videoId,
-            title:  videoInfo.videoDetails.title,
-            description: videoInfo.videoDetails.description || '',
-            duration: Number(videoInfo.videoDetails.lengthSeconds),
-            channel: videoInfo.videoDetails.author.name,
-            is_live: videoInfo.videoDetails.isLive,
-            duration_formatted: formatSeconds(Number(videoInfo.videoDetails.lengthSeconds)),
-            url: format.url
+            id_video : videoInfoRaw.id,
+            title:  videoInfoRaw.title,
+            description: videoInfoRaw.description || '',
+            duration: Number(videoInfoRaw.duration || 0),
+            channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
+            is_live: false,
+            duration_formatted: formatSeconds(Number(videoInfoRaw.duration || 0)),
+            url: bestFormat?.url || videoInfoRaw.url || ''
         }
         
         return ytInfo
     } catch(err) {
         showConsoleLibraryError(err, 'youtubeMedia')
+        throw new Error(botTexts.library_error)
+    }
+}
+
+export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
+    const fs = await import('fs')
+    const path = await import('path')
+    const crypto = await import('crypto')
+    const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
+    
+    try {
+        const ytDlpPath = new URL('../../yt-dlp', import.meta.url).pathname
+        const YTDlpModule: any = await import('yt-dlp-wrap')
+        
+        // O constructor está em YTDlpModule.default.default (double default export)
+        const YTDlpWrap = YTDlpModule.default?.default || YTDlpModule.default || YTDlpModule
+        
+        if (typeof YTDlpWrap !== 'function') {
+            throw new Error('YTDlpWrap constructor not found in module')
+        }
+        
+        const ytDlpWrap = new YTDlpWrap(ytDlpPath)
+        
+        console.log('[downloadYouTubeVideo] Starting download:', videoUrl)
+        
+        // Cria um arquivo temporário para o download
+        const tempFileName = `yt-${crypto.randomBytes(8).toString('hex')}.mp4`
+        const tempFilePath = path.join('/tmp', tempFileName)
+        
+        console.log('[downloadYouTubeVideo] Temp file:', tempFilePath)
+        console.log('[downloadYouTubeVideo] Quality limit:', YOUTUBE_QUALITY_LIMIT + 'p')
+        
+        // Baixa o vídeo para o arquivo temporário com qualidade configurável
+        // Prioriza velocidade e tamanho menor, ideal para WhatsApp
+        const formatSelector = `bestvideo[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[height<=${YOUTUBE_QUALITY_LIMIT}]/worst`
+        
+        await ytDlpWrap.execPromise([
+            videoUrl,
+            '-f', formatSelector,
+            '-o', tempFilePath,
+            '--no-playlist',
+            '--no-warnings',
+            '--merge-output-format', 'mp4'
+        ])
+        
+        console.log('[downloadYouTubeVideo] Download complete, reading file...')
+        
+        // Lê o arquivo em buffer
+        const videoBuffer = fs.readFileSync(tempFilePath)
+        console.log('[downloadYouTubeVideo] File size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+        
+        // Remove o arquivo temporário
+        fs.unlinkSync(tempFilePath)
+        console.log('[downloadYouTubeVideo] Temp file cleaned up')
+        
+        return videoBuffer
+    } catch(err) {
+        showConsoleLibraryError(err, 'downloadYouTubeVideo')
         throw new Error(botTexts.library_error)
     }
 }
