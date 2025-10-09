@@ -83,7 +83,8 @@ fi
 
 echo ""
 echo "🔧 Instalando dependências..."
-yarn install
+rm -rf node_modules
+yarn install --force
 
 echo ""
 echo "🏗️  Compilando projeto..."
