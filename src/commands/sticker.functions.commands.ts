@@ -58,14 +58,30 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         try {
             const quotedSender = message.quotedMessage!.sender;
             const userController = new UserController();
-            
+
             // Busca o nome do banco de dados (salvo automaticamente quando usuário manda mensagem)
             const user = await userController.getUser(quotedSender);
             if (user && user.name && user.name.trim().length > 0) {
                 authorName = user.name;
             }
-            // Se não encontrou, mantém "Membro do grupo" como padrão
-            
+
+            if (!user || !user.name || user.name.trim().length === 0) {
+                // Tenta obter o nome pelo pushName da mensagem original
+                const pushName = message.quotedMessage?.wa_message?.pushName;
+                if (pushName && pushName.trim().length > 0) {
+                    authorName = pushName.trim();
+                } else {
+                    // Como fallback, consulta a agenda de contatos do cliente
+                    const contact = client.contacts?.[quotedSender];
+                    const contactName = contact?.notify || contact?.name || contact?.verifiedName;
+
+                    if (contactName && contactName.trim().length > 0) {
+                        authorName = contactName.trim();
+                    }
+                }
+            }
+            // Se não encontrou em nenhum lugar, mantém "Membro do grupo" como padrão
+
         } catch (err) {
             console.log(`[STICKER] Erro ao buscar nome:`, err);
         }
