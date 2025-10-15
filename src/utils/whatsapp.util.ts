@@ -9,6 +9,18 @@ import NodeCache from "node-cache"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
 
+async function invalidateBlockedContactsCache(){
+    try {
+        const helperModule = await import("../helpers/message.procedures.helper.js")
+
+        if (helperModule && typeof helperModule.clearBlockedContactsCache === "function"){
+            helperModule.clearBlockedContactsCache()
+        }
+    } catch (error) {
+        // Ignore cache invalidation errors to avoid breaking block/unblock operations
+    }
+}
+
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
     await client.presenceSubscribe(chatId)
     await randomDelay(200, 400)
@@ -91,12 +103,16 @@ export function getProfilePicUrl(client: WASocket, chatId: string){
     return client.profilePictureUrl(chatId, "image")
 }
 
-export function blockContact(client: WASocket, userId: string){
-    return client.updateBlockStatus(userId, "block")
+export async function blockContact(client: WASocket, userId: string){
+    const result = await client.updateBlockStatus(userId, "block")
+    await invalidateBlockedContactsCache()
+    return result
 }
 
-export function unblockContact(client: WASocket, userId: string){
-    return client.updateBlockStatus(userId, "unblock")
+export async function unblockContact(client: WASocket, userId: string){
+    const result = await client.updateBlockStatus(userId, "unblock")
+    await invalidateBlockedContactsCache()
+    return result
 }
 
 export function getHostNumber(client: WASocket){
