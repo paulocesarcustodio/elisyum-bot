@@ -1,35 +1,61 @@
-import {WASocket, BaileysEvent} from '@whiskeysockets/baileys'
+import { WASocket, BaileysEvent, BaileysEventMap, GroupParticipant } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 
-export async function executeEventQueue(client: WASocket, eventsCache: NodeCache){
-    const eventsQueue = eventsCache.get("events") as {event: BaileysEvent, data: any}[]
+type QueuedEvent = { event: BaileysEvent; data: BaileysEventMap[BaileysEvent] }
 
-    for (let ev of eventsQueue) {
+export async function executeEventQueue(client: WASocket, eventsCache: NodeCache) {
+    const eventsQueue = (eventsCache.get("events") as QueuedEvent[]) ?? []
+
+    for (const ev of eventsQueue) {
         client.ev.emit(ev.event, ev.data)
     }
-    
+
     eventsCache.set("events", [])
 }
 
-export async function queueEvent(eventsCache: NodeCache, eventName: BaileysEvent, eventData: any){
-    let queueArray = eventsCache.get("events") as {event: BaileysEvent, data: any}[]
+function toParticipantIds(participants: GroupParticipant[] | undefined) {
+    return (participants ?? [])
+        .map(participant => participant.id)
+        .filter((id): id is string => typeof id === 'string')
+}
 
-    if (eventName == 'group-participants.update'){
-        queueArray.forEach((queue) => {
-            if (queue.event == 'group-participants.update' && queue.data.participants[0] == eventData.participants[0] && queue.data.id == eventData.id) {
-                queueArray.splice(queueArray.indexOf(queue), 1)
+export async function queueEvent<T extends BaileysEvent>(
+    eventsCache: NodeCache,
+    eventName: T,
+    eventData: BaileysEventMap[T]
+) {
+    let queueArray = (eventsCache.get("events") as QueuedEvent[]) ?? []
+
+    if (eventName === 'group-participants.update') {
+        const newEvent = eventData as BaileysEventMap['group-participants.update']
+        const newParticipantsIds = toParticipantIds(newEvent.participants)
+
+        queueArray = queueArray.filter(queue => {
+            if (queue.event !== 'group-participants.update') {
+                return true
             }
+
+            const queuedEvent = queue.data as BaileysEventMap['group-participants.update']
+            const queuedParticipantIds = toParticipantIds(queuedEvent.participants)
+            const sameGroup = queuedEvent.id === newEvent.id
+            const hasOverlap = queuedParticipantIds.some(id => newParticipantsIds.includes(id))
+
+            return !(sameGroup && hasOverlap)
         })
     }
 
-    if (eventName == 'groups.upsert'){
-        queueArray.forEach((queue) => {
-            if (queue.event == 'groups.upsert' && queue.data[0].id == eventData[0].id) {
-                queueArray.splice(queueArray.indexOf(queue), 1)
+    if (eventName === 'groups.upsert') {
+        const newGroups = eventData as BaileysEventMap['groups.upsert']
+        queueArray = queueArray.filter(queue => {
+            if (queue.event !== 'groups.upsert') {
+                return true
             }
+
+            const queuedGroups = queue.data as BaileysEventMap['groups.upsert']
+            return queuedGroups[0]?.id !== newGroups[0]?.id
         })
     }
 
-    queueArray.push({event: eventName, data: eventData})
+    queueArray.push({ event: eventName, data: eventData })
     eventsCache.set("events", queueArray)
 }

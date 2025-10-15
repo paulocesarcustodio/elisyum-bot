@@ -37,7 +37,7 @@ export async function messageReceived (client: WASocket, messages : {messages: W
                 groupCache.set(idChat, group)
             }
 
-            const message = await formatWAMessage(waMessage, group, botInfo.host_number)
+            const message = await formatWAMessage(waMessage, group, botInfo.host_number, messages.requestId)
 
             if (!message) {
                 continue

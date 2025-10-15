@@ -1,4 +1,4 @@
-import { downloadMediaMessage, WASocket } from "@whiskeysockets/baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { Group } from "../interfaces/group.interface.js";
@@ -398,7 +398,7 @@ export async function fotobotCommand(client: WASocket, botInfo: Bot, message: Me
         throw new Error(adminCommands.fotobot.msgs.error_message)
     }
 
-    let imageBuffer = await downloadMediaMessage(messageData, "buffer", {})
+    let imageBuffer = await waUtil.downloadMessageAsBuffer(client, messageData)
     await waUtil.updateProfilePic(client, botInfo.host_number, imageBuffer)
     await waUtil.replyText(client, message.chat_id, adminCommands.fotobot.msgs.reply, message.wa_message, {expiration: message.expiration})
 }

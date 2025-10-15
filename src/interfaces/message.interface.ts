@@ -15,6 +15,7 @@ export interface Message {
     type: MessageTypes,
     t : number,
     chat_id: string,
+    requestId?: string,
     expiration?: number,
     pushname : string,
     body: string,
