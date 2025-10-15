@@ -59,26 +59,30 @@ fi
 
 # Verificar/Instalar yt-dlp
 echo "📹 Verificando yt-dlp..."
+YTDLP_INSTALLED=false
+
 if command_exists yt-dlp; then
     YTDLP_VERSION=$(yt-dlp --version)
     echo -e "${GREEN}✓${NC} yt-dlp instalado globalmente: $YTDLP_VERSION"
+    YTDLP_INSTALLED=true
+fi
+
+# Sempre garantir que existe o binário local também
+if [ -f "./yt-dlp" ]; then
+    YTDLP_LOCAL_VERSION=$(./yt-dlp --version 2>/dev/null || echo "desconhecido")
+    echo -e "${GREEN}✓${NC} yt-dlp local encontrado: $YTDLP_LOCAL_VERSION"
+    YTDLP_INSTALLED=true
 else
-    echo -e "${YELLOW}⚠${NC}  yt-dlp não encontrado globalmente"
-    
-    # Verificar se existe o binário local
-    if [ -f "./yt-dlp" ]; then
-        echo -e "${GREEN}✓${NC} yt-dlp local encontrado"
-    else
-        echo "📥 Baixando yt-dlp local..."
-        if [ -f "install-ytdlp.js" ]; then
-            node install-ytdlp.js
-        else
-            echo -e "${YELLOW}⚠${NC}  Script install-ytdlp.js não encontrado, baixando manualmente..."
-            curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
-            chmod +x yt-dlp
-        fi
-        echo -e "${GREEN}✓${NC} yt-dlp local instalado!"
-    fi
+    echo "📥 Baixando yt-dlp local..."
+    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
+    chmod +x yt-dlp
+    echo -e "${GREEN}✓${NC} yt-dlp local instalado!"
+    YTDLP_INSTALLED=true
+fi
+
+if [ "$YTDLP_INSTALLED" = false ]; then
+    echo -e "${RED}✗${NC} Falha ao instalar yt-dlp!"
+    exit 1
 fi
 
 echo ""

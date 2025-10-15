@@ -5,8 +5,10 @@ import { Message } from "../interfaces/message.interface.js"
 import * as waUtil from '../utils/whatsapp.util.js'
 import * as imageUtil from '../utils/image.util.js'
 import * as stickerUtil from '../utils/sticker.util.js'
+import * as quoteUtil from '../utils/quote.util.js'
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import stickerCommands from "./sticker.list.commands.js"
+import { UserController } from "../controllers/user.controller.js"
 
 export async function sCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     let stickerType : "resize" | "contain" | "circle" =  'resize'
@@ -25,7 +27,68 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
 
     if (!messageData.type || !messageData.message) {
         throw new Error(stickerCommands.s.msgs.error_message)
-    } else if (messageData.type != "imageMessage" && messageData.type != "videoMessage") {
+    }
+
+    // Se for mensagem de texto citada, criar balão do WhatsApp
+    if (message.isQuoted && (messageData.type === "conversation" || messageData.type === "extendedTextMessage")) {
+        const quotedText = message.quotedMessage?.body || message.quotedMessage?.caption
+        
+        if (!quotedText) {
+            throw new Error(stickerCommands.s.msgs.error_no_text)
+        }
+
+        if (quotedText.length > 500) {
+            throw new Error(stickerCommands.s.msgs.error_too_long)
+        }
+
+        // Obter foto de perfil
+        let avatarUrl: string | undefined
+        try {
+            const profilePicUrl = await client.profilePictureUrl(message.quotedMessage!.sender, 'image')
+            avatarUrl = profilePicUrl
+        } catch (err) {
+            // Se não conseguir obter a foto, continua sem ela
+            avatarUrl = undefined
+        }
+
+        // Obter nome do autor
+        // IMPORTANTE: Em grupos, o WhatsApp usa LID (Linked Device ID) que é único por dispositivo
+        // O nome só estará disponível no banco se a pessoa mandou mensagem desde que o bot está online
+        let authorName = 'Membro do grupo';
+        try {
+            const quotedSender = message.quotedMessage!.sender;
+            const userController = new UserController();
+            
+            // Busca o nome do banco de dados (salvo automaticamente quando usuário manda mensagem)
+            const user = await userController.getUser(quotedSender);
+            if (user && user.name && user.name.trim().length > 0) {
+                authorName = user.name;
+            }
+            // Se não encontrou, mantém "Membro do grupo" como padrão
+            
+        } catch (err) {
+            console.log(`[STICKER] Erro ao buscar nome:`, err);
+        }
+        
+        // Obter horário
+        const now = new Date()
+        const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+
+        const imageBuffer = await quoteUtil.createWhatsAppBubble({
+            text: quotedText,
+            authorName: authorName,
+            avatarUrl: avatarUrl,
+            time: time
+        })
+
+        const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
+        const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'contain'})
+        await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
+        return
+    }
+
+    // Comportamento original para imagens/vídeos
+    if (messageData.type != "imageMessage" && messageData.type != "videoMessage") {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } else if (messageData.type == "videoMessage" && messageData.seconds && messageData.seconds  > 9) {
         throw new Error(stickerCommands.s.msgs.error_limit)

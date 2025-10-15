@@ -8,6 +8,7 @@ import { messageReceived } from './events/message-received.event.js'
 import { addedOnGroup } from './events/group-added.event.js'
 import { groupParticipantsUpdated } from './events/group-participants-updated.event.js'
 import { partialGroupUpdate } from './events/group-partial-update.event.js'
+import { contactsUpdate } from './events/contacts-update.event.js'
 import { syncGroupsOnStart } from './helpers/groups.sync.helper.js'
 import { executeEventQueue, queueEvent } from './helpers/events.queue.helper.js'
 import botTexts from './helpers/bot.texts.helper.js'
@@ -106,6 +107,13 @@ export default async function connect(){
                 if (isBotReady) await partialGroupUpdate(groups[0])
                 else queueEvent(eventsCache, "groups.update", groups)
             }
+        }
+
+        // Atualização de contatos (captura nomes/notify)
+        if (events['contacts.update']){
+            const contacts = events['contacts.update']
+
+            if (isBotReady) await contactsUpdate(contacts)
         }
     })
 }

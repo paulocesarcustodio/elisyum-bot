@@ -3,11 +3,14 @@ import * as stickerFunctions from './sticker.functions.commands.js'
 const stickerCommands = {
     s: {
         guide: `Ex: Envie/responda uma *IMAGEM/VIDEO* com *{$p}s* - Transforma em sticker.\n`+
+        `Ex: Responda uma *MENSAGEM DE TEXTO* com *{$p}s* - Transforma em sticker estilo WhatsApp.\n`+
         `Ex: Envie/responda uma *IMAGEM* com *{$p}s 1* - Transforma em sticker circular.\n`+
         `Ex: Envie/responda uma *IMAGEM* com *{$p}s 2* - Transforma em sticker sem perder a proporção.\n`,
         msgs: {
             error_limit: 'O video/gif deve ter no máximo 8 segundos.',
             error_message: "Houve um erro ao obter os dados da mensagem.",
+            error_no_text: 'A mensagem citada não possui texto.',
+            error_too_long: 'A mensagem é muito longa. Máximo de 500 caracteres.',
             author_text: 'Solicitado por: {$1}'
         },
         function: stickerFunctions.sCommand
