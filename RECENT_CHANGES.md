@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Registrados logs e filtragens para eventos de newsletters/canais no Baileys 7, isolando mensagens de broadcast do fluxo padrão.
 - Padronizado o projeto no Yarn 4, ajustando scripts, resolução do libsignal e removendo o `package-lock.json` legado.
 - Ajustados os imports do Baileys para usar o default `makeWASocket` e confirmada a compilação com a base ESM/TS.
 - Refatorado o cache de contatos bloqueados para um helper dedicado e cobrimos hits e invalidações com novos testes.
