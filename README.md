@@ -29,7 +29,7 @@
 
 Antes da instalação você tem que instalar os programas abaixo, no Windows é só instalar pelo link indicado e no Linux você tem que pesquisar qual é o comando para instalar na sua distribuição.
 - Git 64-bit - [DOWNLOAD](https://git-scm.com/downloads/win)<br>
-- Node.js LTS - [DOWNLOAD](https://nodejs.org/en/)<br>
+- Node.js (>= 20) - [DOWNLOAD](https://nodejs.org/en/)<br>
 - FFmpeg - [DOWNLOAD](https://ffmpeg.org/download.html) (necessário para conversão de áudio/vídeo)<br>
   - **Windows**: Baixe o build e adicione ao PATH do sistema
   - **Linux/Ubuntu/Debian**: `sudo apt install ffmpeg`
@@ -50,6 +50,10 @@ npm i -g yarn
 ```
 
 **OBS**: Caso o comando retorne erro no **Linux** você vai precisar se elevar a superusuário utilizando **sudo** antes do comando.
+
+<br>
+
+> ℹ️ Este projeto utiliza **Yarn 4 (node-modules linker)** como gerenciador oficial. Mantenha o `yarn.lock` versionado, execute `yarn install` sempre que atualizar o repositório e evite usar `npm install`, pois o `package-lock.json` não é mais distribuído.
 
 <br>
 
@@ -137,6 +141,26 @@ Diversos para administrar o bot e ter controle sobre ele.
 <br>
 
 ### 👉 Lista completa de comandos... [Clique Aqui](docs/COMANDOS.md)
+
+<br>
+
+## 🧰 Notas técnicas
+
+- O pacote `libsignal` exigido pelo Baileys é obtido diretamente do repositório oficial [`whiskeysockets/libsignal-node`](https://github.com/whiskeysockets/libsignal-node) com o commit `e81ecfc3`. O `yarn.lock` já referencia essa origem e dispensa hashes adicionais desde que a instalação seja feita via Yarn 4.
+
+### 🔌 Dependências opcionais do Baileys 7
+
+- **`sharp`** agora é instalado como dependência opcional para destravar a geração de miniaturas automática em imagens, stickers e fotos de perfil. O próprio README do Baileys recomenda instalar `jimp` ou `sharp`, além de `ffmpeg` para miniaturas de vídeo.【F:node_modules/@whiskeysockets/baileys/README.md†L730-L732】 Na prática, o fallback do Baileys para `jimp` falha com a versão 1.x usada pelo projeto e resulta em `No image processing library available` sem `sharp`.【F:node_modules/@whiskeysockets/baileys/lib/Utils/messages-media.js†L17-L134】【fa6285†L9-L27】 Com `sharp` presente, a biblioteca consegue extrair uma miniatura de 64px do asset `src/media/cara.png` em ~197 ms neste ambiente.【c1a3e4†L1-L12】
+- **`audio-decode`** é carregado sob demanda pelo Baileys para gerar a waveform exibida pelo WhatsApp ao enviar áudios/ptt.【F:node_modules/@whiskeysockets/baileys/lib/Utils/messages-media.js†L200-L238】 O teste automatizado `tests/baileys.media.peers.test.ts` cria um WAV sintético e valida que recebemos 64 amostras normalizadas (0-100) quando a dependência está instalada.【F:tests/baileys.media.peers.test.ts†L1-L45】【792947†L1-L33】
+- **`link-preview-js`** continua opcional, mas documentado. Ele permite que `getUrlInfo` gere metadados e miniaturas de links quando o texto enviado contém URLs.【F:node_modules/@whiskeysockets/baileys/README.md†L600-L611】【F:node_modules/@whiskeysockets/baileys/lib/Utils/link-preview.js†L17-L84】 Em ambientes sem acesso externo, as prévias simplesmente não são geradas; mantenha a dependência instalada para fluxos que dependem disso.
+- **`@ffmpeg-installer/ffmpeg`** permanece como fallback interno quando o binário do sistema não está disponível. Ainda assim, recomendamos instalar o `ffmpeg` do sistema operacional para aproveitar aceleração por hardware quando possível.【F:node_modules/@whiskeysockets/baileys/README.md†L730-L732】 Em caso de erro, o Baileys continua registrando logs e tenta prosseguir com o envio.
+
+> ℹ️ **Política adotada:** essas bibliotecas ficam em `optionalDependencies`. O Yarn 4 as instala automaticamente quando o ambiente suporta os binários pré-compilados (como o `sharp`). Caso uma delas falhe na instalação, o `yarn install` continuará, mas o recurso correspondente ficará indisponível até que a dependência seja instalada manualmente.
+
+### 📣 Monitoramento de canais/newsletters
+
+- O mapa de eventos do Baileys 7 inclui as notificações de canais `chats.update`, `messages.upsert`, `newsletter.view`, `newsletter-participants.update` e `newsletter-settings.update`, que chegam via `client.ev.process` ao lado dos eventos tradicionais de chat.【F:node_modules/@whiskeysockets/baileys/lib/Types/Events.d.ts†L27-L132】
+- O bot identifica JIDs de canais (`@newsletter`) com o utilitário exposto pela própria biblioteca e encaminha essas mensagens para loggers dedicados, preservando o fluxo de comandos padrão até que novas automações sejam habilitadas.【F:node_modules/@whiskeysockets/baileys/lib/WABinary/jid-utils.js†L58-L59】【F:src/socket.ts†L60-L114】【F:src/events/newsletter-message.event.ts†L1-L55】【F:src/events/newsletter-chats-update.event.ts†L1-L29】【F:src/events/newsletter-update.event.ts†L1-L25】
 
 <br>
 

@@ -1,5 +1,5 @@
 import { Group } from "../interfaces/group.interface.js";
-import { GroupMetadata } from 'baileys'
+import { GroupMetadata } from '@whiskeysockets/baileys'
 import { removePrefix } from "../utils/whatsapp.util.js";
 import DataStore from "@seald-io/nedb";
 import { ParticipantService } from "./participant.service.js";
@@ -91,11 +91,11 @@ export class GroupService {
     public async syncGroups(groupsMeta: GroupMetadata[]){
         //Deletando grupos em que o bot não está mais
         const currentGroups = await this.getAllGroups()
-        currentGroups.forEach(async (group) => {
+        for (const group of currentGroups) {
             if (!groupsMeta.find(groupMeta => groupMeta.id == group.id)) {
                 await this.removeGroup(group.id)
             }
-        })
+        }
         
         //Atualizando grupos em que o bot está
         for (let groupMeta of groupsMeta) {

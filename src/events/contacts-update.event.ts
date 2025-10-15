@@ -1,4 +1,4 @@
-import { Contact } from 'baileys'
+import { Contact } from '@whiskeysockets/baileys'
 import { showConsoleError } from '../utils/general.util.js'
 import { UserController } from '../controllers/user.controller.js'
 

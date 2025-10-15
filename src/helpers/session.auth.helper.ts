@@ -1,20 +1,33 @@
 import DataStore from "@seald-io/nedb";
-import { AuthenticationCreds, AuthenticationState, initAuthCreds, WAProto, SignalDataTypeMap, BufferJSON } from "baileys"
+import { mkdirSync } from "fs";
+import { dirname } from "path";
+import { AuthenticationCreds, AuthenticationState, initAuthCreds, SignalDataTypeMap, BufferJSON, proto } from "@whiskeysockets/baileys";
+import { Mutex } from "async-mutex";
 
-const db = new DataStore<{key: string, data: string}>({filename : './storage/session.db', autoload: true})
+const DB_FILENAME = "./storage/session.db";
+mkdirSync(dirname(DB_FILENAME), { recursive: true });
+
+const db = new DataStore<{key: string, data: string}>({filename : DB_FILENAME, autoload: true});
+const dbMutex = new Mutex();
 
 export async function useNeDBAuthState() : Promise<{ state: AuthenticationState, saveCreds: () => Promise<void>}> {
     const write = async (data: any, key: string) => {
-        await db.updateAsync({key}, { $set: { data: JSON.stringify(data, BufferJSON.replacer) }}, {upsert: true})
+        await dbMutex.runExclusive(async () => {
+            await db.updateAsync({key}, { $set: { data: JSON.stringify(data, BufferJSON.replacer) }}, {upsert: true})
+        })
     }
 
     const read = async (key: string) => {
-        const result = await db.findOneAsync({key})
-        return result ? JSON.parse(result.data, BufferJSON.reviver) : null
+        return dbMutex.runExclusive(async () => {
+            const result = await db.findOneAsync({key})
+            return result ? JSON.parse(result.data, BufferJSON.reviver) : null
+        })
     }
 
     const remove = async (key: string) => {
-        await db.removeAsync({ key }, {multi: false})
+        await dbMutex.runExclusive(async () => {
+            await db.removeAsync({ key }, {multi: false})
+        })
     }
 
     const creds: AuthenticationCreds = await read("creds") || initAuthCreds()
@@ -23,29 +36,44 @@ export async function useNeDBAuthState() : Promise<{ state: AuthenticationState,
         state: {
             creds,
             keys: {
-                get: async (type, ids) => {
-                    const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+                get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
+                    const data: { [_: string]: SignalDataTypeMap[T] } = {}
                     await Promise.all(
-                        ids.map(async id => {
+                        ids.map(async (id: string) => {
                             let value = await read(`${type}-${id}`)
 
                             if (type === "app-state-sync-key" && value) {
-                                value = WAProto.Message.AppStateSyncKeyData.fromObject(value)
+                                value = proto.Message.AppStateSyncKeyData.create(value as proto.Message.IAppStateSyncKeyData)
                             }
 
-                            data[id] = value
+                            if (value !== null && value !== undefined) {
+                                data[id] = value as SignalDataTypeMap[T]
+                            }
                         })
                     )
 
                     return data
                 },
-                set: async (data: any) => {
+                set: async (
+                    data: {
+                        [T in keyof SignalDataTypeMap]?: {
+                            [id: string]: SignalDataTypeMap[T] | null | undefined
+                        }
+                    }
+                ) => {
                     const tasks: Promise<void>[] = [];
-                    for (const category in data) {
-                        for (const id in data[category]) {
-                            const value = data[category][id]
+                    for (const category of Object.keys(data) as (keyof SignalDataTypeMap)[]) {
+                        const entries = data[category]
+                        if (!entries) continue
+
+                        for (const id of Object.keys(entries)) {
+                            const value = entries[id]
                             const key = `${category}-${id}`
-                            tasks.push(value ? write(value, key) : remove(key))
+                            if (value === null || value === undefined) {
+                                tasks.push(remove(key))
+                            } else {
+                                tasks.push(write(value, key))
+                            }
                         }
                     }
                     await Promise.all(tasks)
@@ -59,5 +87,7 @@ export async function useNeDBAuthState() : Promise<{ state: AuthenticationState,
 }
 
 export async function cleanCreds(){
-    await db.removeAsync({}, {multi: true})
+    await dbMutex.runExclusive(async () => {
+        await db.removeAsync({}, {multi: true});
+    });
 }

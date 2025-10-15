@@ -1,4 +1,4 @@
-import {getContentType, WASocket, WAMessage, MessageUpsertType} from 'baileys'
+import {getContentType, WASocket, WAMessage, MessageUpsertType} from '@whiskeysockets/baileys'
 import { showConsoleError} from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
 import NodeCache from 'node-cache'
@@ -10,36 +10,52 @@ import { commandInvoker } from '../helpers/command.invoker.helper.js'
 
 export async function messageReceived (client: WASocket, messages : {messages: WAMessage[], requestId?: string, type: MessageUpsertType}, botInfo : Bot, messageCache: NodeCache){
     try{
-        if (messages.messages[0].key.fromMe) {
-            storeMessageOnCache(messages.messages[0], messageCache)
-        }
-    
-        switch (messages.type){
-            case 'notify':
-                const userController = new UserController()
-                const groupController = new GroupController()
-                const idChat = messages.messages[0].key.remoteJid
-                const isGroupMsg = idChat?.includes("@g.us")
-                const group = (isGroupMsg && idChat) ? await groupController.getGroup(idChat) : null
-                let message = await formatWAMessage(messages.messages[0], group, botInfo.host_number)
+        const userController = new UserController()
+        const groupController = new GroupController()
+        const groupCache = new Map<string, Awaited<ReturnType<GroupController['getGroup']>> | null>()
 
-                if (message) {
-                    await userController.registerUser(message.sender, message.pushname)
-        
-                    if (!isGroupMsg) {
-                        const needCallCommand = await handlePrivateMessage(client, botInfo, message)
-                        if (needCallCommand) {
-                            await commandInvoker(client, botInfo, message, null)
-                        }
-                    } else if (group) {
-                        const needCallCommand = await handleGroupMessage(client, group, botInfo, message)
-                        if (needCallCommand) {
-                            await commandInvoker(client, botInfo, message, group)
-                        }
-                    }
+        for (const waMessage of messages.messages) {
+            if (!waMessage) {
+                continue
+            }
+
+            if (waMessage.key.fromMe) {
+                storeMessageOnCache(waMessage, messageCache)
+            }
+
+            if (messages.type !== 'notify') {
+                continue
+            }
+
+            const idChat = waMessage.key.remoteJid
+            const isGroupMsg = idChat?.includes("@g.us")
+            let group: Awaited<ReturnType<GroupController['getGroup']>> | null = null
+
+            if (isGroupMsg && idChat) {
+                // Avoid refetching the same group data within the batch processing.
+                group = groupCache.has(idChat) ? groupCache.get(idChat) ?? null : await groupController.getGroup(idChat)
+                groupCache.set(idChat, group)
+            }
+
+            const message = await formatWAMessage(waMessage, group, botInfo.host_number, messages.requestId)
+
+            if (!message) {
+                continue
+            }
+
+            await userController.registerUser(message.sender, message.pushname)
+
+            if (!isGroupMsg) {
+                const needCallCommand = await handlePrivateMessage(client, botInfo, message)
+                if (needCallCommand) {
+                    await commandInvoker(client, botInfo, message, null)
                 }
-
-                break
+            } else if (group) {
+                const needCallCommand = await handleGroupMessage(client, group, botInfo, message)
+                if (needCallCommand) {
+                    await commandInvoker(client, botInfo, message, group)
+                }
+            }
         }
     } catch(err: any){
         showConsoleError(err, "MESSAGES.UPSERT")

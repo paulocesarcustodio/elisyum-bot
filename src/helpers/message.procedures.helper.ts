@@ -1,4 +1,4 @@
-import { WASocket } from "baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Group } from "../interfaces/group.interface.js";
 import { Message } from "../interfaces/message.interface.js";
@@ -9,13 +9,22 @@ import { buildText, removeFormatting } from "../utils/general.util.js";
 import { BotController } from "../controllers/bot.controller.js";
 import * as waUtil  from "../utils/whatsapp.util.js"
 import moment from "moment";
+import { getBlockedContactsFromCache, setBlockedContactsCache } from "./blocked-contacts.cache.js";
 
 const userController = new UserController()
 const botController = new BotController()
 const groupController = new GroupController()
 
 export async function isUserBlocked(client: WASocket, message: Message){
+    const cachedContacts = getBlockedContactsFromCache()
+
+    if (cachedContacts){
+        return cachedContacts.includes(message.sender)
+    }
+
     const blockedContacts = await waUtil.getBlockedContacts(client)
+    setBlockedContactsCache(blockedContacts)
+
     return blockedContacts.includes(message.sender)
 }
 
@@ -179,15 +188,18 @@ export async function autoReply(client: WASocket, botInfo: Bot, group: Group, me
         const userTextNoFormatting = removeFormatting(userText)
         const userWords = userTextNoFormatting.split(' ').map(word => word.toLowerCase())
         const wordsDetected = userWords.filter(userWord => group.auto_reply.config.find(config => config.word == userWord))
-    
+
         if (wordsDetected.length && isBotGroupAdmin) {
             const configWord = group.auto_reply.config.find(config => config.word == wordsDetected[0])
-    
+
             if (configWord) {
                 await waUtil.replyText(client, message.chat_id, configWord?.reply, message.wa_message, { expiration: message.expiration })
+                return true
             }
         }
     }
+
+    return false
 }
 
 export async function isDetectedByAntiLink(client: WASocket, botInfo: Bot, group: Group, message: Message){

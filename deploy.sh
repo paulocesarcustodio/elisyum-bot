@@ -27,7 +27,9 @@ if command_exists node; then
     # Verificar se é v20+
     MAJOR_VERSION=$(echo $NODE_VERSION | cut -d'v' -f2 | cut -d'.' -f1)
     if [ "$MAJOR_VERSION" -lt 20 ]; then
-        echo -e "${YELLOW}⚠${NC}  Aviso: Node.js v20+ recomendado (você tem v$MAJOR_VERSION)"
+        echo -e "${RED}✗${NC} Node.js v20+ é obrigatório (versão detectada: $NODE_VERSION)"
+        echo "Atualize o Node.js antes de continuar."
+        exit 1
     fi
 else
     echo -e "${RED}✗${NC} Node.js não instalado!"

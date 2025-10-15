@@ -1,4 +1,4 @@
-import {WASocket, GroupMetadata} from 'baileys'
+import {WASocket, GroupMetadata} from '@whiskeysockets/baileys'
 import { buildText, showConsoleError } from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
 import { GroupController } from '../controllers/group.controller.js'

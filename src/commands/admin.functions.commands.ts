@@ -1,4 +1,4 @@
-import { downloadMediaMessage, WASocket } from "baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { Group } from "../interfaces/group.interface.js";
@@ -398,7 +398,7 @@ export async function fotobotCommand(client: WASocket, botInfo: Bot, message: Me
         throw new Error(adminCommands.fotobot.msgs.error_message)
     }
 
-    let imageBuffer = await downloadMediaMessage(messageData, "buffer", {})
+    let imageBuffer = await waUtil.downloadMessageAsBuffer(client, messageData)
     await waUtil.updateProfilePic(client, botInfo.host_number, imageBuffer)
     await waUtil.replyText(client, message.chat_id, adminCommands.fotobot.msgs.reply, message.wa_message, {expiration: message.expiration})
 }
@@ -429,7 +429,7 @@ export async function prefixoCommand(client: WASocket, botInfo: Bot, message: Me
 }
 
 export async function listablockCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const blockedUsers = await waUtil.getBlockedContacts(client)
+    const blockedUsers: string[] = await waUtil.getBlockedContacts(client)
 
     if (!blockedUsers.length) {
         throw new Error(adminCommands.listablock.msgs.error)
@@ -437,10 +437,9 @@ export async function listablockCommand(client: WASocket, botInfo: Bot, message:
 
     let replyText = buildText(adminCommands.listablock.msgs.reply_title, blockedUsers.length)
 
-    for (let userId of blockedUsers) {
-        const userPosition = blockedUsers.indexOf(userId) + 1
-        replyText += buildText(adminCommands.listablock.msgs.reply_item, userPosition, waUtil.removeWhatsappSuffix(userId))
-    }
+    blockedUsers.forEach((userId, index) => {
+        replyText += buildText(adminCommands.listablock.msgs.reply_item, index + 1, waUtil.removeWhatsappSuffix(userId))
+    })
 
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
@@ -448,16 +447,18 @@ export async function listablockCommand(client: WASocket, botInfo: Bot, message:
 export async function bloquearCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const userController = new UserController()
     const adminsId = (await userController.getAdmins()).map(admin => admin.id)
-    const blockedUsers = await waUtil.getBlockedContacts(client)
-    let targetUserId : string
+    const blockedUsers: string[] = await waUtil.getBlockedContacts(client)
+    let targetUserId : string | undefined
 
-    if(message.isQuoted && message.quotedMessage) {
-        targetUserId = message.quotedMessage?.sender
+    if(message.isQuoted && message.quotedMessage?.sender) {
+        targetUserId = message.quotedMessage.sender
     } else if(message.mentioned.length) {
         targetUserId = message.mentioned[0]
     } else if (message.args.length) {
         targetUserId =  waUtil.addWhatsappSuffix(message.text_command)
-    } else {
+    }
+
+    if (!targetUserId) {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
@@ -475,18 +476,21 @@ export async function bloquearCommand(client: WASocket, botInfo: Bot, message: M
 }
 
 export async function desbloquearCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const blockedUsers = await waUtil.getBlockedContacts(client)
-    let targetUserId : string
+    const blockedUsers: string[] = await waUtil.getBlockedContacts(client)
+    let targetUserId : string | undefined
 
-    if(message.isQuoted && message.quotedMessage) {
-        targetUserId = message.quotedMessage?.sender
+    if(message.isQuoted && message.quotedMessage?.sender) {
+        targetUserId = message.quotedMessage.sender
     } else if(message.mentioned.length) {
         targetUserId = message.mentioned[0]
     } else if(message.args.length == 1 && message.args[0].length <= 3 && Number(message.args[0])) {
-        targetUserId = blockedUsers[Number(message.args[0]) - 1]
+        const blockedIndex = Number(message.args[0]) - 1
+        targetUserId = blockedUsers[blockedIndex]
     } else if (message.args.length) {
         targetUserId =  waUtil.addWhatsappSuffix(message.text_command)
-    } else {
+    }
+
+    if (!targetUserId) {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 

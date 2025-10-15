@@ -1,4 +1,4 @@
-import { downloadMediaMessage, WASocket } from "baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { Group } from "../interfaces/group.interface.js";
@@ -208,9 +208,9 @@ export async function fotogrupoCommand(client: WASocket, botInfo: Bot, message: 
     let imageBuffer : Buffer
 
     if (message.isQuoted && message.quotedMessage) {
-        imageBuffer = await downloadMediaMessage(message.quotedMessage?.wa_message, "buffer", {})
+        imageBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     } else {
-        imageBuffer = await downloadMediaMessage(message.wa_message, "buffer", {})
+        imageBuffer = await waUtil.downloadMessageAsBuffer(client, message.wa_message)
     }
 
     await waUtil.updateProfilePic(client, group.id, imageBuffer)

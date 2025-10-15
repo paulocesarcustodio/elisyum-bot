@@ -1,5 +1,5 @@
 import { pino } from 'pino'
-import { isJidBroadcast, AuthenticationState, WAVersion, UserFacingSocketConfig, Browsers } from 'baileys'
+import { isJidBroadcast, AuthenticationState, WAVersion, UserFacingSocketConfig, Browsers } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 import { getMessageFromCache } from './utils/whatsapp.util.js'
 

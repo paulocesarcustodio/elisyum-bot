@@ -1,4 +1,4 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto } from "baileys"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto, downloadMediaMessage } from "@whiskeysockets/baileys"
 import { buildText, randomDelay } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
@@ -6,8 +6,79 @@ import { Group } from "../interfaces/group.interface.js"
 import { removeBold } from "./general.util.js"
 import { GroupController } from "../controllers/group.controller.js"
 import NodeCache from "node-cache"
+import { clearBlockedContactsCache } from "../helpers/blocked-contacts.cache.js"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
+
+function invalidateBlockedContactsCache(){
+    try {
+        clearBlockedContactsCache()
+    } catch (error) {
+        // Ignore cache invalidation errors to avoid breaking block/unblock operations
+    }
+}
+let groupController: GroupController | undefined
+let userController: UserController | undefined
+
+type UserAdminsReturn = Awaited<ReturnType<UserController["getAdmins"]>>
+
+function getGroupController(){
+    if (!groupController){
+        groupController = new GroupController()
+    }
+
+    return groupController
+}
+
+function getUserController(){
+    if (!userController){
+        userController = new UserController()
+    }
+
+    return userController
+}
+
+const botAdminsCache = new NodeCache({ stdTTL: 300, checkperiod: 120 })
+const BOT_ADMINS_CACHE_KEY = "bot-admins"
+
+type DownloadMediaOptions = Parameters<typeof downloadMediaMessage>[2]
+type DownloadMediaContext = NonNullable<Parameters<typeof downloadMediaMessage>[3]>
+
+/**
+ * Returns bot administrators from cache to avoid hitting the database on every message.
+ */
+export async function getCachedBotAdmins() {
+    const cachedAdmins = botAdminsCache.get(BOT_ADMINS_CACHE_KEY)
+
+    if (cachedAdmins) {
+        return cachedAdmins as UserAdminsReturn
+    }
+
+    const admins = await getUserController().getAdmins()
+    botAdminsCache.set(BOT_ADMINS_CACHE_KEY, admins)
+    return admins
+}
+
+export function invalidateBotAdminsCache() {
+    botAdminsCache.del(BOT_ADMINS_CACHE_KEY)
+}
+
+export function createMediaDownloadContext(client: WASocket): DownloadMediaContext {
+    return {
+        logger: client.logger,
+        reuploadRequest: async message => client.updateMediaMessage(message)
+    }
+}
+
+export async function downloadMessageAsBuffer(
+    client: WASocket,
+    message: WAMessage,
+    options: DownloadMediaOptions = {} as DownloadMediaOptions
+): Promise<Buffer> {
+    const context = createMediaDownloadContext(client)
+    const buffer = await downloadMediaMessage(message, 'buffer', options, context)
+    return buffer
+}
 
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
     await client.presenceSubscribe(chatId)
@@ -91,12 +162,16 @@ export function getProfilePicUrl(client: WASocket, chatId: string){
     return client.profilePictureUrl(chatId, "image")
 }
 
-export function blockContact(client: WASocket, userId: string){
-    return client.updateBlockStatus(userId, "block")
+export async function blockContact(client: WASocket, userId: string){
+    const result = await client.updateBlockStatus(userId, "block")
+    invalidateBlockedContactsCache()
+    return result
 }
 
-export function unblockContact(client: WASocket, userId: string){
-    return client.updateBlockStatus(userId, "unblock")
+export async function unblockContact(client: WASocket, userId: string){
+    const result = await client.updateBlockStatus(userId, "unblock")
+    invalidateBlockedContactsCache()
+    return result
 }
 
 export function getHostNumber(client: WASocket){
@@ -104,8 +179,9 @@ export function getHostNumber(client: WASocket){
     return id || ''
 }
 
-export function getBlockedContacts(client: WASocket){
-    return client.fetchBlocklist()
+export async function getBlockedContacts(client: WASocket): Promise<string[]>{
+    const blocklist = await client.fetchBlocklist()
+    return blocklist.filter((jid): jid is string => typeof jid === 'string')
 }
 
 export async function sendText(client: WASocket, chatId: string, text: string, options?: MessageOptions){
@@ -248,16 +324,14 @@ export function getMessageFromCache(messageId: string, messageCache: NodeCache){
     return message
 }
 
-export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string){
+export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string, requestId?: string){
     if (!m.message) return
 
     const type = getContentType(m.message)
 
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
-    const groupController = new GroupController()
-    const userController = new UserController()
-    const botAdmins = await userController.getAdmins()
+    const botAdmins = await getCachedBotAdmins()
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
     const sender = (m.key.fromMe) ? hostId : m.key.participant || m.key.remoteJid
@@ -270,7 +344,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     const message_id = m.key.id
     const t = m.messageTimestamp as number
     const chat_id = m.key.remoteJid
-    const isGroupAdmin = (sender && group) ? await groupController.isParticipantAdmin(group.id, sender) : false
+    const isGroupAdmin = (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false
 
     if (!message_id || !t || !sender || !chat_id ) return
 
@@ -280,6 +354,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         type : type as MessageTypes,
         t,
         chat_id,
+        requestId,
         expiration : contextInfo?.expiration || undefined,
         pushname: pushName || '',
         body: m.message.conversation || m.message.extendedTextMessage?.text || '',
