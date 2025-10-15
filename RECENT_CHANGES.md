@@ -1,0 +1,1 @@
+- Adicionada resposta guiando usuários para {$p}menu ou {$p}comando guia quando um comando desconhecido for digitado.
