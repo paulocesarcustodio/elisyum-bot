@@ -51,6 +51,7 @@ const botTexts = {
     owner_registered: '✓ Número do DONO configurado.',
     owner_not_found: 'O número do DONO ainda não foi configurado, digite !admin para cadastrar seu número como dono do bot.',
     migrating_database: '! O banco de dados está sendo migrado, por favor aguarde...',
+    unknown_command: '🤔 Não reconheci o comando *{$1}*. Digite *{$p}menu* ou *{$p}comando guia* para receber ajuda.',
     user_types: {
         owner: '💻 Dono',
         admin: '⭐ Admin',

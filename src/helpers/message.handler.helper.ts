@@ -3,11 +3,15 @@ import { Bot } from "../interfaces/bot.interface.js";
 import { Group } from "../interfaces/group.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { commandExist } from "../utils/commands.util.js";
+import * as waUtil from "../utils/whatsapp.util.js";
+import { buildText } from "../utils/general.util.js";
+import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
 
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
     const isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && botInfo.autosticker)
+    const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
     let callCommand : boolean
 
     //Verifica se o usuário está bloqueado, se estiver retorna.
@@ -59,6 +63,11 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         callCommand = true
     } else {
         callCommand = false
+        // Aviso documentado: informa ao usuário quando um comando com prefixo não foi encontrado no privado.
+        if (hasUnknownPrefixedCommand) {
+            const unknownCommandText = buildText(botTexts.unknown_command, message.command)
+            await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+        }
     }
 
     return callCommand
@@ -67,6 +76,7 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 export async function handleGroupMessage(client: WASocket, group: Group, botInfo: Bot, message: Message){
     const isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker)
+    const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
     let callCommand : boolean
 
     //Atualize o nome do usuário
@@ -145,9 +155,16 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
 
         callCommand = true
     } else {
-        await procs.autoReply(client, botInfo, group, message)
-        
+        const autoReplied = await procs.autoReply(client, botInfo, group, message)
+
         callCommand = false
+        const shouldSkipUnknownFeedback = message.isGroupAdmin || message.isBotMessage
+
+        // Aviso documentado: orienta comandos desconhecidos em grupos sem conflitar com autoReply.
+        if (hasUnknownPrefixedCommand && !shouldSkipUnknownFeedback && !autoReplied) {
+            const unknownCommandText = buildText(botTexts.unknown_command, message.command)
+            await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+        }
     }
 
     return callCommand

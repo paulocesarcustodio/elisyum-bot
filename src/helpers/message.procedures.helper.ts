@@ -193,15 +193,18 @@ export async function autoReply(client: WASocket, botInfo: Bot, group: Group, me
         const userTextNoFormatting = removeFormatting(userText)
         const userWords = userTextNoFormatting.split(' ').map(word => word.toLowerCase())
         const wordsDetected = userWords.filter(userWord => group.auto_reply.config.find(config => config.word == userWord))
-    
+
         if (wordsDetected.length && isBotGroupAdmin) {
             const configWord = group.auto_reply.config.find(config => config.word == wordsDetected[0])
-    
+
             if (configWord) {
                 await waUtil.replyText(client, message.chat_id, configWord?.reply, message.wa_message, { expiration: message.expiration })
+                return true
             }
         }
     }
+
+    return false
 }
 
 export async function isDetectedByAntiLink(client: WASocket, botInfo: Bot, group: Group, message: Message){

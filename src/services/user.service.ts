@@ -56,7 +56,7 @@ export class UserService {
     }
 
     public async setAdmin(userId : string, admin: boolean){
-        await db.updateAsync({id : userId}, {$set: {admin}})
+        return db.updateAsync({id : userId}, {$set: {admin}})
     }
 
     public async getAdmins(){
@@ -65,7 +65,7 @@ export class UserService {
     }
 
     public async setOwner(userId : string){
-        await db.updateAsync({id : userId}, {$set: {owner : true, admin: true}})
+        return db.updateAsync({id : userId}, {$set: {owner : true, admin: true}})
     }
 
     public async getOwner(){
