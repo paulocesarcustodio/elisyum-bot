@@ -157,6 +157,11 @@ Diversos para administrar o bot e ter controle sobre ele.
 
 > ℹ️ **Política adotada:** essas bibliotecas ficam em `optionalDependencies`. O Yarn 4 as instala automaticamente quando o ambiente suporta os binários pré-compilados (como o `sharp`). Caso uma delas falhe na instalação, o `yarn install` continuará, mas o recurso correspondente ficará indisponível até que a dependência seja instalada manualmente.
 
+### 📣 Monitoramento de canais/newsletters
+
+- O mapa de eventos do Baileys 7 inclui as notificações de canais `chats.update`, `messages.upsert`, `newsletter.view`, `newsletter-participants.update` e `newsletter-settings.update`, que chegam via `client.ev.process` ao lado dos eventos tradicionais de chat.【F:node_modules/@whiskeysockets/baileys/lib/Types/Events.d.ts†L27-L132】
+- O bot identifica JIDs de canais (`@newsletter`) com o utilitário exposto pela própria biblioteca e encaminha essas mensagens para loggers dedicados, preservando o fluxo de comandos padrão até que novas automações sejam habilitadas.【F:node_modules/@whiskeysockets/baileys/lib/WABinary/jid-utils.js†L58-L59】【F:src/socket.ts†L60-L114】【F:src/events/newsletter-message.event.ts†L1-L55】【F:src/events/newsletter-chats-update.event.ts†L1-L29】【F:src/events/newsletter-update.event.ts†L1-L25】
+
 <br>
 
 ## 🙏 Agradecimentos
