@@ -13,9 +13,11 @@ export async function executeEventQueue(client: WASocket, eventsCache: NodeCache
     eventsCache.set("events", [])
 }
 
-function toParticipantIds(participants: GroupParticipant[] | undefined) {
+type ParticipantLike = GroupParticipant | string
+
+function toParticipantIds(participants: ParticipantLike[] | undefined) {
     return (participants ?? [])
-        .map(participant => participant.id)
+        .map(participant => typeof participant === 'string' ? participant : participant.id)
         .filter((id): id is string => typeof id === 'string')
 }
 

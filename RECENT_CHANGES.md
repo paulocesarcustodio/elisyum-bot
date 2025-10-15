@@ -12,3 +12,4 @@
 - Adicionada uma configuração mínima do webpack e dependências de CLI para que o `npx webpack` execute sem intervenção manual no CI.
 - Protegido o estado NeDB com mutexes e desserialização via `proto.Message.AppStateSyncKeyData`, validado pelo teste `npx tsx tests/session.auth.helper.test.ts` para garantir persistência e limpeza das novas chaves de login.
 - Ajustados eventos/formatadores para o Baileys 7 (participantes como objetos, requestId e contexto de download de mídia) e cobrimos os fluxos com novos testes de fila, mídia e formatação.
+- Instaladas as dependências opcionais do Baileys (sharp, audio-decode, link-preview-js) com testes de mídia cobrindo miniaturas e waveform, além de documentação atualizada para setup e troubleshooting.

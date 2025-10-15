@@ -6,11 +6,13 @@ import { GroupController } from '../controllers/group.controller.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix } from '../utils/whatsapp.util.js'
 
-type ParticipantsUpdateEvent = {
+type ParticipantLike = GroupParticipant | string
+
+export type ParticipantsUpdateEvent = {
     id: string
     author: string
     authorPn?: string
-    participants: GroupParticipant[]
+    participants: ParticipantLike[]
     action: ParticipantAction
 }
 
@@ -23,7 +25,11 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
             return
         }
 
-        for (const participant of event.participants ?? []) {
+        const participants = (event.participants ?? []).map(participant =>
+            typeof participant === 'string' ? { id: participant } as GroupParticipant : participant
+        )
+
+        for (const participant of participants) {
             const participantId = participant.id
 
             if (!participantId) {

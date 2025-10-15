@@ -6,7 +6,7 @@ import { BotController } from './controllers/bot.controller.js'
 import { connectionClose, connectionOpen, connectionPairingCode, connectionQr } from './events/connection.event.js'
 import { messageReceived } from './events/message-received.event.js'
 import { addedOnGroup } from './events/group-added.event.js'
-import { groupParticipantsUpdated } from './events/group-participants-updated.event.js'
+import { groupParticipantsUpdated, ParticipantsUpdateEvent } from './events/group-participants-updated.event.js'
 import { partialGroupUpdate } from './events/group-partial-update.event.js'
 import { contactsUpdate } from './events/contacts-update.event.js'
 import { syncGroupsOnStart } from './helpers/groups.sync.helper.js'
@@ -85,10 +85,14 @@ export default async function connect(){
 
         // Atualização de participantes no grupo
         if (events['group-participants.update']){
-            const participantsUpdate = events['group-participants.update']
+            const rawParticipantsUpdate = events['group-participants.update']
+            const participantsUpdate: ParticipantsUpdateEvent = {
+                ...rawParticipantsUpdate,
+                participants: rawParticipantsUpdate.participants ?? []
+            }
 
             if (isBotReady) await groupParticipantsUpdated(client, participantsUpdate, botInfo)
-            else queueEvent(eventsCache, "group-participants.update", participantsUpdate)    
+            else queueEvent(eventsCache, "group-participants.update", rawParticipantsUpdate)
         }
         
         // Novo grupo
