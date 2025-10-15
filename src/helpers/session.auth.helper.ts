@@ -1,5 +1,5 @@
 import DataStore from "@seald-io/nedb";
-import { AuthenticationCreds, AuthenticationState, initAuthCreds, WAProto, SignalDataTypeMap, BufferJSON } from "baileys"
+import { AuthenticationCreds, AuthenticationState, initAuthCreds, WAProto, SignalDataTypeMap, BufferJSON } from "@whiskeysockets/baileys"
 
 const db = new DataStore<{key: string, data: string}>({filename : './storage/session.db', autoload: true})
 
@@ -23,27 +23,36 @@ export async function useNeDBAuthState() : Promise<{ state: AuthenticationState,
         state: {
             creds,
             keys: {
-                get: async (type, ids) => {
-                    const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+                get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
+                    const data: { [_: string]: SignalDataTypeMap[T] } = {}
                     await Promise.all(
-                        ids.map(async id => {
+                        ids.map(async (id: string) => {
                             let value = await read(`${type}-${id}`)
 
                             if (type === "app-state-sync-key" && value) {
-                                value = WAProto.Message.AppStateSyncKeyData.fromObject(value)
+                                value = WAProto.Message.AppStateSyncKeyData.create(value as WAProto.Message.IAppStateSyncKeyData)
                             }
 
-                            data[id] = value
+                            data[id] = value as SignalDataTypeMap[T]
                         })
                     )
 
                     return data
                 },
-                set: async (data: any) => {
+                set: async (
+                    data: {
+                        [T in keyof SignalDataTypeMap]?: {
+                            [id: string]: SignalDataTypeMap[T] | null | undefined
+                        }
+                    }
+                ) => {
                     const tasks: Promise<void>[] = [];
-                    for (const category in data) {
-                        for (const id in data[category]) {
-                            const value = data[category][id]
+                    for (const category of Object.keys(data) as (keyof SignalDataTypeMap)[]) {
+                        const entries = data[category]
+                        if (!entries) continue
+
+                        for (const id of Object.keys(entries)) {
+                            const value = entries[id]
                             const key = `${category}-${id}`
                             tasks.push(value ? write(value, key) : remove(key))
                         }

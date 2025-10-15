@@ -1,4 +1,4 @@
-import {DisconnectReason, ConnectionState, WASocket} from 'baileys'
+import {DisconnectReason, ConnectionState, WASocket} from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import { BotController } from '../controllers/bot.controller.js'
 import { buildText, showConsoleError, colorText, askQuestion } from '../utils/general.util.js'

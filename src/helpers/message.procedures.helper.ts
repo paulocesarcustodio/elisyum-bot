@@ -1,4 +1,4 @@
-import { WASocket } from "baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Group } from "../interfaces/group.interface.js";
 import { Message } from "../interfaces/message.interface.js";
@@ -23,12 +23,14 @@ export function clearBlockedContactsCache(){
 }
 
 export async function isUserBlocked(client: WASocket, message: Message){
-    let blockedContacts = blockedContactsCache.get<string[]>(blockedContactsCacheKey)
+    const cachedContacts = blockedContactsCache.get<string[]>(blockedContactsCacheKey)
 
-    if (!blockedContacts){
-        blockedContacts = await waUtil.getBlockedContacts(client)
-        blockedContactsCache.set(blockedContactsCacheKey, blockedContacts)
+    if (cachedContacts){
+        return cachedContacts.includes(message.sender)
     }
+
+    const blockedContacts = await waUtil.getBlockedContacts(client)
+    blockedContactsCache.set(blockedContactsCacheKey, blockedContacts)
 
     return blockedContacts.includes(message.sender)
 }

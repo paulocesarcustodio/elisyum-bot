@@ -1,4 +1,4 @@
-import {getContentType, WASocket, WAMessage, MessageUpsertType} from 'baileys'
+import {getContentType, WASocket, WAMessage, MessageUpsertType} from '@whiskeysockets/baileys'
 import { showConsoleError} from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
 import NodeCache from 'node-cache'

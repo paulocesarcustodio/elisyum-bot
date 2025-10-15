@@ -3,7 +3,7 @@ import { MessageTypes } from "../interfaces/message.interface.js";
 import { deepMerge, timestampToDate } from '../utils/general.util.js'
 import moment from 'moment-timezone'
 import DataStore from "@seald-io/nedb";
-import { GroupMetadata } from "baileys";
+import { GroupMetadata } from "@whiskeysockets/baileys";
 
 const db = new DataStore<Participant>({filename : './storage/participants.groups.db', autoload: true})
 

@@ -1,4 +1,4 @@
-import {proto, WAMessage} from 'baileys'
+import {proto, WAMessage} from '@whiskeysockets/baileys'
 
 export type MessageTypes = keyof proto.IMessage
 

@@ -23,6 +23,10 @@
     "bot",
     "sticker"
   ],
+  "engines": {
+    "node": ">=20",
+    "yarn": ">=1.22"
+  },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
     "@types/fluent-ffmpeg": "^2.1.27",
@@ -52,9 +56,9 @@
     "@victorsouzaleal/brasileirao": "^1.1.2",
     "@victorsouzaleal/googlethis": "^1.8.1",
     "@vitalets/google-translate-api": "^9.2.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc.5",
     "adm-zip": "^0.5.16",
     "axios": "^1.9.0",
-    "baileys": "^6.7.18",
     "canvas": "^3.2.0",
     "chalk": "^4.1.0",
     "emoji-mixer": "^1.2.2",
