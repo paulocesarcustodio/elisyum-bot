@@ -19,6 +19,8 @@ sudo apt update
 sudo apt install -y ffmpeg
 ```
 
+> ℹ️ O `sharp` é instalado automaticamente pelo Yarn como dependência opcional do Baileys. Em distribuições sem binários pré-compilados, instale o toolchain (`sudo apt install -y build-essential python3 make g++`) antes de rodar o `yarn install` para permitir a compilação local. Sem o `sharp`, a geração de miniaturas em stickers/imagens falhará.
+
 ### 4. Instalar yt-dlp (para downloads do YouTube)
 ```bash
 sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
@@ -133,6 +135,16 @@ yarn build    # Compila o projeto
 ```bash
 sudo apt install -y ffmpeg
 ```
+
+### Erro: "No image processing library available"
+**Causa:** O `sharp` não foi instalado (download falhou ou compilação local não disponível)
+
+**Solução:**
+```bash
+sudo apt install -y build-essential python3 make g++
+yarn install --check-cache
+```
+Se o ambiente bloquear o download de binários do `sharp`, execute `npm_config_sharp_ignore_global_libvips=1 yarn install` para forçar a recompilação usando as bibliotecas do sistema.
 
 ### Erro: "spawn yt-dlp ENOENT"
 **Causa:** yt-dlp não instalado ou não encontrado
