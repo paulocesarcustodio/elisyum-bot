@@ -17,3 +17,4 @@ storage
 dist
 #Sessao
 session
+.yarn/install-state.gz

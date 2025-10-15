@@ -53,6 +53,10 @@ npm i -g yarn
 
 <br>
 
+> ℹ️ Este projeto utiliza **Yarn 4 (node-modules linker)** como gerenciador oficial. Mantenha o `yarn.lock` versionado, execute `yarn install` sempre que atualizar o repositório e evite usar `npm install`, pois o `package-lock.json` não é mais distribuído.
+
+<br>
+
 Após instalar o **Yarn** ou se ele já tiver instalado, você só precisa iniciar o bot com o comando abaixo:
 ```bash
 yarn start
@@ -137,6 +141,12 @@ Diversos para administrar o bot e ter controle sobre ele.
 <br>
 
 ### 👉 Lista completa de comandos... [Clique Aqui](docs/COMANDOS.md)
+
+<br>
+
+## 🧰 Notas técnicas
+
+- O pacote `libsignal` exigido pelo Baileys é obtido diretamente do repositório oficial [`whiskeysockets/libsignal-node`](https://github.com/whiskeysockets/libsignal-node) com o commit `e81ecfc3`. O `yarn.lock` já referencia essa origem e dispensa hashes adicionais desde que a instalação seja feita via Yarn 4.
 
 <br>
 
