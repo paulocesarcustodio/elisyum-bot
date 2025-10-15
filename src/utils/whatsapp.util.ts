@@ -19,6 +19,7 @@ async function invalidateBlockedContactsCache(){
     } catch (error) {
         // Ignore cache invalidation errors to avoid breaking block/unblock operations
     }
+}
 const groupController = new GroupController()
 const userController = new UserController()
 
