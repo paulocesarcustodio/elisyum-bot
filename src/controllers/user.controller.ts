@@ -21,16 +21,28 @@ export class UserController{
         return this.userService.setName(userId, name)
     }
 
-    public promoteUser(userId: string){
-        return this.userService.setAdmin(userId, true)
+    public async promoteUser(userId: string){
+        const updatedDocs = await this.userService.setAdmin(userId, true)
+
+        if (updatedDocs) {
+            await this.invalidateAdminsCache()
+        }
     }
 
-    public demoteUser(userId: string){
-        return this.userService.setAdmin(userId, false)
+    public async demoteUser(userId: string){
+        const updatedDocs = await this.userService.setAdmin(userId, false)
+
+        if (updatedDocs) {
+            await this.invalidateAdminsCache()
+        }
     }
 
-    public registerOwner(userId: string){
-        return this.userService.setOwner(userId)
+    public async registerOwner(userId: string){
+        const updatedDocs = await this.userService.setOwner(userId)
+
+        if (updatedDocs) {
+            await this.invalidateAdminsCache()
+        }
     }
 
     public getUsers(){
@@ -67,6 +79,11 @@ export class UserController{
 
     public setLimitedUser(userId: string, isLimited: boolean, botInfo: Bot, currentTimestamp: number){
         return this.userService.setLimitedUser(userId, isLimited, botInfo, currentTimestamp)
+    }
+
+    private async invalidateAdminsCache(){
+        const { invalidateBotAdminsCache } = await import("../utils/whatsapp.util.js")
+        invalidateBotAdminsCache()
     }
 
 }
