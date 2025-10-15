@@ -1,4 +1,4 @@
-import { downloadMediaMessage, WASocket } from "@whiskeysockets/baileys"
+import { WASocket } from "@whiskeysockets/baileys"
 import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
@@ -17,7 +17,7 @@ export async function ouvirCommand(client: WASocket, botInfo: Bot, message: Mess
         throw new Error(utilityCommands.ouvir.msgs.error_audio_limit)
     }
 
-    let audioBuffer = await downloadMediaMessage(message.quotedMessage.wa_message, "buffer", {})
+    let audioBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     let replyText = await audioUtil.audioTranscription(audioBuffer)
     await waUtil.replyText(client, message.chat_id, buildText(utilityCommands.ouvir.msgs.reply, replyText), message.quotedMessage.wa_message, {expiration: message.expiration})
 }
@@ -35,7 +35,7 @@ export async function qualmusicaCommand(client: WASocket, botInfo: Bot, message:
         throw new Error(utilityCommands.qualmusica.msgs.error_message)
     }
 
-    const messageMediaBuffer = await downloadMediaMessage(messageData, "buffer", {})
+    const messageMediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData)
 
     await waUtil.replyText(client, message.chat_id, utilityCommands.qualmusica.msgs.wait, message.wa_message, {expiration: message.expiration})
     const musicResult = await audioUtil.musicRecognition(messageMediaBuffer)
@@ -175,9 +175,9 @@ export async function upimgCommand(client: WASocket, botInfo: Bot, message: Mess
    
     let imageBuffer : Buffer
     if (message.isQuoted && message.quotedMessage?.wa_message){
-        imageBuffer = await downloadMediaMessage(message.quotedMessage.wa_message, 'buffer', {})
+        imageBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     } else {
-        imageBuffer = await downloadMediaMessage(message.wa_message, 'buffer', {})
+        imageBuffer = await waUtil.downloadMessageAsBuffer(client, message.wa_message)
     }
 
     let imageUrl = await imageUtil.uploadImage(imageBuffer)
@@ -211,7 +211,7 @@ export async function rbgCommand(client: WASocket, botInfo: Bot, message: Messag
     }
 
     await waUtil.replyText(client, message.chat_id, utilityCommands.rbg.msgs.wait, message.wa_message, {expiration: message.expiration})
-    let imageBuffer = await downloadMediaMessage(messageData.wa_message, "buffer", {})
+    let imageBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.wa_message)
     let replyImageBuffer = await imageUtil.removeBackground(imageBuffer)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', replyImageBuffer, '', message.wa_message, {expiration: message.expiration})
 }
@@ -232,7 +232,7 @@ export async function audioCommand(client: WASocket, botInfo: Bot, message: Mess
         throw new Error(utilityCommands.audio.msgs.error_only_video)
     }
 
-    let videoBuffer = await downloadMediaMessage(messageData.wa_message, "buffer", {})
+    let videoBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.wa_message)
     let replyAudioBuffer = await extractAudioFromVideo('buffer', videoBuffer)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', replyAudioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
 }
@@ -266,7 +266,7 @@ export async function efeitoaudioCommand(client: WASocket, botInfo: Bot, message
     } 
 
     const effectSelected = message.text_command.trim().toLowerCase() as 'estourar'|'x2'| 'reverso'| 'grave' | 'agudo' |'volume'
-    const audioBuffer = await downloadMediaMessage(message.quotedMessage.wa_message, "buffer", {})
+    const audioBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     const replyAudioBuffer = await audioUtil.audioModified(audioBuffer, effectSelected)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', replyAudioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
 }
@@ -479,7 +479,7 @@ export async function qualanimeCommand(client: WASocket, botInfo: Bot, message: 
     }
     
     await waUtil.replyText(client, message.chat_id, utilityCommands.qualanime.msgs.wait, message.wa_message, {expiration: message.expiration})
-    const imageBuffer = await downloadMediaMessage(messageData.message, "buffer", {})
+    const imageBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
     const animeInfo = await imageUtil.animeRecognition(imageBuffer)
 
     if (!animeInfo) {

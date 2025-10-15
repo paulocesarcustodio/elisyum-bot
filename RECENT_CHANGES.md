@@ -10,3 +10,4 @@
 - Migrated to @whiskeysockets/baileys 7.0.0-rc.5 and enforced Node.js 20+ across tooling and documentation.
 - Adicionada uma configuração mínima do webpack e dependências de CLI para que o `npx webpack` execute sem intervenção manual no CI.
 - Protegido o estado NeDB com mutexes e desserialização via `proto.Message.AppStateSyncKeyData`, validado pelo teste `npx tsx tests/session.auth.helper.test.ts` para garantir persistência e limpeza das novas chaves de login.
+- Ajustados eventos/formatadores para o Baileys 7 (participantes como objetos, requestId e contexto de download de mídia) e cobrimos os fluxos com novos testes de fila, mídia e formatação.

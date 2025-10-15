@@ -1,4 +1,4 @@
-import { downloadMediaMessage, WASocket } from "@whiskeysockets/baileys"
+import { WASocket } from "@whiskeysockets/baileys"
 import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
@@ -94,7 +94,7 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         throw new Error(stickerCommands.s.msgs.error_limit)
     }
     
-    const mediaBuffer = await downloadMediaMessage(messageData.message, "buffer", {})
+    const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
     const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
     const stickerBuffer = await stickerUtil.createSticker(mediaBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: stickerType})
     await waUtil.sendSticker(client, message.chat_id, stickerBuffer, { expiration: message.expiration })
@@ -113,7 +113,7 @@ export async function simgCommand(client: WASocket, botInfo: Bot, message: Messa
         messageQuotedData.message.stickerMessage.url = `https://mmg.whatsapp.net${messageQuotedData.message.stickerMessage.directPath}` 
     }
 
-    const stickerBuffer = await downloadMediaMessage(message.quotedMessage.wa_message, "buffer", {})
+    const stickerBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     const imageBuffer = await stickerUtil.stickerToImage(stickerBuffer)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', imageBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'image/png'})
 }
@@ -131,7 +131,7 @@ export async function ssfCommand(client: WASocket, botInfo: Bot, message: Messag
     }
 
     await waUtil.replyText(client, message.chat_id, stickerCommands.ssf.msgs.wait, message.wa_message, {expiration: message.expiration})
-    const mediaBuffer = await downloadMediaMessage(messageData.message, "buffer", {})
+    const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
     const imageBuffer = await imageUtil.removeBackground(mediaBuffer)
     const authorText = buildText(stickerCommands.ssf.msgs.author_text, message.pushname)
     const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
@@ -191,7 +191,7 @@ export async function snomeCommand(client: WASocket, botInfo: Bot, message: Mess
         messageQuotedData.message.stickerMessage.url = `https://mmg.whatsapp.net${messageQuotedData.message.stickerMessage.directPath}` 
     }
 
-    const stickerBuffer = await downloadMediaMessage(messageQuotedData, 'buffer', {})
+    const stickerBuffer = await waUtil.downloadMessageAsBuffer(client, messageQuotedData)
     const stickerRenamedBuffer = await stickerUtil.renameSticker(stickerBuffer, pack, author)
     await waUtil.sendSticker(client, message.chat_id, stickerRenamedBuffer, {expiration: message.expiration})
 }
@@ -203,7 +203,7 @@ export async function autoSticker(client: WASocket, botInfo: Bot, message: Messa
         return
     }
 
-    let mediaBuffer = await downloadMediaMessage(message.wa_message, "buffer", {})
+    let mediaBuffer = await waUtil.downloadMessageAsBuffer(client, message.wa_message)
     const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
     let stickerBuffer = await stickerUtil.createSticker(mediaBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
     await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})

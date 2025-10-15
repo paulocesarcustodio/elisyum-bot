@@ -4,3 +4,4 @@
 - Reavaliar a necessidade de instalar dependências peer opcionais do Baileys 7 (como sharp) para recursos de mídia aprimorados.
 - Avaliar as vulnerabilidades apontadas pelo `npm audit` e planejar atualizações das dependências obsoletas.
 - Investigar por que `yarn install` falha ao resolver `libsignal` sem hash e alinhar o gerenciador de pacotes adotado pelo projeto.
+- Mapear os novos eventos de newsletter do Baileys 7 para handlers (ou logs) específicos antes de habilitar fluxos de interação com canais.

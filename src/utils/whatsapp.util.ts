@@ -1,4 +1,4 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto } from "@whiskeysockets/baileys"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto, downloadMediaMessage } from "@whiskeysockets/baileys"
 import { buildText, randomDelay } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
@@ -26,6 +26,9 @@ const userController = new UserController()
 const botAdminsCache = new NodeCache({ stdTTL: 300, checkperiod: 120 })
 const BOT_ADMINS_CACHE_KEY = "bot-admins"
 
+type DownloadMediaOptions = Parameters<typeof downloadMediaMessage>[2]
+type DownloadMediaContext = NonNullable<Parameters<typeof downloadMediaMessage>[3]>
+
 /**
  * Returns bot administrators from cache to avoid hitting the database on every message.
  */
@@ -43,6 +46,23 @@ export async function getCachedBotAdmins() {
 
 export function invalidateBotAdminsCache() {
     botAdminsCache.del(BOT_ADMINS_CACHE_KEY)
+}
+
+export function createMediaDownloadContext(client: WASocket): DownloadMediaContext {
+    return {
+        logger: client.logger,
+        reuploadRequest: async message => client.updateMediaMessage(message)
+    }
+}
+
+export async function downloadMessageAsBuffer(
+    client: WASocket,
+    message: WAMessage,
+    options: DownloadMediaOptions = {} as DownloadMediaOptions
+): Promise<Buffer> {
+    const context = createMediaDownloadContext(client)
+    const buffer = await downloadMediaMessage(message, 'buffer', options, context)
+    return buffer
 }
 
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
@@ -289,7 +309,7 @@ export function getMessageFromCache(messageId: string, messageCache: NodeCache){
     return message
 }
 
-export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string){
+export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string, requestId?: string){
     if (!m.message) return
 
     const type = getContentType(m.message)
@@ -319,6 +339,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         type : type as MessageTypes,
         t,
         chat_id,
+        requestId,
         expiration : contextInfo?.expiration || undefined,
         pushname: pushName || '',
         body: m.message.conversation || m.message.extendedTextMessage?.text || '',

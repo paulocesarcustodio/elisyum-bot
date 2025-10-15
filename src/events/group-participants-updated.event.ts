@@ -1,4 +1,4 @@
-import {WASocket, ParticipantAction} from '@whiskeysockets/baileys'
+import { WASocket, ParticipantAction, GroupParticipant } from '@whiskeysockets/baileys'
 import { buildText, showConsoleError} from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
 import { Group } from '../interfaces/group.interface.js'
@@ -6,45 +6,73 @@ import { GroupController } from '../controllers/group.controller.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix } from '../utils/whatsapp.util.js'
 
-export async function groupParticipantsUpdated (client: WASocket, event: {id: string, author: string, participants: string[], action: ParticipantAction}, botInfo: Bot){
+type ParticipantsUpdateEvent = {
+    id: string
+    author: string
+    authorPn?: string
+    participants: GroupParticipant[]
+    action: ParticipantAction
+}
+
+export async function groupParticipantsUpdated(client: WASocket, event: ParticipantsUpdateEvent, botInfo: Bot) {
     try{
         const groupController = new GroupController()
-        const isBotUpdate = event.participants[0] == botInfo.host_number
         const group = await groupController.getGroup(event.id)
 
         if (!group) {
             return
         }
 
-        if (event.action === 'add') {
-            const isParticipant = await groupController.isParticipant(group.id, event.participants[0])
+        for (const participant of event.participants ?? []) {
+            const participantId = participant.id
 
-            if (isParticipant) return
+            if (!participantId) {
+                continue
+            }
 
-            if (await isParticipantBlacklisted(client, botInfo, group, event.participants[0])) return
-            else if (await isParticipantFake(client, botInfo, group, event.participants[0])) return
-            
-            await sendWelcome(client, group, botInfo, event.participants[0])
-            await groupController.addParticipant(group.id, event.participants[0])
-        } else if (event.action === "remove"){
-            const isParticipant = await groupController.isParticipant(group.id, event.participants[0])
+            const isBotUpdate = participantId === botInfo.host_number
 
-            if (!isParticipant) return
-            
-            if (isBotUpdate) await groupController.removeGroup(event.id)
-            else await groupController.removeParticipant(group.id, event.participants[0])
-        } else if (event.action === "promote"){
-            const isAdmin = await groupController.isParticipantAdmin(group.id, event.participants[0])
+            if (event.action === 'add') {
+                const isParticipant = await groupController.isParticipant(group.id, participantId)
 
-            if (isAdmin) return
-        
-            await groupController.setAdmin(event.id, event.participants[0], true)
-        } else if (event.action === "demote"){
-            const isAdmin = await groupController.isParticipantAdmin(group.id, event.participants[0])
+                if (isParticipant) {
+                    if (participant.admin) {
+                        await groupController.setAdmin(event.id, participantId, true)
+                    }
+                    continue
+                }
 
-            if (!isAdmin) return
-            
-            await groupController.setAdmin(event.id, event.participants[0], false)
+                if (await isParticipantBlacklisted(client, botInfo, group, participantId)) continue
+                if (await isParticipantFake(client, botInfo, group, participantId)) continue
+
+                await sendWelcome(client, group, botInfo, participantId)
+                await groupController.addParticipant(group.id, participantId, participant.admin != null)
+            } else if (event.action === 'remove') {
+                const isParticipant = await groupController.isParticipant(group.id, participantId)
+
+                if (!isParticipant) continue
+
+                if (isBotUpdate) {
+                    await groupController.removeGroup(event.id)
+                    continue
+                }
+
+                await groupController.removeParticipant(group.id, participantId)
+            } else if (event.action === 'promote') {
+                const isAdmin = await groupController.isParticipantAdmin(group.id, participantId)
+
+                if (isAdmin) continue
+
+                await groupController.setAdmin(event.id, participantId, true)
+            } else if (event.action === 'demote') {
+                const isAdmin = await groupController.isParticipantAdmin(group.id, participantId)
+
+                if (!isAdmin) continue
+
+                await groupController.setAdmin(event.id, participantId, false)
+            } else if (event.action === 'modify') {
+                await groupController.setAdmin(event.id, participantId, participant.admin != null)
+            }
         }
     } catch(err: any){
         showConsoleError(err, "GROUP-PARTICIPANTS-UPDATE")
