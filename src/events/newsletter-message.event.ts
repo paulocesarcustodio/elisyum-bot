@@ -42,7 +42,7 @@ export async function logNewsletterMessages(_client: WASocket, batch: Newsletter
 
         for (const message of batch.messages) {
             const remoteJid = message.key.remoteJid
-            const serverId = message.message?.newsletterMessage?.serverId || message.newsletterServerId
+            const serverId = (message.message as any)?.newsletterMessage?.serverId || (message as any).newsletterServerId
             const text = message.message?.extendedTextMessage?.text || message.message?.conversation || ''
             const timestamp = message.messageTimestamp ? timestampToDate(Number(message.messageTimestamp) * 1000) : 'unknown'
 

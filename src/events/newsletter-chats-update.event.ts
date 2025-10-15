@@ -5,15 +5,15 @@ export async function logNewsletterChatUpdates(updates: ChatUpdate[]) {
     try {
         const relevant = (updates || []).filter(update => {
             const id = update.id
-            return (typeof id === 'string' && isJidNewsletter(id)) || update.isNewsletter === true
+            return (typeof id === 'string' && isJidNewsletter(id)) || (update as any).isNewsletter === true
         })
 
         if (!relevant.length) return
 
         for (const chat of relevant) {
             const id = chat.id || 'unknown'
-            const name = chat.name || chat.displayName || chat.subject || ''
-            const mute = chat.mute ? `${chat.mute?.type ?? 'muted'}` : 'unmuted'
+            const name = chat.name || chat.displayName || (chat as any).subject || ''
+            const mute = (chat as any).mute ? `${(chat as any).mute?.type ?? 'muted'}` : 'unmuted'
             const unread = typeof chat.unreadCount === 'number' ? chat.unreadCount : 0
 
             console.log(
