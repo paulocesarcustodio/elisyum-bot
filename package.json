@@ -45,7 +45,9 @@
     "rollup": "^4.34.8",
     "tsc-alias": "^1.8.10",
     "tsx": "^4.19.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^5.1.4"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.11.3",
@@ -72,8 +74,8 @@
     "genius-lyrics": "^4.2.9",
     "google-sr": "^5.0.0",
     "instagram-url-direct": "^2.0.6",
-    "jimp": "^0.22.12",
-    "jsdom": "^24.1.1",
+    "jimp": "^1.6.0",
+    "jsdom": "^26.1.0",
     "moment-timezone": "^0.5.47",
     "node-cache": "^5.1.2",
     "node-gtts": "^2.0.2",

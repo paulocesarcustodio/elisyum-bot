@@ -4,7 +4,7 @@ import crypto from 'node:crypto'
 import webp from "node-webpmux"
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import {fileTypeFromBuffer} from 'file-type'
-import jimp from 'jimp'
+import { Jimp } from 'jimp'
 import { StickerOptions, StickerType } from "../interfaces/library.interface.js"
 import botTexts from '../helpers/bot.texts.helper.js'
 
@@ -178,18 +178,18 @@ async function webpConvertion(mediaBuffer : Buffer, isAnimated: boolean, fps: nu
 
 async function editImage(imageBuffer: Buffer, type: StickerType){
     try{
-        const image = await jimp.read(imageBuffer)
+        const image = await Jimp.read(imageBuffer)
     
         if (type === 'resize'){
-            image['resize'](512,512)
+            image.resize({ w: 512, h: 512 })
         } else if (type === 'contain'){
-            image['contain'](512,512)
+            image.contain({ w: 512, h: 512 })
         } else if(type === 'circle'){
-            image['resize'](512,512)
+            image.resize({ w: 512, h: 512 })
             image.circle()
         }
 
-        return image.getBufferAsync('image/png')
+        return image.getBuffer('image/png')
     } catch(err){
         throw err
     }
