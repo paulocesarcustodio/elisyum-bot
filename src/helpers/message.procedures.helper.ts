@@ -9,28 +9,21 @@ import { buildText, removeFormatting } from "../utils/general.util.js";
 import { BotController } from "../controllers/bot.controller.js";
 import * as waUtil  from "../utils/whatsapp.util.js"
 import moment from "moment";
-import NodeCache from "node-cache";
+import { getBlockedContactsFromCache, setBlockedContactsCache } from "./blocked-contacts.cache.js";
 
 const userController = new UserController()
 const botController = new BotController()
 const groupController = new GroupController()
 
-const blockedContactsCacheKey = "blockedContacts"
-const blockedContactsCache = new NodeCache({ stdTTL: 30, checkperiod: 5 })
-
-export function clearBlockedContactsCache(){
-    blockedContactsCache.del(blockedContactsCacheKey)
-}
-
 export async function isUserBlocked(client: WASocket, message: Message){
-    const cachedContacts = blockedContactsCache.get<string[]>(blockedContactsCacheKey)
+    const cachedContacts = getBlockedContactsFromCache()
 
     if (cachedContacts){
         return cachedContacts.includes(message.sender)
     }
 
     const blockedContacts = await waUtil.getBlockedContacts(client)
-    blockedContactsCache.set(blockedContactsCacheKey, blockedContacts)
+    setBlockedContactsCache(blockedContacts)
 
     return blockedContacts.includes(message.sender)
 }

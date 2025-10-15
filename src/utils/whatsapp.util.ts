@@ -6,22 +6,37 @@ import { Group } from "../interfaces/group.interface.js"
 import { removeBold } from "./general.util.js"
 import { GroupController } from "../controllers/group.controller.js"
 import NodeCache from "node-cache"
+import { clearBlockedContactsCache } from "../helpers/blocked-contacts.cache.js"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
 
-async function invalidateBlockedContactsCache(){
+function invalidateBlockedContactsCache(){
     try {
-        const helperModule = await import("../helpers/message.procedures.helper.js")
-
-        if (helperModule && typeof helperModule.clearBlockedContactsCache === "function"){
-            helperModule.clearBlockedContactsCache()
-        }
+        clearBlockedContactsCache()
     } catch (error) {
         // Ignore cache invalidation errors to avoid breaking block/unblock operations
     }
 }
-const groupController = new GroupController()
-const userController = new UserController()
+let groupController: GroupController | undefined
+let userController: UserController | undefined
+
+type UserAdminsReturn = Awaited<ReturnType<UserController["getAdmins"]>>
+
+function getGroupController(){
+    if (!groupController){
+        groupController = new GroupController()
+    }
+
+    return groupController
+}
+
+function getUserController(){
+    if (!userController){
+        userController = new UserController()
+    }
+
+    return userController
+}
 
 const botAdminsCache = new NodeCache({ stdTTL: 300, checkperiod: 120 })
 const BOT_ADMINS_CACHE_KEY = "bot-admins"
@@ -36,10 +51,10 @@ export async function getCachedBotAdmins() {
     const cachedAdmins = botAdminsCache.get(BOT_ADMINS_CACHE_KEY)
 
     if (cachedAdmins) {
-        return cachedAdmins as Awaited<ReturnType<typeof userController.getAdmins>>
+        return cachedAdmins as UserAdminsReturn
     }
 
-    const admins = await userController.getAdmins()
+    const admins = await getUserController().getAdmins()
     botAdminsCache.set(BOT_ADMINS_CACHE_KEY, admins)
     return admins
 }
@@ -149,13 +164,13 @@ export function getProfilePicUrl(client: WASocket, chatId: string){
 
 export async function blockContact(client: WASocket, userId: string){
     const result = await client.updateBlockStatus(userId, "block")
-    await invalidateBlockedContactsCache()
+    invalidateBlockedContactsCache()
     return result
 }
 
 export async function unblockContact(client: WASocket, userId: string){
     const result = await client.updateBlockStatus(userId, "unblock")
-    await invalidateBlockedContactsCache()
+    invalidateBlockedContactsCache()
     return result
 }
 
@@ -329,7 +344,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     const message_id = m.key.id
     const t = m.messageTimestamp as number
     const chat_id = m.key.remoteJid
-    const isGroupAdmin = (sender && group) ? await groupController.isParticipantAdmin(group.id, sender) : false
+    const isGroupAdmin = (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false
 
     if (!message_id || !t || !sender || !chat_id ) return
 
