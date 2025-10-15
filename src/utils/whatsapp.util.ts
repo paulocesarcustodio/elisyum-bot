@@ -9,6 +9,31 @@ import NodeCache from "node-cache"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
 
+const groupController = new GroupController()
+const userController = new UserController()
+
+const botAdminsCache = new NodeCache({ stdTTL: 300, checkperiod: 120 })
+const BOT_ADMINS_CACHE_KEY = "bot-admins"
+
+/**
+ * Returns bot administrators from cache to avoid hitting the database on every message.
+ */
+export async function getCachedBotAdmins() {
+    const cachedAdmins = botAdminsCache.get(BOT_ADMINS_CACHE_KEY)
+
+    if (cachedAdmins) {
+        return cachedAdmins as Awaited<ReturnType<typeof userController.getAdmins>>
+    }
+
+    const admins = await userController.getAdmins()
+    botAdminsCache.set(BOT_ADMINS_CACHE_KEY, admins)
+    return admins
+}
+
+export function invalidateBotAdminsCache() {
+    botAdminsCache.del(BOT_ADMINS_CACHE_KEY)
+}
+
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
     await client.presenceSubscribe(chatId)
     await randomDelay(200, 400)
@@ -255,9 +280,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
-    const groupController = new GroupController()
-    const userController = new UserController()
-    const botAdmins = await userController.getAdmins()
+    const botAdmins = await getCachedBotAdmins()
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
     const sender = (m.key.fromMe) ? hostId : m.key.participant || m.key.remoteJid
