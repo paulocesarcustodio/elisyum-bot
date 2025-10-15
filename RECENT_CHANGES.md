@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Ajustados os imports do Baileys para usar o default `makeWASocket` e confirmada a compilação com a base ESM/TS.
 - Implemented caching for blocked contacts with automatic invalidation after block/unblock operations.
 - Atualizada a sincronização de grupos para aguardar a remoção completa antes de continuar.
 - Processa cada mensagem recebida individualmente, reutilizando dados de grupo no lote para evitar consultas duplicadas.

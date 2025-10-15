@@ -1,5 +1,5 @@
 
-import {makeWASocket, fetchLatestBaileysVersion, WASocket} from '@whiskeysockets/baileys'
+import makeWASocket, { fetchLatestBaileysVersion, WASocket } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 import configSocket from './config.js'
 import { BotController } from './controllers/bot.controller.js'
