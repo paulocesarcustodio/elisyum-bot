@@ -7,3 +7,4 @@
 - Adicionada resposta guiando usuários para {$p}menu ou {$p}comando guia quando um comando desconhecido for digitado.
 - Atualizadas as dependências (jimp 1.x, canvas 3.x e jsdom 26) para remover conflitos de instalação com Baileys e adaptado o utilitário de figurinhas para a nova API.
 - Migrated to @whiskeysockets/baileys 7.0.0-rc.5 and enforced Node.js 20+ across tooling and documentation.
+- Adicionada uma configuração mínima do webpack e dependências de CLI para que o `npx webpack` execute sem intervenção manual no CI.
