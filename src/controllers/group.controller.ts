@@ -1,4 +1,4 @@
-import { GroupMetadata } from "baileys"
+import { GroupMetadata } from "@whiskeysockets/baileys"
 import { GroupService } from "../services/group.service.js"
 import { Group } from "../interfaces/group.interface.js"
 import { MessageTypes } from "../interfaces/message.interface.js"

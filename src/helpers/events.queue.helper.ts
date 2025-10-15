@@ -1,4 +1,4 @@
-import {WASocket, BaileysEvent} from 'baileys'
+import {WASocket, BaileysEvent} from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 
 export async function executeEventQueue(client: WASocket, eventsCache: NodeCache){

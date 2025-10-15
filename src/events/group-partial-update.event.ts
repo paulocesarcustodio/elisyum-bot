@@ -1,4 +1,4 @@
-import { GroupMetadata } from 'baileys'
+import { GroupMetadata } from '@whiskeysockets/baileys'
 import { showConsoleError} from '../utils/general.util.js'
 import { GroupController } from '../controllers/group.controller.js'
 

@@ -1,5 +1,5 @@
 import { Group } from "../interfaces/group.interface.js";
-import { GroupMetadata } from 'baileys'
+import { GroupMetadata } from '@whiskeysockets/baileys'
 import { removePrefix } from "../utils/whatsapp.util.js";
 import DataStore from "@seald-io/nedb";
 import { ParticipantService } from "./participant.service.js";

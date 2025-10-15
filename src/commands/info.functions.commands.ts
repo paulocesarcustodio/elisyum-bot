@@ -1,4 +1,4 @@
-import { WASocket } from "baileys";
+import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { Group } from "../interfaces/group.interface.js";

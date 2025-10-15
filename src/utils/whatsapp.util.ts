@@ -1,4 +1,4 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto } from "baileys"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto } from "@whiskeysockets/baileys"
 import { buildText, randomDelay } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
@@ -144,8 +144,9 @@ export function getHostNumber(client: WASocket){
     return id || ''
 }
 
-export function getBlockedContacts(client: WASocket){
-    return client.fetchBlocklist()
+export async function getBlockedContacts(client: WASocket): Promise<string[]>{
+    const blocklist = await client.fetchBlocklist()
+    return blocklist.filter((jid): jid is string => typeof jid === 'string')
 }
 
 export async function sendText(client: WASocket, chatId: string, text: string, options?: MessageOptions){

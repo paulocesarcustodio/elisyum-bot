@@ -1,4 +1,4 @@
-import {WASocket, ParticipantAction} from 'baileys'
+import {WASocket, ParticipantAction} from '@whiskeysockets/baileys'
 import { buildText, showConsoleError} from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
 import { Group } from '../interfaces/group.interface.js'
