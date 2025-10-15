@@ -4,15 +4,16 @@
   "description": "Bot brasileiro para Whatsapp com diversas utilidades para o dia-a-dia.",
   "type": "module",
   "main": "dist/app.js",
+  "packageManager": "yarn@4.9.4",
   "scripts": {
     "start": "node dist/app.js",
     "clean": "rimraf dist/",
     "copy-media": "copyfiles -u 2 src/media/* dist/media",
-    "prestart": "yarn install --prod",
+    "prestart": "yarn install --immutable",
     "dev": "yarn build && node dist/app.js",
     "migrate": "cross-env migrate=y yarn dev",
     "build": "yarn clean && tsc && yarn copy-media",
-    "zip": "yarn build && bestzip LBOT-v$npm_package_version.zip dist package.json LICENSE yarn.lock"
+    "zip": "yarn build && bestzip LBOT-v$npm_package_version.zip dist package.json LICENSE yarn.lock .yarnrc.yml"
   },
   "author": "Leal",
   "license": "GPL-3.0-only",
@@ -91,5 +92,8 @@
   },
   "optionalDependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0"
+  },
+  "resolutions": {
+    "libsignal": "github:whiskeysockets/libsignal-node#e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
   }
 }
