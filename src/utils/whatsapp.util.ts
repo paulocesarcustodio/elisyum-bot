@@ -406,9 +406,19 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: senderQuoted, messageId: quotedStanzaId })
         quotedWAMessage.key.fromMe = (hostId == senderQuoted)
 
+        // Debug: log completo do contextInfo
+        console.log(`[DEBUG-CONTEXT] contextInfo completo:`, JSON.stringify({
+            notifyName: (contextInfo as any)?.notifyName,
+            pushName: (contextInfo as any)?.pushName,
+            participant: contextInfo.participant,
+            remoteJid: contextInfo.remoteJid,
+            keys: Object.keys(contextInfo || {})
+        }, null, 2))
+
         formattedMessage.quotedMessage = {
             type: typeQuoted,
             sender: senderQuoted,
+            pushname: (contextInfo as any)?.notifyName || (contextInfo as any)?.pushName || undefined,
             body: quotedMessage.conversation || quotedMessage.extendedTextMessage?.text || '',
             caption: captionQuoted || '',
             isMedia : typeQuoted != "conversation" && typeQuoted != "extendedTextMessage",

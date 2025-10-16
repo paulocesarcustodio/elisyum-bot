@@ -9,6 +9,7 @@ import * as quoteUtil from '../utils/quote.util.js'
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import stickerCommands from "./sticker.list.commands.js"
 import { UserController } from "../controllers/user.controller.js"
+import { getContactFromStore } from "../helpers/contacts.store.helper.js"
 
 export async function sCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     let stickerType : "resize" | "contain" | "circle" =  'resize'
@@ -51,39 +52,104 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
             avatarUrl = undefined
         }
 
-        // Obter nome do autor
-        // IMPORTANTE: Em grupos, o WhatsApp usa LID (Linked Device ID) que é único por dispositivo
-        // O nome só estará disponível no banco se a pessoa mandou mensagem desde que o bot está online
+        // Obter nome do autor do grupo
         let authorName = 'Membro do grupo';
         try {
             const quotedSender = message.quotedMessage!.sender;
             const userController = new UserController();
 
-            // Busca o nome do banco de dados (salvo automaticamente quando usuário manda mensagem)
-            const user = await userController.getUser(quotedSender);
-            if (user && user.name && user.name.trim().length > 0) {
-                authorName = user.name;
+            console.log(`\n[STICKER-NOME] ========== BUSCANDO NOME ==========`)
+            console.log(`[STICKER-NOME] Sender ID: ${quotedSender}`)
+            console.log(`[STICKER-NOME] É grupo?: ${!!group}`)
+            console.log(`[STICKER-NOME] Group ID: ${group?.id || 'N/A'}`)
+
+            // ESTRATÉGIA: Para GRUPOS, buscar SEMPRE nos metadados primeiro (fonte mais confiável)
+            if (group) {
+                console.log(`[STICKER-NOME] 📋 Buscando nos METADADOS DO GRUPO (fonte principal)...`)
+                try {
+                    const groupMetadata = await client.groupMetadata(group.id);
+                    console.log(`[STICKER-NOME] Total de participantes: ${groupMetadata.participants.length}`)
+                    
+                    const participant = groupMetadata.participants.find(p => p.id === quotedSender);
+                    console.log(`[STICKER-NOME] Participante encontrado?: ${!!participant}`)
+                    
+                    if (participant) {
+                        // Log de toda a estrutura do participante para debug
+                        console.log(`[STICKER-NOME] Estrutura do participante:`, JSON.stringify(participant, null, 2))
+                        
+                        // Tenta várias propriedades possíveis
+                        const participantNotify = (participant as any).notify;
+                        const participantName = (participant as any).name;
+                        const participantVerifiedName = (participant as any).verifiedName;
+                        
+                        console.log(`[STICKER-NOME] - notify: "${participantNotify || 'vazio'}"`)
+                        console.log(`[STICKER-NOME] - name: "${participantName || 'vazio'}"`)
+                        console.log(`[STICKER-NOME] - verifiedName: "${participantVerifiedName || 'vazio'}"`)
+                        
+                        const metadataName = participantNotify || participantName || participantVerifiedName;
+                        if (metadataName && metadataName.trim().length > 0) {
+                            authorName = metadataName.trim();
+                            console.log(`[STICKER-NOME] ✅ Nome encontrado nos METADADOS: "${authorName}"`)
+                            
+                            // Salva no banco para próxima vez
+                            await userController.setName(quotedSender, authorName);
+                            console.log(`[STICKER-NOME] 💾 Nome salvo no banco`)
+                        } else {
+                            console.log(`[STICKER-NOME] ⚠️ Participante existe mas sem nome nos metadados`)
+                        }
+                    } else {
+                        console.log(`[STICKER-NOME] ⚠️ Participante NÃO encontrado nos metadados`)
+                        console.log(`[STICKER-NOME] Listando alguns IDs dos participantes:`)
+                        groupMetadata.participants.slice(0, 3).forEach((p, i) => {
+                            console.log(`[STICKER-NOME]   ${i + 1}. ${p.id}`)
+                        })
+                    }
+                } catch (groupErr) {
+                    console.log(`[STICKER-NOME] ❌ ERRO ao buscar metadados:`, groupErr);
+                }
             }
 
-            if (!user || !user.name || user.name.trim().length === 0) {
-                // Tenta obter o nome pelo pushName da mensagem original
-                const pushName = message.quotedMessage?.wa_message?.pushName;
-                if (pushName && pushName.trim().length > 0) {
+            // Se ainda não encontrou, tenta outras fontes
+            if (authorName === 'Membro do grupo') {
+                console.log(`[STICKER-NOME] ⏩ Tentando fontes alternativas...`)
+                
+                // 1. notifyName do contextInfo
+                const pushName = message.quotedMessage?.pushname;
+                console.log(`[STICKER-NOME] 1️⃣ contextInfo.notifyName: "${pushName || 'vazio'}"`)
+                if (pushName?.trim()) {
                     authorName = pushName.trim();
-                } else {
-                    // Como fallback, consulta a agenda de contatos do cliente
-                    const contact = client.contacts?.[quotedSender];
+                    console.log(`[STICKER-NOME] ✅ Encontrado no contextInfo`)
+                }
+                
+                // 2. Banco de dados
+                if (authorName === 'Membro do grupo') {
+                    const user = await userController.getUser(quotedSender);
+                    console.log(`[STICKER-NOME] 2️⃣ Banco de dados: "${user?.name || 'vazio'}"`)
+                    if (user?.name?.trim()) {
+                        authorName = user.name.trim();
+                        console.log(`[STICKER-NOME] ✅ Encontrado no banco`)
+                    }
+                }
+                
+                // 3. Store de contatos (contacts.update)
+                if (authorName === 'Membro do grupo') {
+                    const contact = getContactFromStore(quotedSender);
+                    console.log(`[STICKER-NOME] 3️⃣ Store de contatos: notify="${contact?.notify || 'vazio'}", name="${contact?.name || 'vazio'}"`)
                     const contactName = contact?.notify || contact?.name || contact?.verifiedName;
-
-                    if (contactName && contactName.trim().length > 0) {
+                    if (contactName?.trim()) {
                         authorName = contactName.trim();
+                        console.log(`[STICKER-NOME] ✅ Encontrado no store de contatos`)
+                        // Salva no banco para próxima vez
+                        await userController.setName(quotedSender, authorName);
                     }
                 }
             }
-            // Se não encontrou em nenhum lugar, mantém "Membro do grupo" como padrão
+
+            console.log(`[STICKER-NOME] 🎯 NOME FINAL USADO: "${authorName}"`)
+            console.log(`[STICKER-NOME] ========================================\n`)
 
         } catch (err) {
-            console.log(`[STICKER] Erro ao buscar nome:`, err);
+            console.log(`[STICKER] ❌ Erro geral ao buscar nome:`, err);
         }
         
         // Obter horário

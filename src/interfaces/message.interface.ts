@@ -42,6 +42,7 @@ export interface Message {
     quotedMessage?: {
         type: keyof proto.IMessage,
         sender: string,
+        pushname?: string,
         body: string,
         caption : string,
         isMedia: boolean,
