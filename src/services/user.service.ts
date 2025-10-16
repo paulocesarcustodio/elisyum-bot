@@ -167,14 +167,33 @@ export class UserService {
     }
 
     private normalizeUserId(userId: string){
-        try {
-            return jidNormalizedUser(userId)
-        } catch {
+        if (typeof userId !== 'string') {
             return userId
         }
+
+        try {
+            const normalized = jidNormalizedUser(userId)
+            if (normalized) {
+                return normalized
+            }
+        } catch {
+            // Ignore normalization errors and try the fallbacks below.
+        }
+
+        if (userId.endsWith('@whatsapp.net')) {
+            return userId.replace('@whatsapp.net', '@s.whatsapp.net')
+        }
+
+        if (userId.endsWith('@c.us')) {
+            return userId.replace('@c.us', '@s.whatsapp.net')
+        }
+
+        return userId
     }
 
     private isValidUserId(userId: string){
-        return typeof userId === 'string' && userId.endsWith('@s.whatsapp.net')
+        if (typeof userId !== 'string') return false
+
+        return userId.endsWith('@s.whatsapp.net') || userId.endsWith('@whatsapp.net') || userId.endsWith('@c.us')
     }
 }
