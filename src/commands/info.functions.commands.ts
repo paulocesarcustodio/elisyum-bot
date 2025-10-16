@@ -86,7 +86,13 @@ export async function meusdadosCommand(client: WASocket, botInfo: Bot, message: 
 }
 
 export async function menuCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
-    const userData = await new UserController().getUser(message.sender)
+    const userController = new UserController()
+    let userData = await userController.getUser(message.sender)
+
+    if (!userData) {
+        await userController.registerUser(message.sender, message.pushname)
+        userData = await userController.getUser(message.sender)
+    }
 
     if (!userData) {
         throw new Error(infoCommands.menu.msgs.error_user_not_found)
