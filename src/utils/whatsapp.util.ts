@@ -21,6 +21,12 @@ let groupController: GroupController | undefined
 let userController: UserController | undefined
 
 type UserAdminsReturn = Awaited<ReturnType<UserController["getAdmins"]>>
+type UserOwnerReturn = Awaited<ReturnType<UserController["getOwner"]>>
+
+interface BotAdminsCacheEntry {
+    admins: UserAdminsReturn
+    ownerId: string | null
+}
 
 function getGroupController(){
     if (!groupController){
@@ -47,20 +53,47 @@ type DownloadMediaContext = NonNullable<Parameters<typeof downloadMediaMessage>[
 /**
  * Returns bot administrators from cache to avoid hitting the database on every message.
  */
-export async function getCachedBotAdmins() {
-    const cachedAdmins = botAdminsCache.get(BOT_ADMINS_CACHE_KEY)
+export async function getCachedBotAdmins(): Promise<BotAdminsCacheEntry> {
+    const cachedAdmins = botAdminsCache.get<BotAdminsCacheEntry>(BOT_ADMINS_CACHE_KEY)
 
     if (cachedAdmins) {
-        return cachedAdmins as UserAdminsReturn
+        return cachedAdmins
     }
 
-    const admins = await getUserController().getAdmins()
-    botAdminsCache.set(BOT_ADMINS_CACHE_KEY, admins)
-    return admins
+    const [admins, owner] = await Promise.all([
+        getUserController().getAdmins(),
+        getUserController().getOwner()
+    ])
+
+    const normalizedAdmins = mergeAdminsAndOwner(admins, owner)
+    const cacheEntry: BotAdminsCacheEntry = {
+        admins: normalizedAdmins,
+        ownerId: owner?.id ?? null
+    }
+
+    botAdminsCache.set(BOT_ADMINS_CACHE_KEY, cacheEntry)
+    return cacheEntry
 }
 
 export function invalidateBotAdminsCache() {
     botAdminsCache.del(BOT_ADMINS_CACHE_KEY)
+}
+
+/**
+ * Ensures legacy owners (that might not have the admin flag) are still treated as administrators.
+ */
+function mergeAdminsAndOwner(admins: UserAdminsReturn, owner: UserOwnerReturn): UserAdminsReturn {
+    if (!owner) {
+        return admins
+    }
+
+    const hasOwner = admins.some(admin => admin.id === owner.id)
+
+    if (hasOwner) {
+        return admins
+    }
+
+    return [...admins, owner]
 }
 
 export function createMediaDownloadContext(client: WASocket): DownloadMediaContext {
@@ -331,7 +364,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
-    const botAdmins = await getCachedBotAdmins()
+    const { admins: botAdmins, ownerId: botOwnerId } = await getCachedBotAdmins()
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
     const sender = (m.key.fromMe) ? hostId : m.key.participant || m.key.remoteJid
@@ -366,8 +399,8 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         isQuoted,
         isGroupMsg,
         isGroupAdmin,
-        isBotAdmin : botAdmins.map(admin => admin.id).includes(sender),
-        isBotOwner: botAdmins.find(admin => admin.owner == true)?.id == sender,
+        isBotAdmin : botAdmins.some(admin => admin.id === sender),
+        isBotOwner: botOwnerId === sender,
         isBotMessage: m.key.fromMe ?? false,
         isBroadcast: m.key.remoteJid == "status@broadcast",
         isMedia: type != "conversation" && type != "extendedTextMessage",
