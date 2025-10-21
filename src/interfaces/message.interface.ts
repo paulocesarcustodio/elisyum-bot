@@ -1,4 +1,4 @@
-import {proto, WAMessage} from '@whiskeysockets/baileys'
+import { proto, WAMessage, type WAMessageAddressingMode } from '@whiskeysockets/baileys'
 
 export type MessageTypes = keyof proto.IMessage
 
@@ -12,9 +12,12 @@ export interface MessageOptions {
 export interface Message {
     message_id: string,
     sender: string,
+    senderAlt?: string,
+    senderAddressingMode?: WAMessageAddressingMode,
     type: MessageTypes,
     t : number,
     chat_id: string,
+    chatIdAlt?: string,
     requestId?: string,
     expiration?: number,
     pushname : string,

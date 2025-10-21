@@ -5,6 +5,8 @@ import moment from "moment-timezone"
 import { removePrefix, normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { deepMerge } from "../utils/general.util.js"
 
+const CURRENT_DB_MIGRATION_VERSION = 2
+
 export class BotService {
     private pathJSON = path.resolve("storage/bot.json")
 
@@ -15,10 +17,11 @@ export class BotService {
         prefix: "!",
         executed_cmds: 0,
         db_migrated: true,
+        db_migration_version: CURRENT_DB_MIGRATION_VERSION,
         autosticker: false,
         commands_pv: true,
-        admin_mode: false, 
-        block_cmds: [],    
+        admin_mode: false,
+        block_cmds: [],
         command_rate:{
             status: false,
             max_cmds_minute: 5,
@@ -63,9 +66,19 @@ export class BotService {
     public getBot(){
         const bot = JSON.parse(fs.readFileSync(this.pathJSON, {encoding: "utf-8"})) as Bot
         const normalizedHostNumber = normalizeWhatsappJid(bot.host_number)
+        const currentMigrationVersion = bot.db_migration_version ?? 0
+        const requiresMigration = currentMigrationVersion < CURRENT_DB_MIGRATION_VERSION
 
         if (bot.host_number !== normalizedHostNumber) {
             bot.host_number = normalizedHostNumber
+        }
+
+        if (requiresMigration) {
+            bot.db_migrated = false
+            bot.db_migration_version = currentMigrationVersion
+        }
+
+        if (bot.host_number !== normalizedHostNumber || requiresMigration) {
             this.updateBot(bot)
         }
 
@@ -81,6 +94,7 @@ export class BotService {
     public setDbMigrated(status: boolean) {
         let bot = this.getBot()
         bot.db_migrated = status
+        bot.db_migration_version = status ? CURRENT_DB_MIGRATION_VERSION : bot.db_migration_version ?? 0
         this.updateBot(bot)
     }
     

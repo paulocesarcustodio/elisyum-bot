@@ -43,7 +43,7 @@ export async function messageReceived (client: WASocket, messages : {messages: W
                 continue
             }
 
-            await userController.registerUser(message.sender, message.pushname)
+            await userController.registerUser(message.sender, message.pushname, message.senderAlt)
 
             if (!isGroupMsg) {
                 const needCallCommand = await handlePrivateMessage(client, botInfo, message)

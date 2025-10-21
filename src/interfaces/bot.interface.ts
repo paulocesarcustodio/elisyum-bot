@@ -5,6 +5,7 @@ export interface Bot {
     prefix: string,
     executed_cmds: number,
     db_migrated: boolean,
+    db_migration_version?: number,
     autosticker: boolean,
     block_cmds: string[],
     commands_pv: boolean,

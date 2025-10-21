@@ -1,6 +1,6 @@
 import { Group } from "../interfaces/group.interface.js";
 import { GroupMetadata } from '@whiskeysockets/baileys'
-import { removePrefix } from "../utils/whatsapp.util.js";
+import { removePrefix, normalizeWhatsappJid } from "../utils/whatsapp.util.js";
 import DataStore from "@seald-io/nedb";
 import { ParticipantService } from "./participant.service.js";
 import { deepMerge } from "../utils/general.util.js";
@@ -54,6 +54,28 @@ export class GroupService {
         this.participantService = new ParticipantService()
     }
 
+    private normalizeGroupUserList(list: unknown): string[] {
+        const normalizedIds = new Set<string>()
+
+        if (!Array.isArray(list)) {
+            return []
+        }
+
+        for (const rawId of list) {
+            if (typeof rawId !== 'string') {
+                continue
+            }
+
+            const normalizedId = normalizeWhatsappJid(rawId)
+
+            if (normalizedId) {
+                normalizedIds.add(normalizedId)
+            }
+        }
+
+        return Array.from(normalizedIds)
+    }
+
     public async registerGroup(groupMetadata : GroupMetadata){
         const group = await this.getGroup(groupMetadata.id)
 
@@ -84,7 +106,14 @@ export class GroupService {
 
         for (const group of groups) {
             const oldGroupData = group as any
-            const updatedGroupData: Group = deepMerge(this.defaultGroup, oldGroupData)
+            const normalizedMutedMembers = this.normalizeGroupUserList(oldGroupData?.muted_members)
+            const normalizedBlacklist = this.normalizeGroupUserList(oldGroupData?.blacklist)
+
+            const updatedGroupData: Group = deepMerge(this.defaultGroup, {
+                ...oldGroupData,
+                muted_members: normalizedMutedMembers,
+                blacklist: normalizedBlacklist
+            })
             await db.updateAsync({ id: group.id }, { $set: updatedGroupData }, { upsert: true })
         }
     }
@@ -215,16 +244,13 @@ export class GroupService {
 
         if (!group) return
 
-        const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
+        const normalizedMutedMembers = this.normalizeGroupUserList(group.muted_members)
 
-        if (!Array.isArray(group.muted_members)) {
-            group.muted_members = []
-            await db.updateAsync({id: groupId}, { $set: { muted_members: [] } })
-        }
+        if (normalizedMutedMembers.includes(userId)) return
 
-        if (mutedMembers.includes(userId)) return
+        normalizedMutedMembers.push(userId)
 
-        await db.updateAsync({id: groupId}, { $push: { muted_members: userId } })
+        await db.updateAsync({id: groupId}, { $set: { muted_members: normalizedMutedMembers } })
     }
 
     public async unsetMutedMember(groupId: string, userId: string){
@@ -264,11 +290,22 @@ export class GroupService {
     }
 
     public async setBlacklist(groupId: string, userId: string, operation: 'add' | 'remove'){
+        const group = await this.getGroup(groupId)
+
+        if (!group) return
+
+        const normalizedBlacklist = this.normalizeGroupUserList(group.blacklist)
+        let updatedBlacklist = normalizedBlacklist
+
         if (operation == 'add'){
-            await db.updateAsync({id: groupId}, { $push: { blacklist: userId } })
+            if (normalizedBlacklist.includes(userId)) return
+
+            updatedBlacklist = [...normalizedBlacklist, userId]
         } else {
-            await db.updateAsync({id: groupId}, { $pull: { blacklist: userId } } )
+            updatedBlacklist = normalizedBlacklist.filter(blacklistId => blacklistId !== userId)
         }
+
+        await db.updateAsync({id: groupId}, { $set: { blacklist: updatedBlacklist } })
     }
 
     public async setBlockedCommands(groupId: string, prefix: string, commands: string[], operation: 'add' | 'remove'){
