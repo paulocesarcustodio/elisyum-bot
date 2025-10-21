@@ -4,7 +4,7 @@ import { Bot } from '../interfaces/bot.interface.js'
 import { Group } from '../interfaces/group.interface.js'
 import { GroupController } from '../controllers/group.controller.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix } from '../utils/whatsapp.util.js'
+import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix, normalizeWhatsappJid } from '../utils/whatsapp.util.js'
 
 type ParticipantLike = GroupParticipant | string
 
@@ -20,17 +20,20 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
     try{
         const groupController = new GroupController()
         const group = await groupController.getGroup(event.id)
+        const normalizedBotNumber = normalizeWhatsappJid(botInfo.host_number)
 
         if (!group) {
             return
         }
 
         const ensureMutedMembers = (): string[] => {
-            if (!Array.isArray(group.muted_members)) {
-                group.muted_members = []
-            }
+            const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
+            const normalizedMembers = mutedMembers
+                .map(memberId => normalizeWhatsappJid(memberId))
+                .filter((memberId): memberId is string => !!memberId)
 
-            return group.muted_members ?? []
+            group.muted_members = normalizedMembers
+            return normalizedMembers
         }
 
         const participants = (event.participants ?? []).map(participant =>
@@ -38,13 +41,13 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
         )
 
         for (const participant of participants) {
-            const participantId = participant.id
+            const participantId = normalizeWhatsappJid(participant.id)
 
             if (!participantId) {
                 continue
             }
 
-            const isBotUpdate = participantId === botInfo.host_number
+            const isBotUpdate = normalizedBotNumber ? participantId === normalizedBotNumber : false
 
             if (event.action === 'add') {
                 const isParticipant = await groupController.isParticipant(group.id, participantId)
@@ -56,8 +59,8 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                     continue
                 }
 
-                if (await isParticipantBlacklisted(client, botInfo, group, participantId)) continue
-                if (await isParticipantFake(client, botInfo, group, participantId)) continue
+                if (await isParticipantBlacklisted(client, normalizedBotNumber, botInfo, group, participantId)) continue
+                if (await isParticipantFake(client, normalizedBotNumber, botInfo, group, participantId)) continue
 
                 await sendWelcome(client, group, botInfo, participantId)
                 await groupController.addParticipant(group.id, participantId, participant.admin != null)
@@ -108,38 +111,45 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
     }
 }
 
-async function isParticipantBlacklisted(client: WASocket, botInfo: Bot, group: Group, userId: string){
+async function isParticipantBlacklisted(client: WASocket, normalizedBotNumber: string, botInfo: Bot, group: Group, userId: string){
+    const normalizedUserId = normalizeWhatsappJid(userId)
     const groupController = new GroupController()
-    const isUserBlacklisted = group.blacklist.includes(userId)
-    const isBotAdmin = botInfo.host_number ? await groupController.isParticipantAdmin(group.id, botInfo.host_number) : false
+    const normalizedBlacklist = (group.blacklist ?? [])
+        .map(blacklistId => normalizeWhatsappJid(blacklistId))
+        .filter((blacklistId): blacklistId is string => !!blacklistId)
+    group.blacklist = normalizedBlacklist
+    const isUserBlacklisted = normalizedUserId ? normalizedBlacklist.includes(normalizedUserId) : false
+    const isBotAdmin = normalizedBotNumber ? await groupController.isParticipantAdmin(group.id, normalizedBotNumber) : false
 
     if (isBotAdmin && isUserBlacklisted) {
-        const replyText = buildText(botTexts.blacklist_ban_message, removeWhatsappSuffix(userId), botInfo.name)
-        await removeParticipant(client, group.id, userId)
-        await sendTextWithMentions(client, group.id, replyText, [userId], {expiration: group.expiration})
+        const replyText = buildText(botTexts.blacklist_ban_message, removeWhatsappSuffix(normalizedUserId), botInfo.name)
+        await removeParticipant(client, group.id, normalizedUserId)
+        await sendTextWithMentions(client, group.id, replyText, [normalizedUserId], {expiration: group.expiration})
         return true
     }
 
     return false
 }
 
-async function isParticipantFake(client: WASocket, botInfo: Bot, group: Group, userId: string){
+async function isParticipantFake(client: WASocket, normalizedBotNumber: string, botInfo: Bot, group: Group, userId: string){
+    const normalizedUserId = normalizeWhatsappJid(userId)
+
     if (group.antifake.status){
         const groupController = new GroupController()
-        const isBotAdmin = botInfo.host_number ? await groupController.isParticipantAdmin(group.id, botInfo.host_number) : false
-        const isGroupAdmin = await groupController.isParticipantAdmin(group.id, userId)
-        const isBotNumber = userId == botInfo.host_number
-        
+        const isBotAdmin = normalizedBotNumber ? await groupController.isParticipantAdmin(group.id, normalizedBotNumber) : false
+        const isGroupAdmin = normalizedUserId ? await groupController.isParticipantAdmin(group.id, normalizedUserId) : false
+        const isBotNumber = normalizedBotNumber ? normalizedUserId === normalizedBotNumber : false
+
         if (isBotAdmin){
             const allowedPrefixes = group.antifake.exceptions.prefixes
             const allowedNumbers = group.antifake.exceptions.numbers
-            const isAllowedPrefix = allowedPrefixes.filter(numberPrefix => userId.startsWith(numberPrefix)).length ? true : false
-            const isAllowedNumber = allowedNumbers.filter(userNumber => addWhatsappSuffix(userNumber) == userId).length ? true : false
+            const isAllowedPrefix = normalizedUserId ? allowedPrefixes.filter(numberPrefix => normalizedUserId.startsWith(numberPrefix)).length ? true : false : false
+            const isAllowedNumber = normalizedUserId ? allowedNumbers.filter(userNumber => addWhatsappSuffix(userNumber) == normalizedUserId).length ? true : false : false
 
             if (!isAllowedPrefix && !isAllowedNumber && !isBotNumber && !isGroupAdmin){
-                const replyText = buildText(botTexts.antifake_ban_message, removeWhatsappSuffix(userId), botInfo.name)
-                await sendTextWithMentions(client, group.id, replyText , [userId], {expiration: group.expiration})
-                await removeParticipant(client, group.id, userId)
+                const replyText = buildText(botTexts.antifake_ban_message, removeWhatsappSuffix(normalizedUserId), botInfo.name)
+                await sendTextWithMentions(client, group.id, replyText , [normalizedUserId], {expiration: group.expiration})
+                await removeParticipant(client, group.id, normalizedUserId)
                 return true
             }
         } else {
@@ -153,7 +163,8 @@ async function isParticipantFake(client: WASocket, botInfo: Bot, group: Group, u
 async function sendWelcome(client: WASocket, group: Group, botInfo: Bot, userId: string){
     if (group.welcome.status) {
         const customMessage = group.welcome.msg ?  group.welcome.msg + "\n\n" : ""
-        const welcomeMessage = buildText(botTexts.group_welcome_message, removeWhatsappSuffix(userId), group.name, customMessage)
-        await sendTextWithMentions(client, group.id, welcomeMessage, [userId], {expiration: group.expiration})
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        const welcomeMessage = buildText(botTexts.group_welcome_message, removeWhatsappSuffix(normalizedUserId), group.name, customMessage)
+        await sendTextWithMentions(client, group.id, welcomeMessage, [normalizedUserId], {expiration: group.expiration})
     }
 }

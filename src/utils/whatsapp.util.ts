@@ -1,4 +1,4 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, proto, downloadMediaMessage } from "@whiskeysockets/baileys"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, jidNormalizedUser, proto, downloadMediaMessage } from "@whiskeysockets/baileys"
 import { buildText, randomDelay } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
@@ -98,28 +98,52 @@ export function removeWhatsappSuffix(userId: string){
     return userNumber
 }
 
+export function normalizeWhatsappJid(jid?: string | null): string {
+    if (!jid) {
+        return ''
+    }
+
+    const normalizedCaseJid = jid.toLowerCase()
+
+    if (normalizedCaseJid.endsWith('@g.us') || normalizedCaseJid.endsWith('@broadcast') || normalizedCaseJid.endsWith('@newsletter')) {
+        return jid
+    }
+
+    try {
+        const normalized = jidNormalizedUser(jid)
+        const [userPart] = normalized.split('@')
+        const sanitizedUser = (userPart ?? '').split(':')[0] ?? ''
+
+        if (sanitizedUser) {
+            return `${sanitizedUser}${S_WHATSAPP_NET}`
+        }
+    } catch (error) {
+        // If Baileys cannot normalize the JID, fall back to a best-effort sanitization below.
+    }
+
+    const [rawUser] = jid.split('@')
+    const sanitizedRawUser = (rawUser ?? '').split(':')[0] ?? ''
+
+    return sanitizedRawUser ? `${sanitizedRawUser}${S_WHATSAPP_NET}` : ''
+}
+
 export function removePrefix(prefix: string, command: string){
     const commandWithoutPrefix = command.replace(prefix, '')
     return commandWithoutPrefix
 }
 
-export function getGroupParticipantsByMetadata(group : GroupMetadata){ 
-    const {participants} = group
-    let groupParticipants : string[] = []
-    participants.forEach((participant)=>{
-        groupParticipants.push(participant.id)
-    })
-    return groupParticipants
+export function getGroupParticipantsByMetadata(group : GroupMetadata){
+    return group.participants
+        .map(participant => normalizeWhatsappJid(participant.id))
+        .filter((participantId): participantId is string => !!participantId)
 }
 
-export function getGroupAdminsByMetadata(group: GroupMetadata){ 
-    const {participants} = group
-    const admins = participants.filter(user => (user.admin != null))
-    let groupAdmins : string[] = []
-    admins.forEach((admin)=>{
-        groupAdmins.push(admin.id)
-    })
-    return groupAdmins
+export function getGroupAdminsByMetadata(group: GroupMetadata){
+    const admins = group.participants.filter(user => (user.admin != null))
+
+    return admins
+        .map(admin => normalizeWhatsappJid(admin.id))
+        .filter((adminId): adminId is string => !!adminId)
 }
 
 export function deleteMessage(client: WASocket, message : WAMessage, deleteQuoted : boolean){
@@ -175,8 +199,7 @@ export async function unblockContact(client: WASocket, userId: string){
 }
 
 export function getHostNumber(client: WASocket){
-    let id = client.user?.id.replace(/:[0-9]+/ism, '')
-    return id || ''
+    return normalizeWhatsappJid(client.user?.id)
 }
 
 export async function getBlockedContacts(client: WASocket): Promise<string[]>{
@@ -331,10 +354,13 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
+    const normalizedHostId = normalizeWhatsappJid(hostId)
     const botAdmins = await getCachedBotAdmins()
+    const normalizedBotAdmins = botAdmins.map(admin => ({ ...admin, id: normalizeWhatsappJid(admin.id) }))
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
-    const sender = (m.key.fromMe) ? hostId : m.key.participant || m.key.remoteJid
+    const rawSender = (m.key.fromMe) ? normalizedHostId : m.key.participant || m.key.remoteJid
+    const sender = normalizeWhatsappJid(rawSender)
     const pushName = m.pushName
     const body =  m.message.conversation ||  m.message.extendedTextMessage?.text || undefined
     const caption = (typeof m.message[type] != "string" && m.message[type] && "caption" in m.message[type]) ? m.message[type].caption as string | null: undefined
@@ -359,15 +385,15 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         pushname: pushName || '',
         body: m.message.conversation || m.message.extendedTextMessage?.text || '',
         caption : caption || '',
-        mentioned: contextInfo?.mentionedJid || [],
+        mentioned: contextInfo?.mentionedJid?.map(mention => normalizeWhatsappJid(mention)).filter((mention): mention is string => !!mention) || [],
         text_command: args?.join(" ").trim() || '',
         command: removeBold(command?.toLowerCase().trim()) || '',
         args,
         isQuoted,
         isGroupMsg,
         isGroupAdmin,
-        isBotAdmin : botAdmins.map(admin => admin.id).includes(sender),
-        isBotOwner: botAdmins.find(admin => admin.owner == true)?.id == sender,
+        isBotAdmin : normalizedBotAdmins.map(admin => admin.id).includes(sender),
+        isBotOwner: normalizedBotAdmins.find(admin => admin.owner == true)?.id == sender,
         isBotMessage: m.key.fromMe ?? false,
         isBroadcast: m.key.remoteJid == "status@broadcast",
         isMedia: type != "conversation" && type != "extendedTextMessage",
@@ -395,16 +421,16 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         const quotedMessage = contextInfo?.quotedMessage
 
         if (!quotedMessage) return
-    
+
         const typeQuoted = getContentType(quotedMessage)
         const quotedStanzaId = contextInfo.stanzaId ?? undefined
-        const senderQuoted = contextInfo.participant || contextInfo.remoteJid
+        const senderQuoted = normalizeWhatsappJid(contextInfo.participant || contextInfo.remoteJid)
 
         if (!typeQuoted || !senderQuoted ) return
 
         const captionQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "caption" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].caption as string | null : undefined
         const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: senderQuoted, messageId: quotedStanzaId })
-        quotedWAMessage.key.fromMe = (hostId == senderQuoted)
+        quotedWAMessage.key.fromMe = (normalizedHostId == senderQuoted)
 
         // Debug: log completo do contextInfo
         console.log(`[DEBUG-CONTEXT] contextInfo completo:`, JSON.stringify({

@@ -2,7 +2,7 @@ import { Bot } from "../interfaces/bot.interface.js"
 import path from "node:path"
 import fs from 'fs-extra'
 import moment from "moment-timezone"
-import { removePrefix } from "../utils/whatsapp.util.js"
+import { removePrefix, normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { deepMerge } from "../utils/general.util.js"
 
 export class BotService {
@@ -56,12 +56,20 @@ export class BotService {
     public startBot(hostNumber : string){
         let bot = this.getBot()
         bot.started = moment.now()
-        bot.host_number = hostNumber
+        bot.host_number = normalizeWhatsappJid(hostNumber)
         this.updateBot(bot)
     }
 
     public getBot(){
-        return JSON.parse(fs.readFileSync(this.pathJSON, {encoding: "utf-8"})) as Bot
+        const bot = JSON.parse(fs.readFileSync(this.pathJSON, {encoding: "utf-8"})) as Bot
+        const normalizedHostNumber = normalizeWhatsappJid(bot.host_number)
+
+        if (bot.host_number !== normalizedHostNumber) {
+            bot.host_number = normalizedHostNumber
+            this.updateBot(bot)
+        }
+
+        return bot
     }
 
     public setNameBot(name: string){

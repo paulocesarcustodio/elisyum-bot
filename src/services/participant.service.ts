@@ -1,6 +1,7 @@
 import { Participant, Group } from "../interfaces/group.interface.js";
 import { MessageTypes } from "../interfaces/message.interface.js";
 import { deepMerge, timestampToDate } from '../utils/general.util.js'
+import { normalizeWhatsappJid } from '../utils/whatsapp.util.js'
 import moment from 'moment-timezone'
 import DataStore from "@seald-io/nedb";
 import { GroupMetadata } from "@whiskeysockets/baileys";
@@ -28,38 +29,49 @@ export class ParticipantService {
         }
     }
 
+    private normalizeUserId(userId: string){
+        return normalizeWhatsappJid(userId)
+    }
+
     public async syncParticipants(groupMeta: GroupMetadata){
         //Adiciona participantes no banco de dados que entraram enquanto o bot estava off.
-        groupMeta.participants.forEach(async (participant) => {
-            const isAdmin = (participant.admin) ? true : false
-            const isGroupParticipant = await this.isGroupParticipant(groupMeta.id, participant.id)
+        for (const participant of groupMeta.participants) {
+            const normalizedParticipantId = this.normalizeUserId(participant.id)
+            const isAdmin = participant.admin ? true : false
+            const isGroupParticipant = await this.isGroupParticipant(groupMeta.id, normalizedParticipantId)
 
             if (!isGroupParticipant) {
-                await this.addParticipant(groupMeta.id, participant.id, isAdmin)
+                await this.addParticipant(groupMeta.id, normalizedParticipantId, isAdmin)
             } else {
-                await db.updateAsync({group_id: groupMeta.id, user_id: participant.id}, { $set: { admin: isAdmin }})
+                await db.updateAsync({group_id: groupMeta.id, user_id: normalizedParticipantId}, { $set: { admin: isAdmin }})
             }
-        })
+        }
 
         //Remove participantes do banco de dados que sairam do grupo enquanto o bot estava off.
+        const normalizedParticipantIds = new Set(
+            groupMeta.participants.map(participant => this.normalizeUserId(participant.id)).filter(Boolean)
+        )
         const currentParticipants = await this.getParticipantsFromGroup(groupMeta.id)
 
-        currentParticipants.forEach(async (participant) => {
-            if(!groupMeta.participants.find(groupMetaParticipant => groupMetaParticipant.id == participant.user_id)) {
-                await this.removeParticipant(groupMeta.id, participant.user_id)
+        for (const participant of currentParticipants) {
+            if (!normalizedParticipantIds.has(participant.user_id)) {
+                await this.removeParticipant(groupMeta.id, participant.user_id, { normalize: false })
             }
-        })
+        }
     }
 
     public async addParticipant(groupId: string, userId: string, isAdmin: boolean){
-        const isGroupParticipant = await this.isGroupParticipant(groupId, userId)
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        const isGroupParticipant = await this.isGroupParticipant(groupId, normalizedUserId)
 
         if (isGroupParticipant) return
-        
+
         const participant : Participant = {
             ...this.defaultParticipant,
             group_id : groupId,
-            user_id: userId,
+            user_id: normalizedUserId,
             admin: isAdmin
         }
 
@@ -76,8 +88,12 @@ export class ParticipantService {
         }
     }
 
-    public async removeParticipant(groupId: string, userId: string){
-        await db.removeAsync({group_id: groupId, user_id: userId}, {})
+    public async removeParticipant(groupId: string, userId: string, options: { normalize?: boolean } = {}){
+        const shouldNormalize = options.normalize ?? true
+        const targetUserId = shouldNormalize ? this.normalizeUserId(userId) : userId
+        if (!targetUserId) return
+
+        await db.removeAsync({group_id: groupId, user_id: targetUserId}, {})
     }
 
     public async removeParticipants(groupId: string){
@@ -85,11 +101,17 @@ export class ParticipantService {
     }
 
     public async setAdmin(groupId: string, userId: string, status: boolean){
-        await db.updateAsync({group_id : groupId, user_id: userId}, { $set: { admin: status }})
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        await db.updateAsync({group_id : groupId, user_id: normalizedUserId}, { $set: { admin: status }})
     }
 
     public async getParticipantFromGroup(groupId: string, userId: string){
-        const participant = await db.findOneAsync({group_id: groupId, user_id: userId}) as Participant | null
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return null
+
+        const participant = await db.findOneAsync({group_id: groupId, user_id: normalizedUserId}) as Participant | null
         return participant
     }
 
@@ -119,16 +141,25 @@ export class ParticipantService {
     }
 
     public async isGroupParticipant(groupId: string, userId: string){
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return false
+
         const participantsIds = await this.getParticipantsIdsFromGroup(groupId)
-        return participantsIds.includes(userId)
+        return participantsIds.includes(normalizedUserId)
     }
 
     public async isGroupAdmin(groupId: string, userId: string){
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return false
+
         const adminsIds = await this.getAdminsIdsFromGroup(groupId)
-        return adminsIds.includes(userId)
+        return adminsIds.includes(normalizedUserId)
     }
 
     public async incrementParticipantActivity(groupId: string, userId: string, type: MessageTypes, isCommand: boolean){
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
         let incrementedUser : {
             msgs: number,
             commands?: number,
@@ -164,8 +195,8 @@ export class ParticipantService {
                 break
         }
 
-        await db.updateAsync({group_id : groupId, user_id: userId}, {$inc: incrementedUser})
-    }  
+        await db.updateAsync({group_id : groupId, user_id: normalizedUserId}, {$inc: incrementedUser})
+    }
 
     public async getParticipantActivityLowerThan(group: Group, num : number){
         const inactives = await db.findAsync({group_id : group.id, msgs: {$lt: num}}).sort({msgs: -1}) as Participant[]
@@ -179,11 +210,17 @@ export class ParticipantService {
     }
 
     public async addWarning(groupId: string, userId: string){
-        await db.updateAsync({group_id: groupId, user_id: userId}, { $inc: { warnings: 1} })
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc: { warnings: 1} })
     }
 
     public async removeWarning(groupId: string, userId: string, currentWarnings: number){
-        await db.updateAsync({group_id: groupId, user_id: userId}, { $set: { warnings: --currentWarnings} })
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set: { warnings: --currentWarnings} })
     }
 
     public async removeParticipantsWarnings(groupId: string){
@@ -191,10 +228,16 @@ export class ParticipantService {
     }
 
     public async expireParticipantAntiFlood(groupId: string, userId: string, newExpireTimestamp: number){
-        await db.updateAsync({group_id: groupId, user_id: userId}, { $set : { 'antiflood.expire': newExpireTimestamp, 'antiflood.msgs': 1 } })
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set : { 'antiflood.expire': newExpireTimestamp, 'antiflood.msgs': 1 } })
     }
 
     public async incrementAntiFloodMessage(groupId: string, userId: string){
-        await db.updateAsync({group_id: groupId, user_id: userId}, { $inc : { 'antiflood.msgs': 1 } })
+        const normalizedUserId = this.normalizeUserId(userId)
+        if (!normalizedUserId) return
+
+        await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc : { 'antiflood.msgs': 1 } })
     }
 }
