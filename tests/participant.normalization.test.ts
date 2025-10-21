@@ -49,3 +49,28 @@ test("GroupController normalizes admin checks for promoted bot", async t => {
 
     assert.equal(isAdmin, true)
 })
+
+test("GroupController persists admin promotion without prior participant record", async t => {
+    const participantService = new ParticipantService()
+    const groupController = new GroupController()
+    const rawBotJid = createRawBotJid(3)
+    const groupId = `test-promotion-${Date.now()}@g.us`
+
+    await participantService.removeParticipants(groupId)
+
+    t.after(async () => {
+        await participantService.removeParticipants(groupId)
+    })
+
+    const isAdminBefore = await groupController.isParticipantAdmin(groupId, rawBotJid)
+    assert.equal(isAdminBefore, false)
+
+    await groupController.setAdmin(groupId, rawBotJid, true)
+
+    const participantRecord = await participantService.getParticipantFromGroup(groupId, rawBotJid)
+    assert.notEqual(participantRecord, null)
+    assert.equal(participantRecord?.admin, true)
+
+    const isAdminAfter = await groupController.isParticipantAdmin(groupId, rawBotJid)
+    assert.equal(isAdminAfter, true)
+})
