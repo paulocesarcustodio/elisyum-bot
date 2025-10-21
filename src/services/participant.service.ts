@@ -160,7 +160,17 @@ export class ParticipantService {
 
             const updatedParticipantData: Participant = deepMerge(this.defaultParticipant, normalizedParticipant)
             const existingParticipantRecord = await db.findOneAsync({ group_id: participant.group_id, user_id: normalizedUserId }) as Participant | null
-            const sanitizedExistingRecord = existingParticipantRecord
+            const currentParticipantId = (participant as any)._id as string | undefined
+            const existingParticipantId = existingParticipantRecord
+                ? (existingParticipantRecord as any)._id as string | undefined
+                : undefined
+            const isSameParticipantRecord = Boolean(
+                existingParticipantRecord
+                && currentParticipantId
+                && existingParticipantId
+                && currentParticipantId === existingParticipantId
+            )
+            const sanitizedExistingRecord = existingParticipantRecord && !isSameParticipantRecord
                 ? deepMerge(this.defaultParticipant, existingParticipantRecord as any)
                 : null
 
