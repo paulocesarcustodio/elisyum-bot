@@ -25,6 +25,14 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
             return
         }
 
+        const ensureMutedMembers = (): string[] => {
+            if (!Array.isArray(group.muted_members)) {
+                group.muted_members = []
+            }
+
+            return group.muted_members ?? []
+        }
+
         const participants = (event.participants ?? []).map(participant =>
             typeof participant === 'string' ? { id: participant } as GroupParticipant : participant
         )
@@ -57,9 +65,11 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                 const isParticipant = await groupController.isParticipant(group.id, participantId)
 
                 if (!isParticipant) {
-                    if (group.muted_members.includes(participantId)) {
+                    const mutedMembers = ensureMutedMembers()
+
+                    if (mutedMembers.includes(participantId)) {
                         await groupController.removeMutedMember(group.id, participantId)
-                        group.muted_members = group.muted_members.filter(memberId => memberId !== participantId)
+                        group.muted_members = mutedMembers.filter(memberId => memberId !== participantId)
                     }
                     continue
                 }
@@ -70,9 +80,11 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                 }
 
                 await groupController.removeParticipant(group.id, participantId)
-                if (group.muted_members.includes(participantId)) {
+                const mutedMembers = ensureMutedMembers()
+
+                if (mutedMembers.includes(participantId)) {
                     await groupController.removeMutedMember(group.id, participantId)
-                    group.muted_members = group.muted_members.filter(memberId => memberId !== participantId)
+                    group.muted_members = mutedMembers.filter(memberId => memberId !== participantId)
                 }
             } else if (event.action === 'promote') {
                 const isAdmin = await groupController.isParticipantAdmin(group.id, participantId)

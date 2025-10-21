@@ -214,7 +214,15 @@ export class GroupService {
         const group = await this.getGroup(groupId)
 
         if (!group) return
-        if (group.muted_members.includes(userId)) return
+
+        const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
+
+        if (!Array.isArray(group.muted_members)) {
+            group.muted_members = []
+            await db.updateAsync({id: groupId}, { $set: { muted_members: [] } })
+        }
+
+        if (mutedMembers.includes(userId)) return
 
         await db.updateAsync({id: groupId}, { $push: { muted_members: userId } })
     }
@@ -227,6 +235,10 @@ export class GroupService {
         const group = await this.getGroup(groupId)
 
         if (!group) return false
+
+        if (!Array.isArray(group.muted_members)) {
+            return false
+        }
 
         return group.muted_members.includes(userId)
     }
