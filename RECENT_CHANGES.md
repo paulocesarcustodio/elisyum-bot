@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Bloqueamos mensagens de membros mutados quando o bot é admin e interrompemos os contadores do fluxo, com testes para garantir o comportamento em grupos.
 - Adicionado comando de grupo `silenciar` para alternar o mute individual com validações de admin e respostas específicas para mutar/desmutar.
 - Adicionada persistência para membros mutados nos grupos, com métodos de controle e remoção automática ao sair.
 - Normalizamos os IDs de usuários vindos de grupos e recriamos cadastros ausentes ao abrir o menu para evitar erros de "usuário não encontrado".
