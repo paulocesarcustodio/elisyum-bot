@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Recriamos registros ausentes ao atualizar contadores, avisos e antiflood dos participantes usando um helper compartilhado coberto por novos testes.
 - Corrigimos a perda de privilégios de administrador quando o Baileys envia `modify` sem flag de admin, mantendo o cadastro intacto.
 - Garantimos que a promoção a administrador crie o registro do participante ausente e cobrimos o fluxo com teste para o bot.
 - Normalizamos os JIDs legados em participantes, blacklist e silenciados via migração versionada, eliminando os sufixos de dispositivo antigos.

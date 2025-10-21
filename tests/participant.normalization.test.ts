@@ -117,3 +117,75 @@ test("GroupController persists admin promotion without prior participant record"
     const isAdminAfter = await groupController.isParticipantAdmin(groupId, rawBotJid)
     assert.equal(isAdminAfter, true)
 })
+
+test("ParticipantService recreates missing participant before incrementing activity counters", async t => {
+    const participantService = new ParticipantService()
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const groupId = `test-activity-${uniqueSuffix}@g.us`
+    const userId = `551199991${Math.floor(Math.random() * 1000)}@s.whatsapp.net`
+
+    await participantService.removeParticipants(groupId)
+
+    t.after(async () => {
+        await participantService.removeParticipants(groupId)
+    })
+
+    await participantService.incrementParticipantActivity(groupId, userId, "conversation", false)
+
+    const participant = await participantService.getParticipantFromGroup(groupId, userId)
+
+    assert.notEqual(participant, null)
+    assert.equal(participant?.msgs, 1)
+    assert.equal(participant?.text, 1)
+    assert.equal(participant?.commands, 0)
+})
+
+test("ParticipantService recreates missing participant before warnings and antiflood updates", async t => {
+    const participantService = new ParticipantService()
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const groupId = `test-warnings-${uniqueSuffix}@g.us`
+    const userId = `551199992${Math.floor(Math.random() * 1000)}@s.whatsapp.net`
+
+    await participantService.removeParticipants(groupId)
+
+    t.after(async () => {
+        await participantService.removeParticipants(groupId)
+    })
+
+    await participantService.addWarning(groupId, userId)
+
+    let participant = await participantService.getParticipantFromGroup(groupId, userId)
+
+    assert.notEqual(participant, null)
+    assert.equal(participant?.warnings, 1)
+
+    await participantService.removeParticipants(groupId)
+
+    let warnings = 1
+    await participantService.removeWarning(groupId, userId, warnings)
+
+    participant = await participantService.getParticipantFromGroup(groupId, userId)
+
+    assert.notEqual(participant, null)
+    assert.equal(participant?.warnings, 0)
+
+    await participantService.removeParticipants(groupId)
+
+    const expireAt = Date.now() + 60000
+    await participantService.expireParticipantAntiFlood(groupId, userId, expireAt)
+
+    participant = await participantService.getParticipantFromGroup(groupId, userId)
+
+    assert.notEqual(participant, null)
+    assert.equal(participant?.antiflood?.expire, expireAt)
+    assert.equal(participant?.antiflood?.msgs, 1)
+
+    await participantService.removeParticipants(groupId)
+
+    await participantService.incrementAntiFloodMessage(groupId, userId)
+
+    participant = await participantService.getParticipantFromGroup(groupId, userId)
+
+    assert.notEqual(participant, null)
+    assert.equal(participant?.antiflood?.msgs, 1)
+})
