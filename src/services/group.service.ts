@@ -19,9 +19,10 @@ export class GroupService {
         restricted: false,
         expiration: undefined,
         muted: false,
-        welcome: { 
-            status: false, 
-            msg: '' 
+        muted_members: [],
+        welcome: {
+            status: false,
+            msg: ''
         },
         antifake: { 
             status: false, 
@@ -207,6 +208,39 @@ export class GroupService {
 
     public async setMuted(groupId: string, status: boolean){
         await db.updateAsync({id: groupId}, {$set: { muted : status}})
+    }
+
+    public async setMutedMember(groupId: string, userId: string){
+        const group = await this.getGroup(groupId)
+
+        if (!group) return
+
+        const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
+
+        if (!Array.isArray(group.muted_members)) {
+            group.muted_members = []
+            await db.updateAsync({id: groupId}, { $set: { muted_members: [] } })
+        }
+
+        if (mutedMembers.includes(userId)) return
+
+        await db.updateAsync({id: groupId}, { $push: { muted_members: userId } })
+    }
+
+    public async unsetMutedMember(groupId: string, userId: string){
+        await db.updateAsync({id: groupId}, { $pull: { muted_members: userId } })
+    }
+
+    public async isMemberMuted(groupId: string, userId: string){
+        const group = await this.getGroup(groupId)
+
+        if (!group) return false
+
+        if (!Array.isArray(group.muted_members)) {
+            return false
+        }
+
+        return group.muted_members.includes(userId)
     }
 
     public async setAntilink(groupId: string, status: boolean){
