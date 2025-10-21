@@ -6,6 +6,9 @@ Colocarei neste arquivos as mudanças significativas em cada versão começando 
 ### ALTERAÇÕES
 - Adicionado controle persistente de membros mutados nos grupos e limpeza automática ao remover participantes.
 
+### CORREÇÕES
+- Impedimos que eventos `modify` sem flag de admin removam o status de administrador no cadastro do grupo.
+
 ## 3.4.6 - 09/06/2025
 
 ### CORREÇÕES
