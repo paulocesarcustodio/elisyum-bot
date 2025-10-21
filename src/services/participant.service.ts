@@ -206,6 +206,24 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        const existingParticipant = await db.findOneAsync({ group_id: groupId, user_id: normalizedUserId }) as Participant | null
+
+        if (!existingParticipant) {
+            const participant: Participant = {
+                ...this.defaultParticipant,
+                group_id: groupId,
+                user_id: normalizedUserId,
+                admin: status
+            }
+
+            await db.updateAsync(
+                { group_id: groupId, user_id: normalizedUserId },
+                participant,
+                { upsert: true }
+            )
+            return
+        }
+
         await db.updateAsync({group_id : groupId, user_id: normalizedUserId}, { $set: { admin: status }})
     }
 

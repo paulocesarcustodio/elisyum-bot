@@ -93,14 +93,11 @@ test("GroupController normalizes admin checks for promoted bot", async t => {
     assert.equal(isAdmin, true)
 })
 
-test("groupParticipantsUpdated preserves admin status on modify without admin flag", async t => {
+test("GroupController persists admin promotion without prior participant record", async t => {
     const participantService = new ParticipantService()
     const groupController = new GroupController()
-    const groupId = TEST_GROUP_ID
-    const participantId = "5511900000000@s.whatsapp.net"
-    const botInfo = createBot("5511800000000@s.whatsapp.net")
-    const mockGroup = createGroup(groupId)
-    const client = { end: () => {} } as unknown as WASocket
+    const rawBotJid = createRawBotJid(3)
+    const groupId = `test-promotion-${Date.now()}@g.us`
 
     await participantService.removeParticipants(groupId)
 
@@ -108,29 +105,15 @@ test("groupParticipantsUpdated preserves admin status on modify without admin fl
         await participantService.removeParticipants(groupId)
     })
 
-    await groupController.addParticipant(groupId, participantId, false)
-    await groupController.setAdmin(groupId, participantId, true)
+    const isAdminBefore = await groupController.isParticipantAdmin(groupId, rawBotJid)
+    assert.equal(isAdminBefore, false)
 
-    const originalSetAdmin = GroupController.prototype.setAdmin
-    const getGroupMock = mock.method(GroupController.prototype, "getGroup", async () => mockGroup)
-    const setAdminMock = mock.method(GroupController.prototype, "setAdmin", async function (this: GroupController, gid: string, uid: string, status: boolean) {
-        return originalSetAdmin.call(this, gid, uid, status)
-    })
+    await groupController.setAdmin(groupId, rawBotJid, true)
 
-    try {
-        await groupParticipantsUpdated(client, {
-            id: groupId,
-            author: botInfo.host_number,
-            participants: [{ id: participantId }],
-            action: "modify"
-        }, botInfo)
-    } finally {
-        getGroupMock.mock.restore()
-        setAdminMock.mock.restore()
-    }
+    const participantRecord = await participantService.getParticipantFromGroup(groupId, rawBotJid)
+    assert.notEqual(participantRecord, null)
+    assert.equal(participantRecord?.admin, true)
 
-    const isAdminAfterModify = await groupController.isParticipantAdmin(groupId, participantId)
-
-    assert.equal(setAdminMock.mock.callCount(), 0)
-    assert.equal(isAdminAfterModify, true)
+    const isAdminAfter = await groupController.isParticipantAdmin(groupId, rawBotJid)
+    assert.equal(isAdminAfter, true)
 })

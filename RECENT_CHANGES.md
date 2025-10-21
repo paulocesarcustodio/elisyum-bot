@@ -1,6 +1,7 @@
 # Recent Changes
 
 - Corrigimos a perda de privilégios de administrador quando o Baileys envia `modify` sem flag de admin, mantendo o cadastro intacto.
+- Garantimos que a promoção a administrador crie o registro do participante ausente e cobrimos o fluxo com teste para o bot.
 - Normalizamos os JIDs legados em participantes, blacklist e silenciados via migração versionada, eliminando os sufixos de dispositivo antigos.
 - Atualizado o @whiskeysockets/baileys para 7.0.0-rc.6 e revisamos formatação de mensagens/usuários para lidar com LIDs, IDs alternativos e sincronização do store de contatos.
 - Centralizamos a normalização de JIDs do WhatsApp e atualizamos serviços/eventos para armazenar e comparar participantes já sem sufixos de dispositivo, com testes cobrindo promoções do bot.
