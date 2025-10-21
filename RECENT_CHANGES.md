@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Adicionado comando de grupo `silenciar` para alternar o mute individual com validações de admin e respostas específicas para mutar/desmutar.
 - Adicionada persistência para membros mutados nos grupos, com métodos de controle e remoção automática ao sair.
 - Normalizamos os IDs de usuários vindos de grupos e recriamos cadastros ausentes ao abrir o menu para evitar erros de "usuário não encontrado".
 - Registrados logs e filtragens para eventos de newsletters/canais no Baileys 7, isolando mensagens de broadcast do fluxo padrão.
