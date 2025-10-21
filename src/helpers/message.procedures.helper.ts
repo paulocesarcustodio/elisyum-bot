@@ -93,6 +93,34 @@ export async function updateUserName(message: Message){
     }
 }
 
+export async function deleteMessageIfMutedMember(
+    client: WASocket,
+    group: Group,
+    botInfo: Bot,
+    message: Message
+){
+    const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
+
+    if (!mutedMembers.length || !mutedMembers.includes(message.sender) || !message.wa_message) {
+        return false
+    }
+
+    if (!botInfo.host_number) {
+        return false
+    }
+
+    const groupAdmins = await groupController.getAdminsIds(group.id)
+    const isBotAdmin = groupAdmins.includes(botInfo.host_number)
+
+    if (!isBotAdmin) {
+        return false
+    }
+
+    await waUtil.deleteMessage(client, message.wa_message, false)
+
+    return true
+}
+
 export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot, message: Message){
     if (botInfo.command_rate.status){
         const currentTimestamp = Math.round(moment.now()/1000)
