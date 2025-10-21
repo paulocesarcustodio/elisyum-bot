@@ -185,10 +185,13 @@ export const groupAdminMenu = (botInfo : Bot)=>{
 *|*━━ ✦ ✉️ *BEM VINDO* ✦ 
 *|*► *${prefix}bemvindo* - Ativa/desativa a mensagem de bem-vindo
 *|*
-*|*━━ ✦ 🤫 *MUTAR GRUPO* ✦ 
+*|*━━ ✦ 🤫 *MUTAR GRUPO* ✦
 *|*► *${prefix}mutar* - Ativa/desativa o uso de comandos somente para admins
 *|*
-*|*━━ ✦ 🏞️ *STICKER AUTOMATICO* ✦ 
+*|*━━ ✦ 🔇 *MUTAR MEMBRO* ✦
+*|*► *${prefix}silenciar* @membro - Alterna o mute do membro respondido ou marcado
+*|*
+*|*━━ ✦ 🏞️ *STICKER AUTOMATICO* ✦
 *|*► *${prefix}autosticker* - Ativa/desativa a criação automática de stickers
 *|*
 *|*━━ ✦ 🚫 *ANTI-LINK* ✦ 

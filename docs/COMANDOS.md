@@ -62,6 +62,7 @@
 - Redefinir link do grupo
 - Obter dono do grupo
 - Lista negra
+- Silenciar participante (responder ou marcar)
 - Mutar grupo para não usar comandos
 - Bem vindo
 - Auto sticker
@@ -94,4 +95,8 @@
 - Modificar descrição/recado do bot
 - Modificar nome do bot
 - Promover/rebaixar usuários
+
+#### 🔇 !silenciar
+
+Use `!silenciar` respondendo a mensagem de alguém ou marcando o contato na mesma mensagem. O bot valida se o alvo não é admin e alterna entre mutar e desmutar o membro: ao silenciar, ele bloqueia comandos/mensagens enquanto estiver mutado; se o participante já estiver mutado, um novo `!silenciar` remove o bloqueio automaticamente.
   
