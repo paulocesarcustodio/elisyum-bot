@@ -55,7 +55,7 @@ export class ParticipantService {
 
         for (const participant of currentParticipants) {
             if (!normalizedParticipantIds.has(participant.user_id)) {
-                await this.removeParticipant(groupMeta.id, participant.user_id)
+                await this.removeParticipant(groupMeta.id, participant.user_id, { normalize: false })
             }
         }
     }
@@ -88,11 +88,12 @@ export class ParticipantService {
         }
     }
 
-    public async removeParticipant(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
-        if (!normalizedUserId) return
+    public async removeParticipant(groupId: string, userId: string, options: { normalize?: boolean } = {}){
+        const shouldNormalize = options.normalize ?? true
+        const targetUserId = shouldNormalize ? this.normalizeUserId(userId) : userId
+        if (!targetUserId) return
 
-        await db.removeAsync({group_id: groupId, user_id: normalizedUserId}, {})
+        await db.removeAsync({group_id: groupId, user_id: targetUserId}, {})
     }
 
     public async removeParticipants(groupId: string){
