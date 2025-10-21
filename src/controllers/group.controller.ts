@@ -3,6 +3,7 @@ import { GroupService } from "../services/group.service.js"
 import { Group } from "../interfaces/group.interface.js"
 import { MessageTypes } from "../interfaces/message.interface.js"
 import { ParticipantService } from "../services/participant.service.js"
+import { normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 
 export class GroupController {
     private groupService
@@ -99,15 +100,24 @@ export class GroupController {
     }
 
     public setMutedMember(groupId: string, userId: string) {
-        return this.groupService.setMutedMember(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.groupService.setMutedMember(groupId, normalizedUserId)
     }
 
     public removeMutedMember(groupId: string, userId: string) {
-        return this.groupService.unsetMutedMember(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.groupService.unsetMutedMember(groupId, normalizedUserId)
     }
 
     public isParticipantMuted(groupId: string, userId: string) {
-        return this.groupService.isMemberMuted(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return Promise.resolve(false)
+
+        return this.groupService.isMemberMuted(groupId, normalizedUserId)
     }
 
     public setAntiFlood(groupId: string, status = true, maxMessages = 10, interval = 10) {
@@ -115,7 +125,10 @@ export class GroupController {
     }
 
     public async setBlacklist(groupId: string, userId: string, operation: 'add' | 'remove'){
-        return this.groupService.setBlacklist(groupId, userId, operation)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.groupService.setBlacklist(groupId, normalizedUserId, operation)
     }
 
     public async setBlockedCommands(groupId: string, prefix: string, commands: string[], operation: 'add' | 'remove'){
@@ -124,15 +137,24 @@ export class GroupController {
 
     // ***** Participantes *****
     public addParticipant(groupId: string, userId: string, isAdmin = false) {
-        return this.participantService.addParticipant(groupId, userId, isAdmin)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.addParticipant(groupId, normalizedUserId, isAdmin)
     }
 
     public removeParticipant(groupId: string, userId: string) {
-        return this.participantService.removeParticipant(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.removeParticipant(groupId, normalizedUserId)
     }
 
     public async setAdmin(groupId: string, userId: string, status: boolean){
-        return this.participantService.setAdmin(groupId, userId, status)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.setAdmin(groupId, normalizedUserId, status)
     }
 
     public migrateParticipants(){
@@ -140,7 +162,10 @@ export class GroupController {
     }
 
     public getParticipant(groupId: string, userId: string){
-        return this.participantService.getParticipantFromGroup(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return Promise.resolve(null)
+
+        return this.participantService.getParticipantFromGroup(groupId, normalizedUserId)
     }
 
     public getParticipants(groupId: string){
@@ -158,13 +183,19 @@ export class GroupController {
     public getAdminsIds(groupId: string) {
         return this.participantService.getAdminsIdsFromGroup(groupId)
     }
-    
+
     public isParticipant(groupId: string, userId: string) {
-        return this.participantService.isGroupParticipant(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return Promise.resolve(false)
+
+        return this.participantService.isGroupParticipant(groupId, normalizedUserId)
     }
 
     public isParticipantAdmin(groupId: string, userId: string) {
-        return this.participantService.isGroupAdmin(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return Promise.resolve(false)
+
+        return this.participantService.isGroupAdmin(groupId, normalizedUserId)
     }
 
     public getParticipantsActivityLowerThan(group: Group, num: number) {
@@ -176,15 +207,24 @@ export class GroupController {
     }
 
     public incrementParticipantActivity(groupId: string, userId: string, type: MessageTypes, isCommand: boolean){
-        return this.participantService.incrementParticipantActivity(groupId, userId, type, isCommand)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.incrementParticipantActivity(groupId, normalizedUserId, type, isCommand)
     }
 
     public addParticipantWarning(groupId: string, userId: string){
-        return this.participantService.addWarning(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.addWarning(groupId, normalizedUserId)
     }
 
     public removeParticipantWarning(groupId: string, userId: string, currentWarnings: number){
-        return this.participantService.removeWarning(groupId, userId, currentWarnings)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.removeWarning(groupId, normalizedUserId, currentWarnings)
     }
 
     public removeParticipantsWarnings(groupId: string){
@@ -192,10 +232,16 @@ export class GroupController {
     }
 
     public async expireParticipantAntiFlood(groupId: string, userId: string, newExpireTimestamp: number){
-        return this.participantService.expireParticipantAntiFlood(groupId, userId, newExpireTimestamp)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.expireParticipantAntiFlood(groupId, normalizedUserId, newExpireTimestamp)
     }
 
     public async incrementAntiFloodMessage(groupId: string, userId: string){
-        return this.participantService.incrementAntiFloodMessage(groupId, userId)
+        const normalizedUserId = normalizeWhatsappJid(userId)
+        if (!normalizedUserId) return
+
+        return this.participantService.incrementAntiFloodMessage(groupId, normalizedUserId)
     }
 }

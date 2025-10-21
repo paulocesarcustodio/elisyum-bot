@@ -30,6 +30,9 @@ async function syncResources(client: WASocket){
     const botInfo = new BotController().getBot()
 
     for (let group of currentGroups){
+        group.blacklist = (group.blacklist ?? [])
+            .map(userId => waUtil.normalizeWhatsappJid(userId))
+            .filter((userId): userId is string => !!userId)
         const participants = await groupController.getParticipants(group.id)
         const isBotAdmin = botInfo.host_number ? await groupController.isParticipantAdmin(group.id, botInfo.host_number) : false
         let bannedByBlackList = 0
