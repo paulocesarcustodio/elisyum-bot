@@ -56,7 +56,13 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
             } else if (event.action === 'remove') {
                 const isParticipant = await groupController.isParticipant(group.id, participantId)
 
-                if (!isParticipant) continue
+                if (!isParticipant) {
+                    if (group.muted_members.includes(participantId)) {
+                        await groupController.removeMutedMember(group.id, participantId)
+                        group.muted_members = group.muted_members.filter(memberId => memberId !== participantId)
+                    }
+                    continue
+                }
 
                 if (isBotUpdate) {
                     await groupController.removeGroup(event.id)
@@ -64,6 +70,10 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                 }
 
                 await groupController.removeParticipant(group.id, participantId)
+                if (group.muted_members.includes(participantId)) {
+                    await groupController.removeMutedMember(group.id, participantId)
+                    group.muted_members = group.muted_members.filter(memberId => memberId !== participantId)
+                }
             } else if (event.action === 'promote') {
                 const isAdmin = await groupController.isParticipantAdmin(group.id, participantId)
 

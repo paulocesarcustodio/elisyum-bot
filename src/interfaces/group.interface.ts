@@ -7,6 +7,7 @@ export interface Group {
     restricted?: boolean
     expiration?: number,
     muted: boolean,
+    muted_members: string[],
     welcome: {
         status: boolean
         msg : string
