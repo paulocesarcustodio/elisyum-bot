@@ -18,7 +18,7 @@ export async function contactsUpdate(contacts: Partial<Contact>[]) {
             
             if (nameToSave && nameToSave.trim().length > 0) {
                 // Salva/atualiza o nome do contato no banco de dados
-                await userController.setName(contact.id, nameToSave.trim())
+                await userController.setName(contact.id, nameToSave.trim(), contact.phoneNumber, contact.lid)
                 console.log(`[CONTACTS] Nome atualizado: ${nameToSave} (${contact.id})`)
             }
         }

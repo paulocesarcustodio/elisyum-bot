@@ -1,4 +1,4 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, jidNormalizedUser, proto, downloadMediaMessage } from "@whiskeysockets/baileys"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, jidNormalizedUser, proto, downloadMediaMessage, type WAMessageAddressingMode } from "@whiskeysockets/baileys"
 import { buildText, randomDelay } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
@@ -94,8 +94,28 @@ export function addWhatsappSuffix(userNumber : string){
 }
 
 export function removeWhatsappSuffix(userId: string){
-    const userNumber = userId.replace(S_WHATSAPP_NET, '')
-    return userNumber
+    if (typeof userId !== 'string') {
+        return userId
+    }
+
+    const suffixes = [
+        S_WHATSAPP_NET,
+        '@whatsapp.net',
+        '@c.us',
+        '@lid',
+        '@hosted',
+        '@hosted.lid'
+    ]
+
+    let sanitized = userId
+
+    for (const suffix of suffixes) {
+        if (sanitized.endsWith(suffix)) {
+            sanitized = sanitized.slice(0, -suffix.length)
+        }
+    }
+
+    return sanitized
 }
 
 export function normalizeWhatsappJid(jid?: string | null): string {
@@ -359,8 +379,11 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     const normalizedBotAdmins = botAdmins.map(admin => ({ ...admin, id: normalizeWhatsappJid(admin.id) }))
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
-    const rawSender = (m.key.fromMe) ? normalizedHostId : m.key.participant || m.key.remoteJid
-    const sender = normalizeWhatsappJid(rawSender)
+    const rawSender = m.key.fromMe ? normalizedHostId : m.key.participant || m.key.remoteJid
+    const rawSenderAlt = m.key.fromMe ? normalizedHostId : m.key.participantAlt || m.key.remoteJidAlt
+    const normalizedSender = normalizeWhatsappJid(rawSender)
+    const normalizedSenderAlt = normalizeWhatsappJid(rawSenderAlt)
+    const sender = normalizedSender || normalizedSenderAlt
     const pushName = m.pushName
     const body =  m.message.conversation ||  m.message.extendedTextMessage?.text || undefined
     const caption = (typeof m.message[type] != "string" && m.message[type] && "caption" in m.message[type]) ? m.message[type].caption as string | null: undefined
@@ -370,6 +393,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     const message_id = m.key.id
     const t = m.messageTimestamp as number
     const chat_id = m.key.remoteJid
+    const chatIdAlt = m.key.remoteJidAlt ? normalizeWhatsappJid(m.key.remoteJidAlt) : undefined
     const isGroupAdmin = (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false
 
     if (!message_id || !t || !sender || !chat_id ) return
@@ -377,9 +401,12 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     let formattedMessage : Message = {
         message_id,
         sender,
+        senderAlt: normalizedSenderAlt && normalizedSenderAlt !== sender ? normalizedSenderAlt : undefined,
+        senderAddressingMode: m.key.addressingMode as WAMessageAddressingMode | undefined,
         type : type as MessageTypes,
         t,
         chat_id,
+        chatIdAlt: chatIdAlt && chatIdAlt !== chat_id ? chatIdAlt : undefined,
         requestId,
         expiration : contextInfo?.expiration || undefined,
         pushname: pushName || '',

@@ -32,7 +32,7 @@ export async function isOwnerRegister(client: WASocket, botInfo: Bot, message: M
     const admins = await userController.getAdmins()
 
     if (!admins.length && message.command == `${botInfo.prefix}admin`){
-        await userController.registerOwner(message.sender)
+        await userController.registerOwner(message.sender, message.senderAlt)
         await waUtil.replyText(client, message.chat_id, buildText(botTexts.admin_registered), message.wa_message, {expiration: message.expiration})
         return true
     }
@@ -45,7 +45,7 @@ export async function incrementParticipantActivity(message: Message, isCommand: 
 }
 
 export async function incrementUserCommandsCount(message: Message){
-    await userController.increaseUserCommandsCount(message.sender)
+    await userController.increaseUserCommandsCount(message.sender, message.senderAlt)
 }
 
 export function incrementBotCommandsCount(){
@@ -74,7 +74,7 @@ export async function isBotLimitedByGroupRestricted(group: Group, botInfo: Bot){
 }
 
 export async function sendPrivateWelcome(client: WASocket, botInfo: Bot, message: Message){
-    const user = await userController.getUser(message.sender)
+    const user = await userController.getUser(message.sender, message.senderAlt)
 
     if (user && !user.receivedWelcome){
         const replyText = buildText(botTexts.new_user, botInfo.name, message.pushname)
@@ -89,7 +89,7 @@ export async function readUserMessage(client: WASocket, message: Message){
 
 export async function updateUserName(message: Message){
     if (message.pushname) {
-        await userController.setName(message.sender, message.pushname)
+        await userController.setName(message.sender, message.pushname, message.senderAlt)
     }
 }
 
@@ -125,7 +125,7 @@ export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot,
     if (botInfo.command_rate.status){
         const currentTimestamp = Math.round(moment.now()/1000)
         const { isBotAdmin } = message
-        const user = await userController.getUser(message.sender)
+        const user = await userController.getUser(message.sender, message.senderAlt)
 
         if (isBotAdmin) return false
     
@@ -159,7 +159,7 @@ export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot,
             }
 
         } else {
-            await userController.registerUser(message.sender, message.pushname)
+            await userController.registerUser(message.sender, message.pushname, message.senderAlt)
         }
     }
 
