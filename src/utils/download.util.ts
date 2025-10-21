@@ -241,7 +241,9 @@ export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
             '-o', tempFilePath,
             '--no-playlist',
             '--no-warnings',
-            '--merge-output-format', 'mp4'
+            '--merge-output-format', 'mp4',
+            '--add-header', 'User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--extractor-args', 'youtube:player_client=android,web'
         ])
         
         console.log('[downloadYouTubeVideo] Download complete, reading file...')
