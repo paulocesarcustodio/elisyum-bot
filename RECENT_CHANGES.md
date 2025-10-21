@@ -1,5 +1,9 @@
 # Recent Changes
 
+- Documentamos o `!silenciar`, explicando como alterna o mute individual ao responder ou marcar membros mutados.
+- Bloqueamos mensagens de membros mutados quando o bot é admin e interrompemos os contadores do fluxo, com testes para garantir o comportamento em grupos.
+- Adicionado comando de grupo `silenciar` para alternar o mute individual com validações de admin e respostas específicas para mutar/desmutar.
+- Adicionada persistência para membros mutados nos grupos, com métodos de controle e remoção automática ao sair.
 - Normalizamos os IDs de usuários vindos de grupos e recriamos cadastros ausentes ao abrir o menu para evitar erros de "usuário não encontrado".
 - Registrados logs e filtragens para eventos de newsletters/canais no Baileys 7, isolando mensagens de broadcast do fluxo padrão.
 - Ajustado o balão de figurinhas de texto para priorizar o nome do contato citado em vez do texto padrão "Membro do grupo".

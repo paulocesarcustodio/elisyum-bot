@@ -92,6 +92,62 @@ export async function avisoCommand(client: WASocket, botInfo: Bot, message: Mess
     }
 }
 
+export async function silenciarCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
+    const groupController = new GroupController()
+    const isBotGroupAdmin = await groupController.isParticipantAdmin(group.id, botInfo.host_number)
+    let targetUserId: string
+
+    if (!message.isGroupAdmin) {
+        throw new Error(botTexts.permission.admin_group_only)
+    } else if (!isBotGroupAdmin) {
+        throw new Error(botTexts.permission.bot_group_admin)
+    }
+
+    if (message.mentioned.length) {
+        targetUserId = message.mentioned[0]
+    } else if (message.isQuoted && message.quotedMessage) {
+        targetUserId = message.quotedMessage.sender
+    } else {
+        throw new Error(groupCommands.silenciar.msgs.error_missing_target)
+    }
+
+    const isBotTarget = botInfo.host_number === targetUserId
+    const isAdminTarget = await groupController.isParticipantAdmin(group.id, targetUserId)
+
+    if (isBotTarget) {
+        throw new Error(groupCommands.silenciar.msgs.error_silence_bot)
+    } else if (isAdminTarget) {
+        throw new Error(groupCommands.silenciar.msgs.error_silence_admin)
+    }
+
+    const ensureMutedMembers = () => {
+        if (!Array.isArray(group.muted_members)) {
+            group.muted_members = []
+        }
+
+        return group.muted_members
+    }
+
+    const isMuted = await groupController.isParticipantMuted(group.id, targetUserId)
+    let replyText: string
+
+    if (isMuted) {
+        await groupController.removeMutedMember(group.id, targetUserId)
+        const mutedMembers = ensureMutedMembers().filter(memberId => memberId !== targetUserId)
+        group.muted_members = mutedMembers
+        replyText = buildText(groupCommands.silenciar.msgs.reply_unmuted, waUtil.removeWhatsappSuffix(targetUserId))
+    } else {
+        await groupController.setMutedMember(group.id, targetUserId)
+        const mutedMembers = ensureMutedMembers()
+        if (!mutedMembers.includes(targetUserId)) {
+            mutedMembers.push(targetUserId)
+        }
+        replyText = buildText(groupCommands.silenciar.msgs.reply_muted, waUtil.removeWhatsappSuffix(targetUserId))
+    }
+
+    await waUtil.sendTextWithMentions(client, message.chat_id, replyText, [targetUserId], { expiration: message.expiration })
+}
+
 export async function rmavisoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const groupController = new GroupController()
     const isBotGroupAdmin = await groupController.isParticipantAdmin(group.id, botInfo.host_number)

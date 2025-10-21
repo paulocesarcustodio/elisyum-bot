@@ -25,6 +25,14 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
             return
         }
 
+        const ensureMutedMembers = (): string[] => {
+            if (!Array.isArray(group.muted_members)) {
+                group.muted_members = []
+            }
+
+            return group.muted_members ?? []
+        }
+
         const participants = (event.participants ?? []).map(participant =>
             typeof participant === 'string' ? { id: participant } as GroupParticipant : participant
         )
@@ -56,7 +64,15 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
             } else if (event.action === 'remove') {
                 const isParticipant = await groupController.isParticipant(group.id, participantId)
 
-                if (!isParticipant) continue
+                if (!isParticipant) {
+                    const mutedMembers = ensureMutedMembers()
+
+                    if (mutedMembers.includes(participantId)) {
+                        await groupController.removeMutedMember(group.id, participantId)
+                        group.muted_members = mutedMembers.filter(memberId => memberId !== participantId)
+                    }
+                    continue
+                }
 
                 if (isBotUpdate) {
                     await groupController.removeGroup(event.id)
@@ -64,6 +80,12 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                 }
 
                 await groupController.removeParticipant(group.id, participantId)
+                const mutedMembers = ensureMutedMembers()
+
+                if (mutedMembers.includes(participantId)) {
+                    await groupController.removeMutedMember(group.id, participantId)
+                    group.muted_members = mutedMembers.filter(memberId => memberId !== participantId)
+                }
             } else if (event.action === 'promote') {
                 const isAdmin = await groupController.isParticipantAdmin(group.id, participantId)
 

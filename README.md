@@ -133,7 +133,7 @@ Diversos comandos de utilidades como encurtar link, editar áudio, obter letra d
 Diversos comandos para entretenimento do grupo
 
 ### 👨‍👩‍👦‍👦 Administração de Grupo
-Diversos comandos de grupo para ajudar na administração
+Diversos comandos de grupo para ajudar na administração. Agora inclui o `!silenciar`, que permite alternar rapidamente o mute individual respondendo ou marcando o membro alvo.
 
 ### ⚙️ Administração geral do bot
 Diversos para administrar o bot e ter controle sobre ele.

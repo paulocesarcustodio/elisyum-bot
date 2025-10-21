@@ -82,6 +82,10 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     //Atualize o nome do usuário
     await procs.updateUserName(message)
 
+    if (await procs.deleteMessageIfMutedMember(client, group, botInfo, message)) {
+        return false
+    }
+
     //Se o grupo estiver restrito para admins e o bot não for um admin, retorne.
     if (await procs.isBotLimitedByGroupRestricted(group, botInfo)) {
         return false

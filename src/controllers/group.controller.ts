@@ -98,6 +98,18 @@ export class GroupController {
         return this.groupService.setMuted(groupId, status)
     }
 
+    public setMutedMember(groupId: string, userId: string) {
+        return this.groupService.setMutedMember(groupId, userId)
+    }
+
+    public removeMutedMember(groupId: string, userId: string) {
+        return this.groupService.unsetMutedMember(groupId, userId)
+    }
+
+    public isParticipantMuted(groupId: string, userId: string) {
+        return this.groupService.isMemberMuted(groupId, userId)
+    }
+
     public setAntiFlood(groupId: string, status = true, maxMessages = 10, interval = 10) {
         return this.groupService.setAntiFlood(groupId, status, maxMessages, interval)
     }

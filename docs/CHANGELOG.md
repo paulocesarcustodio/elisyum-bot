@@ -1,6 +1,11 @@
 # Notas de atualização
 Colocarei neste arquivos as mudanças significativas em cada versão começando na versão 3.0.0
 
+## Unreleased
+
+### ALTERAÇÕES
+- Adicionado controle persistente de membros mutados nos grupos e limpeza automática ao remover participantes.
+
 ## 3.4.6 - 09/06/2025
 
 ### CORREÇÕES
