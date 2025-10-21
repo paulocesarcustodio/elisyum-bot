@@ -66,6 +66,21 @@ const groupCommands = {
         },
         function: groupFunctions.avisoCommand
     },
+    silenciar:{
+        guide: `Ex: Responda alguém com *{$p}silenciar* - Alterna o silêncio do membro respondido.\n`+
+        `Ex: Marque alguém com *{$p}silenciar* - Alterna o silêncio do membro marcado.\n\n`+
+        `*Obs*: Use novamente para desmutar o membro.\n`,
+        msgs: {
+            reply_muted: '🔇 Mutado\n\n'+
+            '@{$1} foi mutado pelo administrador.',
+            reply_unmuted: '🔈 Desmutado\n\n'+
+            '@{$1} voltou a poder falar no grupo.',
+            error_missing_target: 'É necessário marcar ou responder alguém para silenciar.',
+            error_silence_bot: 'O bot não pode ser silenciado.',
+            error_silence_admin: 'Não é possível silenciar um administrador do grupo.'
+        },
+        function: groupFunctions.silenciarCommand
+    },
     rmaviso:{
         guide: `Ex: Responda alguém com *{$p}rmaviso* - Remove um aviso do membro respondido.\n`+
         `Ex: Marque alguém com *{$p}rmaviso* - Remove um aviso do membro marcado.\n\n`,
