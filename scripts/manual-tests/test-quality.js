@@ -1,5 +1,5 @@
 // Test comparing download sizes with different qualities
-import { downloadYouTubeVideo } from './dist/utils/download.util.js';
+import { downloadYouTubeVideo } from '../../dist/utils/download.util.js';
 
 async function compareQualities() {
     console.log('🧪 Testing Quality Impact on Download Size\n');

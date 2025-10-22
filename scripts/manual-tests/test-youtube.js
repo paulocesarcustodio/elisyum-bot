@@ -1,5 +1,5 @@
 // Test script for YouTube download functionality
-import { youtubeMedia } from './dist/utils/download.util.js';
+import { youtubeMedia } from '../../dist/utils/download.util.js';
 
 const testCases = [
     { name: 'Search by title', input: 'despacito' },

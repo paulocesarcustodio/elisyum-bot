@@ -1,7 +1,7 @@
 // Test simulating actual bot commands: play and yt
-import { youtubeMedia, downloadYouTubeVideo } from './dist/utils/download.util.js';
-import { convertMp4ToMp3 } from './dist/utils/convert.util.js';
-import { convertVideoToThumbnail } from './dist/utils/convert.util.js';
+import { youtubeMedia, downloadYouTubeVideo } from '../../dist/utils/download.util.js';
+import { convertMp4ToMp3 } from '../../dist/utils/convert.util.js';
+import { convertVideoToThumbnail } from '../../dist/utils/convert.util.js';
 import fs from 'fs';
 
 console.log('🤖 Simulating Bot Commands: play and yt\n');

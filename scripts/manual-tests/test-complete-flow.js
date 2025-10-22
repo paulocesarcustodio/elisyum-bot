@@ -1,6 +1,6 @@
 // Test complete flow: download YouTube video and convert to MP3
-import { downloadYouTubeVideo } from './dist/utils/download.util.js';
-import { convertMp4ToMp3 } from './dist/utils/convert.util.js';
+import { downloadYouTubeVideo } from '../../dist/utils/download.util.js';
+import { convertMp4ToMp3 } from '../../dist/utils/convert.util.js';
 import fs from 'fs';
 
 async function testCompleteFlow() {

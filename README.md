@@ -12,7 +12,7 @@
 
 <br>
 <h2 align="center"> Esse projeto não está sendo mais atualizado</h2>
-<h2 align="center"> 🔄 Notas de atualização: <a href="https://github.com/victorsouzaleal/lbot-whatsapp/blob/main/docs/CHANGELOG.md">AQUI</a></h2>
+<h2 align="center"> 🔄 Notas de atualização: <a href="docs/releases/CHANGELOG.md">AQUI</a></h2>
 
 <br>
 
@@ -91,6 +91,19 @@ cd ~/LBOT && yarn start
 <br>
 <br>
 
+## 🗂️ Estrutura do projeto
+
+- `src/` — código-fonte TypeScript organizado em controllers, services, eventos e utilitários.
+- `dist/` — saída compilada pelo TypeScript após o `yarn build`.
+- `bin/` — binários auxiliares versionados, como o `yt-dlp` local usado nos downloads.
+- `scripts/` — utilitários para manutenção:
+  - `setup/` contém `deploy.sh` e `install-ytdlp.js` para preparar o ambiente.
+  - `manual-tests/` reúne os testes exploratórios de comandos e downloads.
+  - `tooling/` guarda scripts de suporte e inspeção de dependências.
+- `docs/` — documentação dividida em `guides/`, `reference/`, `releases/` e `proposals/`.
+
+<br>
+
 ## 🤖 Uso
 
 Seu bot já deve estar iniciando normalmente após o passo anterior, use os comandos abaixo para visualizar os comandos disponíveis.
@@ -140,7 +153,7 @@ Diversos para administrar o bot e ter controle sobre ele.
 
 <br>
 
-### 👉 Lista completa de comandos... [Clique Aqui](docs/COMANDOS.md)
+### 👉 Lista completa de comandos... [Clique Aqui](docs/reference/COMANDOS.md)
 
 <br>
 

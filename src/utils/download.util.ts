@@ -1,3 +1,5 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {formatSeconds, showConsoleLibraryError} from './general.util.js'
 import {instagramGetUrl} from 'instagram-url-direct'
 import { getFbVideoInfo } from 'fb-downloader-scrapper'
@@ -6,6 +8,12 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
+
+const resolveYtDlpBinary = () => {
+    const currentDir = path.dirname(fileURLToPath(new URL('.', import.meta.url)))
+    const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
+    return path.join(currentDir, '..', '..', 'bin', binaryName)
+}
 
 export async function xMedia (url: string){
     try {
@@ -142,7 +150,7 @@ export async function youtubeMedia (text: string){
         }
 
         // Obtém informações do vídeo usando yt-dlp (import dinâmico para compatibilidade CJS/ESM)
-        const ytDlpPath = new URL('../../yt-dlp', import.meta.url).pathname
+        const ytDlpPath = resolveYtDlpBinary()
         const YTDlpModule: any = await import('yt-dlp-wrap')
         
         // O constructor está em YTDlpModule.default.default (double default export)
@@ -210,7 +218,7 @@ export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
     const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
     
     try {
-        const ytDlpPath = new URL('../../yt-dlp', import.meta.url).pathname
+        const ytDlpPath = resolveYtDlpBinary()
         const YTDlpModule: any = await import('yt-dlp-wrap')
         
         // O constructor está em YTDlpModule.default.default (double default export)
