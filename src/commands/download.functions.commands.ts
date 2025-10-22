@@ -2,7 +2,7 @@ import { WASocket } from "@whiskeysockets/baileys"
 import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
-import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
+import { buildText, messageErrorCommandUsage, generateProgressBar } from "../utils/general.util.js"
 import * as waUtil from "../utils/whatsapp.util.js"
 import * as downloadUtil from '../utils/download.util.js'
 import * as convertUtil from '../utils/convert.util.js'
@@ -25,20 +25,58 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         throw new Error(downloadCommands.play.msgs.error_limit)
     }
 
-    const waitReply = buildText(downloadCommands.play.msgs.wait, videoInfo.title, videoInfo.duration_formatted)
-    await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
+    // Mensagem inicial com barra de progresso
+    const initialMessage = `🎵 *${videoInfo.title}*\n` +
+                          `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                          `📥 Baixando...\n` +
+                          `${generateProgressBar(0, 100, 20)}`
+    
+    const sentMessage = await waUtil.replyText(client, message.chat_id, initialMessage, message.wa_message, {expiration: message.expiration})
+    if (!sentMessage || !sentMessage.key) {
+        throw new Error('Falha ao enviar mensagem inicial')
+    }
+    const messageKey = sentMessage.key
 
-    // Constrói a URL completa do YouTube
+    // Simula progresso do download (0-60%)
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
-    console.log('[playCommand] Downloading video:', youtubeUrl)
+    
+    // Atualiza para 30%
+    await waUtil.editText(client, message.chat_id, messageKey, 
+        `🎵 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+        `📥 Baixando...\n` +
+        `${generateProgressBar(30, 100, 20)}`
+    )
+    
     const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
-    console.log('[playCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
-    console.log('[playCommand] Converting to MP3...')
+    
+    // Atualiza para 60% - Download completo
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎵 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+        `🔄 Convertendo para MP3...\n` +
+        `${generateProgressBar(60, 100, 20)}`
+    )
+    
     const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
-    console.log('[playCommand] Conversion complete, size:', (audioBuffer.length / 1024 / 1024).toFixed(2), 'MB')
-    console.log('[playCommand] Sending audio to WhatsApp...')
+    
+    // Atualiza para 90% - Conversão completa
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎵 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+        `📤 Enviando...\n` +
+        `${generateProgressBar(90, 100, 20)}`
+    )
+    
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
-    console.log('[playCommand] Audio sent successfully!')
+    
+    // Atualiza para 100% - Completo
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎵 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+        `✅ Concluído!\n` +
+        `${generateProgressBar(100, 100, 20)}`
+    )
 }
 
 export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -56,29 +94,61 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         throw new Error(downloadCommands.yt.msgs.error_limit)
     }
 
-    const waitReply = buildText(downloadCommands.yt.msgs.wait, videoInfo.title, videoInfo.duration_formatted)
-    await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
+    // Mensagem inicial com barra de progresso
+    const initialMessage = `🎥 *${videoInfo.title}*\n` +
+                          `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                          `📥 Baixando vídeo...\n` +
+                          `${generateProgressBar(0, 100, 20)}`
     
-    try {
-        // Constrói a URL completa do YouTube e baixa o vídeo
-        const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
-        console.log('[ytCommand] Downloading video:', youtubeUrl)
-        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
-        console.log('[ytCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
-        
-        // Verificar se o vídeo não é muito grande (limite do WhatsApp é ~16MB para vídeos)
-        const videoSizeMB = videoBuffer.length / 1024 / 1024
-        if (videoSizeMB > 16) {
-            throw new Error(`Vídeo muito grande (${videoSizeMB.toFixed(2)}MB). O WhatsApp suporta apenas vídeos de até 16MB.`)
-        }
-        
-        console.log('[ytCommand] Sending video to WhatsApp...')
-        await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
-        console.log('[ytCommand] Video sent successfully!')
-    } catch (error) {
-        console.error('[ytCommand] Error:', error)
-        throw new Error(`Erro ao enviar vídeo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    const sentMessage = await waUtil.replyText(client, message.chat_id, initialMessage, message.wa_message, {expiration: message.expiration})
+    if (!sentMessage || !sentMessage.key) {
+        throw new Error('Falha ao enviar mensagem inicial')
     }
+    const messageKey = sentMessage.key
+
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
+    
+    // Atualiza para 40%
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎥 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+        `📥 Baixando vídeo...\n` +
+        `${generateProgressBar(40, 100, 20)}`
+    )
+    
+    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+    
+    // Verifica tamanho
+    const videoSizeMB = videoBuffer.length / 1024 / 1024
+    if (videoSizeMB > 16) {
+        await waUtil.editText(client, message.chat_id, messageKey,
+            `🎥 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+            `❌ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
+            `O WhatsApp suporta apenas vídeos de até 16MB.`
+        )
+        return
+    }
+    
+    // Atualiza para 80% - Download completo
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎥 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+        `📤 Enviando...\n` +
+        `${generateProgressBar(80, 100, 20)}`
+    )
+    
+    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+    
+    // Atualiza para 100% - Completo
+    await waUtil.editText(client, message.chat_id, messageKey,
+        `🎥 *${videoInfo.title}*\n` +
+        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+        `✅ Concluído!\n` +
+        `${generateProgressBar(100, 100, 20)}`
+    )
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){

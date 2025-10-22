@@ -260,9 +260,19 @@ export async function sendFileFromUrl(client: WASocket, chatId: string, type: Me
     }
 }
 
-export async function replyText (client: WASocket, chatId: string, text: string, quoted: WAMessage, options?: MessageOptions){ 
-    await updatePresence(client, chatId, "composing")
-    return client.sendMessage(chatId, {text, linkPreview: null}, {quoted, ephemeralExpiration: options?.expiration})
+export function replyText(client: WASocket, chatId: string, text: string, quoted: WAMessage, options?: MessageOptions){
+    if (options?.noLinkPreview){
+        return client.sendMessage(chatId, {text, linkPreview: null}, {quoted, ephemeralExpiration: options?.expiration})
+    }
+
+    return client.sendMessage(chatId, {text}, {quoted, ephemeralExpiration: options?.expiration})
+}
+
+export async function editText(client: WASocket, chatId: string, messageKey: any, text: string): Promise<any> {
+    return client.sendMessage(chatId, { 
+        text, 
+        edit: messageKey 
+    })
 }
 
 export async function replyFile (client: WASocket, chatId: string, type: MessageTypes, url: string, caption: string, quoted: WAMessage, options?: MessageOptions){ 

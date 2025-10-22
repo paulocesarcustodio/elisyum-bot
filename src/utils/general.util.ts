@@ -49,6 +49,18 @@ export function colorText(text: string, color?: string){
   return !color ? chalk.green(text) : chalk.hex(color)(text)
 }
 
+export function generateProgressBar(current: number, total: number, length: number = 20): string {
+  const percentage = Math.floor((current / total) * 100)
+  const filled = Math.floor((current / total) * length)
+  const empty = length - filled
+  
+  const filledBar = '█'.repeat(filled)
+  const emptyBar = '░'.repeat(empty)
+  
+  return `${filledBar}${emptyBar} ${percentage}%`
+}
+
+
 export function buildText(text : string, ...params : any[]){
   if (text.includes('{$p}')) {
     const prefix = new BotController().getBot().prefix
