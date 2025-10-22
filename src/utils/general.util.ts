@@ -38,7 +38,20 @@ export function messageErrorCommandUsage(prefix: string, message: Message){
 }
 
 export function messageErrorCommand(command: string, reason: string){
-  return buildText(botTexts.error_command, command, reason)
+  const errorMessage = buildText(botTexts.error_command, command, reason)
+  const asciiArt = `
+FAZ VOCÊ FILHA DA PUTA
+……..…../´¯/)………… (\\¯\`\\
+…………/….//……….. …\\\\….\\
+………../….//………… ….\\\\….\\
+…../´¯/…./´¯\\………../¯ \`\\….\\¯\`\\
+.././…/…./…./.|_……_| .\\….\\….\\…\\.\\..
+(.(….(….(…./.)..)..(..(. \\….)….)….)… )
+.\\……………..\\/…/….\\. ..\\/……………./
+..\\…………….. /…….\\……………..…/
+….\\…………..(…………)……………./`
+  
+  return `${errorMessage}\n${asciiArt}`
 }
 
 export function getCurrentBotVersion(){
@@ -48,6 +61,18 @@ export function getCurrentBotVersion(){
 export function colorText(text: string, color?: string){
   return !color ? chalk.green(text) : chalk.hex(color)(text)
 }
+
+export function generateProgressBar(current: number, total: number, length: number = 20): string {
+  const percentage = Math.floor((current / total) * 100)
+  const filled = Math.floor((current / total) * length)
+  const empty = length - filled
+  
+  const filledBar = '█'.repeat(filled)
+  const emptyBar = '░'.repeat(empty)
+  
+  return `${filledBar}${emptyBar} ${percentage}%`
+}
+
 
 export function buildText(text : string, ...params : any[]){
   if (text.includes('{$p}')) {

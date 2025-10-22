@@ -6,7 +6,8 @@ export type MimeTypes = "audio/mpeg"| "audio/mp4" | "audio/mp3" | "image/png" | 
 
 export interface MessageOptions {
     expiration?: number,
-    mimetype?: MimeTypes
+    mimetype?: MimeTypes,
+    noLinkPreview?: boolean
 }
 
 export interface Message {

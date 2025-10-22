@@ -179,7 +179,8 @@ export async function youtubeMedia (text: string){
                 channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
                 is_live: true,
                 duration_formatted: '00:00',
-                url: ''
+                url: '',
+                thumbnail: videoInfoRaw.thumbnail || `https://img.youtube.com/vi/${videoInfoRaw.id}/maxresdefault.jpg`
             }
             return ytInfo
         }
@@ -207,7 +208,8 @@ export async function youtubeMedia (text: string){
             channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
             is_live: false,
             duration_formatted: formatSeconds(Number(videoInfoRaw.duration || 0)),
-            url: bestFormat?.url || videoInfoRaw.url || ''
+            url: bestFormat?.url || videoInfoRaw.url || '',
+            thumbnail: videoInfoRaw.thumbnail || `https://img.youtube.com/vi/${videoInfoRaw.id}/maxresdefault.jpg`
         }
         
         return ytInfo
