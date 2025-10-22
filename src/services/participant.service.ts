@@ -97,6 +97,28 @@ export class ParticipantService {
         return merged
     }
 
+    private async ensureParticipantRecord(groupId: string, normalizedUserId: string): Promise<Participant> {
+        const existingParticipant = await db.findOneAsync({ group_id: groupId, user_id: normalizedUserId }) as Participant | null
+
+        if (existingParticipant) {
+            return existingParticipant
+        }
+
+        const participant: Participant = {
+            ...this.defaultParticipant,
+            group_id: groupId,
+            user_id: normalizedUserId
+        }
+
+        await db.updateAsync(
+            { group_id: groupId, user_id: normalizedUserId },
+            participant,
+            { upsert: true }
+        )
+
+        return participant
+    }
+
     public async syncParticipants(groupMeta: GroupMetadata){
         //Adiciona participantes no banco de dados que entraram enquanto o bot estava off.
         for (const participant of groupMeta.participants) {
@@ -206,24 +228,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
-        const existingParticipant = await db.findOneAsync({ group_id: groupId, user_id: normalizedUserId }) as Participant | null
-
-        if (!existingParticipant) {
-            const participant: Participant = {
-                ...this.defaultParticipant,
-                group_id: groupId,
-                user_id: normalizedUserId,
-                admin: status
-            }
-
-            await db.updateAsync(
-                { group_id: groupId, user_id: normalizedUserId },
-                participant,
-                { upsert: true }
-            )
-            return
-        }
-
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id : groupId, user_id: normalizedUserId}, { $set: { admin: status }})
     }
 
@@ -280,6 +285,8 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
+
         let incrementedUser : {
             msgs: number,
             commands?: number,
@@ -333,6 +340,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc: { warnings: 1} })
     }
 
@@ -340,6 +348,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set: { warnings: --currentWarnings} })
     }
 
@@ -351,6 +360,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set : { 'antiflood.expire': newExpireTimestamp, 'antiflood.msgs': 1 } })
     }
 
@@ -358,6 +368,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc : { 'antiflood.msgs': 1 } })
     }
 }
