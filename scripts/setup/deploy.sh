@@ -85,9 +85,25 @@ fi
 
 # Sempre garantir que existe o binário local também
 if [ -f "${LOCAL_YTDLP}" ]; then
-    YTDLP_LOCAL_VERSION=$("${LOCAL_YTDLP}" --version 2>/dev/null || echo "desconhecido")
-    echo -e "${GREEN}✓${NC} yt-dlp local encontrado: $YTDLP_LOCAL_VERSION"
-    YTDLP_INSTALLED=true
+    if [ "${OS}" != "Windows_NT" ] && [ ! -x "${LOCAL_YTDLP}" ]; then
+        echo "🔧 Corrigindo permissões do yt-dlp local..."
+        chmod +x "${LOCAL_YTDLP}"
+    fi
+
+    if "${LOCAL_YTDLP}" --version >/dev/null 2>&1; then
+        YTDLP_LOCAL_VERSION=$("${LOCAL_YTDLP}" --version)
+        echo -e "${GREEN}✓${NC} yt-dlp local encontrado: $YTDLP_LOCAL_VERSION"
+        YTDLP_INSTALLED=true
+    else
+        echo -e "${YELLOW}⚠${NC}  yt-dlp local inválido. Reinstalando..."
+        curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_FILENAME}" -o "${LOCAL_YTDLP}"
+        if [ "${OS}" != "Windows_NT" ]; then
+            chmod +x "${LOCAL_YTDLP}"
+        fi
+        YTDLP_LOCAL_VERSION=$("${LOCAL_YTDLP}" --version)
+        echo -e "${GREEN}✓${NC} yt-dlp local reinstalado: $YTDLP_LOCAL_VERSION"
+        YTDLP_INSTALLED=true
+    fi
 else
     echo "📥 Baixando yt-dlp local..."
     curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_FILENAME}" -o "${LOCAL_YTDLP}"
