@@ -109,16 +109,17 @@ export async function deleteMessageIfMutedMember(
         return false
     }
 
-    const groupAdmins = await groupController.getAdminsIds(group.id)
-    const isBotAdmin = groupAdmins.includes(botInfo.host_number)
-
-    if (!isBotAdmin) {
+    // Removida a verificação de isBotAdmin pois:
+    // 1. O bot não aparece em groupMetadata.participants (é quem faz a query)
+    // 2. Se o bot não for admin, deleteMessage vai falhar automaticamente
+    
+    try {
+        await waUtil.deleteMessage(client, message.wa_message, false)
+        return true
+    } catch (error) {
+        console.log('[deleteMessageIfMutedMember] Erro ao deletar mensagem:', error)
         return false
     }
-
-    await waUtil.deleteMessage(client, message.wa_message, false)
-
-    return true
 }
 
 export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot, message: Message){

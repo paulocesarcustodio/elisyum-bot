@@ -125,7 +125,11 @@ export function normalizeWhatsappJid(jid?: string | null): string {
 
     const normalizedCaseJid = jid.toLowerCase()
 
-    if (normalizedCaseJid.endsWith('@g.us') || normalizedCaseJid.endsWith('@broadcast') || normalizedCaseJid.endsWith('@newsletter')) {
+    // Não normalizar JIDs de grupos, broadcasts, newsletters e LIDs (Linked Devices)
+    if (normalizedCaseJid.endsWith('@g.us') || 
+        normalizedCaseJid.endsWith('@broadcast') || 
+        normalizedCaseJid.endsWith('@newsletter') ||
+        normalizedCaseJid.endsWith('@lid')) {
         return jid
     }
 
