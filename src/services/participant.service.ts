@@ -6,6 +6,8 @@ import moment from 'moment-timezone'
 import DataStore from "@seald-io/nedb";
 import { GroupMetadata } from "@whiskeysockets/baileys";
 
+const REGISTERED_SINCE_FORMAT = 'DD/MM/YYYY HH:mm:ss'
+
 const db = new DataStore<Participant>({filename : './storage/participants.groups.db', autoload: true})
 
 export class ParticipantService {
@@ -31,6 +33,90 @@ export class ParticipantService {
 
     private normalizeUserId(userId: string){
         return normalizeWhatsappJid(userId)
+    }
+
+    private resolveRegisteredSince(existing?: string, incoming?: string): string {
+        const existingMoment = existing ? moment(existing, REGISTERED_SINCE_FORMAT, true) : null
+        const incomingMoment = incoming ? moment(incoming, REGISTERED_SINCE_FORMAT, true) : null
+
+        if (existingMoment?.isValid() && incomingMoment?.isValid()) {
+            return existingMoment.isBefore(incomingMoment)
+                ? existing ?? this.defaultParticipant.registered_since
+                : incoming ?? this.defaultParticipant.registered_since
+        }
+
+        if (incomingMoment?.isValid()) {
+            return incoming ?? this.defaultParticipant.registered_since
+        }
+
+        if (existingMoment?.isValid()) {
+            return existing ?? this.defaultParticipant.registered_since
+        }
+
+        return this.defaultParticipant.registered_since
+    }
+
+    private mergeParticipantRecords(existing: Participant, incoming: Participant): Participant {
+        const numericFields: (keyof Pick<Participant, 'commands' | 'msgs' | 'image' | 'audio' | 'sticker' | 'video' | 'text' | 'other' | 'warnings'>)[] = [
+            'commands',
+            'msgs',
+            'image',
+            'audio',
+            'sticker',
+            'video',
+            'text',
+            'other',
+            'warnings'
+        ]
+
+        const merged: Participant = {
+            ...this.defaultParticipant,
+            ...existing,
+            ...incoming
+        }
+
+        merged.group_id = incoming.group_id
+        merged.user_id = incoming.user_id
+        merged.admin = existing.admin || incoming.admin
+        merged.registered_since = this.resolveRegisteredSince(existing.registered_since, incoming.registered_since)
+
+        for (const field of numericFields) {
+            const existingValue = existing[field] ?? 0
+            const incomingValue = incoming[field] ?? 0
+            merged[field] = existingValue + incomingValue
+        }
+
+        const existingFlood = existing.antiflood ?? this.defaultParticipant.antiflood
+        const incomingFlood = incoming.antiflood ?? this.defaultParticipant.antiflood
+
+        merged.antiflood = {
+            expire: Math.max(existingFlood.expire ?? 0, incomingFlood.expire ?? 0),
+            msgs: (existingFlood.msgs ?? 0) + (incomingFlood.msgs ?? 0)
+        }
+
+        return merged
+    }
+
+    private async ensureParticipantRecord(groupId: string, normalizedUserId: string): Promise<Participant> {
+        const existingParticipant = await db.findOneAsync({ group_id: groupId, user_id: normalizedUserId }) as Participant | null
+
+        if (existingParticipant) {
+            return existingParticipant
+        }
+
+        const participant: Participant = {
+            ...this.defaultParticipant,
+            group_id: groupId,
+            user_id: normalizedUserId
+        }
+
+        await db.updateAsync(
+            { group_id: groupId, user_id: normalizedUserId },
+            participant,
+            { upsert: true }
+        )
+
+        return participant
     }
 
     public async syncParticipants(groupMeta: GroupMetadata){
@@ -82,9 +168,47 @@ export class ParticipantService {
         const participants = await this.getAllParticipants()
 
         for (let participant of participants) {
-            const oldParticipantData = participant as any
-            const updatedParticipantData : Participant =  deepMerge(this.defaultParticipant, oldParticipantData)
-            await db.updateAsync({ group_id: participant.group_id, user_id: participant.user_id }, { $set: updatedParticipantData }, { upsert: true })
+            const normalizedUserId = this.normalizeUserId(participant.user_id)
+
+            if (!normalizedUserId) {
+                await db.removeAsync({ group_id: participant.group_id, user_id: participant.user_id }, { multi: false })
+                continue
+            }
+
+            const normalizedParticipant = {
+                ...(participant as any),
+                user_id: normalizedUserId
+            }
+
+            const updatedParticipantData: Participant = deepMerge(this.defaultParticipant, normalizedParticipant)
+            const existingParticipantRecord = await db.findOneAsync({ group_id: participant.group_id, user_id: normalizedUserId }) as Participant | null
+            const currentParticipantId = (participant as any)._id as string | undefined
+            const existingParticipantId = existingParticipantRecord
+                ? (existingParticipantRecord as any)._id as string | undefined
+                : undefined
+            const isSameParticipantRecord = Boolean(
+                existingParticipantRecord
+                && currentParticipantId
+                && existingParticipantId
+                && currentParticipantId === existingParticipantId
+            )
+            const sanitizedExistingRecord = existingParticipantRecord && !isSameParticipantRecord
+                ? deepMerge(this.defaultParticipant, existingParticipantRecord as any)
+                : null
+
+            const finalParticipantData = sanitizedExistingRecord
+                ? this.mergeParticipantRecords(sanitizedExistingRecord, updatedParticipantData)
+                : updatedParticipantData
+
+            await db.updateAsync(
+                { group_id: participant.group_id, user_id: normalizedUserId },
+                { $set: finalParticipantData },
+                { upsert: true }
+            )
+
+            if (normalizedUserId !== participant.user_id) {
+                await db.removeAsync({ group_id: participant.group_id, user_id: participant.user_id }, { multi: false })
+            }
         }
     }
 
@@ -104,6 +228,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id : groupId, user_id: normalizedUserId}, { $set: { admin: status }})
     }
 
@@ -160,6 +285,8 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
+
         let incrementedUser : {
             msgs: number,
             commands?: number,
@@ -213,6 +340,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc: { warnings: 1} })
     }
 
@@ -220,6 +348,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set: { warnings: --currentWarnings} })
     }
 
@@ -231,6 +360,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $set : { 'antiflood.expire': newExpireTimestamp, 'antiflood.msgs': 1 } })
     }
 
@@ -238,6 +368,7 @@ export class ParticipantService {
         const normalizedUserId = this.normalizeUserId(userId)
         if (!normalizedUserId) return
 
+        await this.ensureParticipantRecord(groupId, normalizedUserId)
         await db.updateAsync({group_id: groupId, user_id: normalizedUserId}, { $inc : { 'antiflood.msgs': 1 } })
     }
 }

@@ -72,7 +72,7 @@ export async function reportarCommand(client: WASocket, botInfo: Bot, message: M
 }
 
 export async function meusdadosCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
-    const userData = await new UserController().getUser(message.sender)
+    const userData = await new UserController().getUser(message.sender, message.senderAlt)
 
     if (!userData) {
         throw new Error(infoCommands.meusdados.msgs.error_not_found)
@@ -87,11 +87,11 @@ export async function meusdadosCommand(client: WASocket, botInfo: Bot, message: 
 
 export async function menuCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
     const userController = new UserController()
-    let userData = await userController.getUser(message.sender)
+    let userData = await userController.getUser(message.sender, message.senderAlt)
 
     if (!userData) {
-        await userController.registerUser(message.sender, message.pushname)
-        userData = await userController.getUser(message.sender)
+        await userController.registerUser(message.sender, message.pushname, message.senderAlt)
+        userData = await userController.getUser(message.sender, message.senderAlt)
     }
 
     if (!userData) {

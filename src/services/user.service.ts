@@ -1,9 +1,9 @@
-import DataStore from "@seald-io/nedb";
-import { jidNormalizedUser } from "@whiskeysockets/baileys";
-import moment from "moment";
-import { Bot } from "../interfaces/bot.interface.js";
-import { User } from "../interfaces/user.interface.js";
-import { deepMerge } from "../utils/general.util.js";
+import DataStore from "@seald-io/nedb"
+import { jidNormalizedUser } from "@whiskeysockets/baileys"
+import moment from "moment"
+import { Bot } from "../interfaces/bot.interface.js"
+import { User } from "../interfaces/user.interface.js"
+import { deepMerge } from "../utils/general.util.js"
 const db = new DataStore<User>({filename : './storage/users.db', autoload: true})
 
 export class UserService {
@@ -22,28 +22,9 @@ export class UserService {
         }
     }
 
-    public async registerUser(userId: string, name?: string|null){
-        const normalizedId = this.normalizeUserId(userId)
-
-        if (!this.isValidUserId(normalizedId)) return
-
+    public async registerUser(userId: string, name?: string|null, ...alternateIds: (string | null | undefined)[]){
         const normalizedName = name?.trim() || undefined
-        const user = await this.getUser(normalizedId)
-
-        if (user) {
-            if (normalizedName && normalizedName !== user.name) {
-                await this.setName(normalizedId, normalizedName)
-            }
-            return
-        }
-    
-        const userData : User = {
-            ...this.defaultUser,
-            id: normalizedId,
-            name: normalizedName || ''
-        }
-
-        await db.insertAsync(userData)
+        await this.ensureUserRecord(userId, alternateIds, normalizedName)
     }
 
     public async migrateUsers(){
@@ -51,18 +32,22 @@ export class UserService {
 
         for (let user of users) {
             const oldUserData = user as any
-            const updatedUserData : User = deepMerge(this.defaultUser, oldUserData)    
+            const updatedUserData : User = deepMerge(this.defaultUser, oldUserData)
             await db.updateAsync({ id: user.id}, { $set: updatedUserData }, { upsert: true })
         }
     }
 
-    public async getUser (userId : string){
-        const normalizedId = this.normalizeUserId(userId)
+    public async getUser (userId : string, ...alternateIds: (string | null | undefined)[]){
+        const candidates = this.buildCandidateIds(userId, alternateIds)
 
-        if (!this.isValidUserId(normalizedId)) return null
+        for (const candidate of candidates) {
+            const user  = await db.findOneAsync({id: candidate}) as User | null
+            if (user) {
+                return user
+            }
+        }
 
-        const user  = await db.findOneAsync({id: normalizedId}) as User | null
-        return user
+        return null
     }
 
     public async getUsers(){
@@ -70,12 +55,11 @@ export class UserService {
         return users
     }
 
-    public async setAdmin(userId : string, admin: boolean){
-        const normalizedId = this.normalizeUserId(userId)
+    public async setAdmin(userId : string, admin: boolean, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return 0
 
-        if (!this.isValidUserId(normalizedId)) return 0
-
-        return db.updateAsync({id : normalizedId}, {$set: {admin}})
+        return db.updateAsync({id : user.id}, {$set: {admin}})
     }
 
     public async getAdmins(){
@@ -83,12 +67,11 @@ export class UserService {
         return admins
     }
 
-    public async setOwner(userId : string){
-        const normalizedId = this.normalizeUserId(userId)
+    public async setOwner(userId : string, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return 0
 
-        if (!this.isValidUserId(normalizedId)) return 0
-
-        return db.updateAsync({id : normalizedId}, {$set: {owner : true, admin: true}})
+        return db.updateAsync({id : user.id}, {$set: {owner : true, admin: true}})
     }
 
     public async getOwner(){
@@ -96,73 +79,63 @@ export class UserService {
         return owner
     }
 
-    public async setName(userId : string, name : string){
-        const normalizedId = this.normalizeUserId(userId)
-
-        if (!this.isValidUserId(normalizedId)) return
-
+    public async setName(userId : string, name : string, ...alternateIds: (string | null | undefined)[]){
         const trimmedName = name.trim()
-
         if (!trimmedName) return
 
-        const existingUser = await this.getUser(normalizedId)
-
-        if (existingUser) {
-            await db.updateAsync({id: normalizedId}, {$set:{name: trimmedName}})
-            return
-        }
-
-        const userData : User = {
-            ...this.defaultUser,
-            id: normalizedId,
-            name: trimmedName
-        }
-
-        await db.insertAsync(userData)
+        await this.ensureUserRecord(userId, alternateIds, trimmedName)
     }
 
-    public async setReceivedWelcome(userId: string, status = true){
-        const normalizedId = this.normalizeUserId(userId)
+    public async setReceivedWelcome(userId: string, status = true, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
 
-        if (!this.isValidUserId(normalizedId)) return
-
-        await db.updateAsync({id : normalizedId}, {$set : {receivedWelcome : status}})
+        await db.updateAsync({id : user.id}, {$set : {receivedWelcome : status}})
     }
 
-    public async increaseUserCommandsCount(userId: string){
-        const normalizedId = this.normalizeUserId(userId)
+    public async increaseUserCommandsCount(userId: string, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
 
-        if (!this.isValidUserId(normalizedId)) return
-
-        await db.updateAsync({id : normalizedId}, {$inc: {commands: 1}})
+        await db.updateAsync({id : user.id}, {$inc: {commands: 1}})
     }
 
-    public async expireCommandsRate(userId: string, currentTimestamp: number){
-        const normalizedId = this.normalizeUserId(userId)
-
-        if (!this.isValidUserId(normalizedId)) return
+    public async expireCommandsRate(userId: string, currentTimestamp: number, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
 
         const expireTimestamp = currentTimestamp + 60
-        await db.updateAsync({id: normalizedId}, { $set : { 'command_rate.expire_cmds': expireTimestamp, 'command_rate.cmds': 1 } })
+        await db.updateAsync({id: user.id}, { $set : { 'command_rate.expire_cmds': expireTimestamp, 'command_rate.cmds': 1 } })
     }
 
-    public async incrementCommandRate(userId: string){
-        const normalizedId = this.normalizeUserId(userId)
+    public async incrementCommandRate(userId: string, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
 
-        if (!this.isValidUserId(normalizedId)) return
-
-        await db.updateAsync({id: normalizedId}, { $inc : { "command_rate.cmds": 1 } })
+        await db.updateAsync({id: user.id}, { $inc : { 'command_rate.cmds': 1 } })
     }
 
-    public async setLimitedUser(userId: string, isLimited: boolean, botInfo: Bot, currentTimestamp: number){
-        const normalizedId = this.normalizeUserId(userId)
-
-        if (!this.isValidUserId(normalizedId)) return
+    public async setLimitedUser(userId: string, isLimited: boolean, botInfo: Bot, currentTimestamp: number, ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
 
         if (isLimited){
-            await db.updateAsync({id: normalizedId}, { $set : { 'command_rate.limited': isLimited, 'command_rate.expire_limited': currentTimestamp + botInfo.command_rate.block_time} })
+            await db.updateAsync({id: user.id}, { $set : { 'command_rate.limited': isLimited, 'command_rate.expire_limited': currentTimestamp + botInfo.command_rate.block_time} })
         } else {
-            await db.updateAsync({id: normalizedId}, { $set : { 'command_rate.limited': isLimited, 'command_rate.expire_limited': 0, 'command_rate.cmds': 1, 'command_rate.expire_cmds': currentTimestamp + 60} })
+            await db.updateAsync({id: user.id}, { $set : { 'command_rate.limited': isLimited, 'command_rate.expire_limited': 0, 'command_rate.cmds': 1, 'command_rate.expire_cmds': currentTimestamp + 60} })
+        }
+    }
+
+    private tryNormalizeUserId(userId: string){
+        if (typeof userId !== 'string') {
+            return undefined
+        }
+
+        try {
+            const normalized = jidNormalizedUser(userId)
+            return normalized || undefined
+        } catch {
+            return undefined
         }
     }
 
@@ -171,13 +144,9 @@ export class UserService {
             return userId
         }
 
-        try {
-            const normalized = jidNormalizedUser(userId)
-            if (normalized) {
-                return normalized
-            }
-        } catch {
-            // Ignore normalization errors and try the fallbacks below.
+        const normalized = this.tryNormalizeUserId(userId)
+        if (normalized) {
+            return normalized
         }
 
         if (userId.endsWith('@whatsapp.net')) {
@@ -194,6 +163,100 @@ export class UserService {
     private isValidUserId(userId: string){
         if (typeof userId !== 'string') return false
 
-        return userId.endsWith('@s.whatsapp.net') || userId.endsWith('@whatsapp.net') || userId.endsWith('@c.us')
+        const normalized = this.tryNormalizeUserId(userId) ?? userId
+        const validSuffixes = ['@s.whatsapp.net', '@whatsapp.net', '@c.us', '@lid', '@hosted', '@hosted.lid']
+        return validSuffixes.some(suffix => normalized.endsWith(suffix))
+    }
+
+    private getIdPriority(id: string){
+        if (id.endsWith('@lid') || id.endsWith('@hosted.lid')) return 0
+        if (id.endsWith('@hosted')) return 1
+        if (id.endsWith('@s.whatsapp.net')) return 2
+        if (id.endsWith('@whatsapp.net') || id.endsWith('@c.us')) return 3
+        return 4
+    }
+
+    private buildCandidateIds(userId: string, alternateIds: (string | null | undefined)[] = []){
+        const identifiers = new Set<string>()
+        const add = (value?: string | null) => {
+            if (!value || typeof value !== 'string') {
+                return
+            }
+
+            const normalized = this.normalizeUserId(value)
+
+            if (this.isValidUserId(normalized)) {
+                identifiers.add(normalized)
+            }
+        }
+
+        add(userId)
+        for (const alternate of alternateIds) {
+            add(alternate)
+        }
+
+        if (!identifiers.size) {
+            if (typeof userId === 'string') {
+                identifiers.add(userId)
+            }
+
+            for (const alternate of alternateIds) {
+                if (typeof alternate === 'string') {
+                    identifiers.add(alternate)
+                }
+            }
+        }
+
+        return Array.from(identifiers).sort((a, b) => this.getIdPriority(a) - this.getIdPriority(b))
+    }
+
+    private async ensureUserRecord(userId: string, alternateIds: (string | null | undefined)[] = [], name?: string | null){
+        const candidates = this.buildCandidateIds(userId, alternateIds)
+
+        if (!candidates.length) {
+            return null
+        }
+
+        const canonicalId = candidates[0]
+
+        if (!this.isValidUserId(canonicalId)) {
+            return null
+        }
+
+        const normalizedName = name?.trim()
+
+        const canonicalUser = await db.findOneAsync({id: canonicalId}) as User | null
+
+        if (canonicalUser) {
+            if (normalizedName && canonicalUser.name !== normalizedName) {
+                await db.updateAsync({id: canonicalId}, {$set: {name: normalizedName}})
+                canonicalUser.name = normalizedName
+            }
+            return canonicalUser
+        }
+
+        for (const alternateId of candidates.slice(1)) {
+            const fallbackUser = await db.findOneAsync({id: alternateId}) as User | null
+            if (fallbackUser) {
+                const updateFields: Partial<User> = { id: canonicalId }
+
+                if (normalizedName) {
+                    updateFields.name = normalizedName
+                }
+
+                await db.updateAsync({id: alternateId}, { $set: updateFields }, {})
+                const migratedUser = await db.findOneAsync({id: canonicalId}) as User | null
+                return migratedUser ?? { ...fallbackUser, ...updateFields }
+            }
+        }
+
+        const userData : User = {
+            ...this.defaultUser,
+            id: canonicalId,
+            name: normalizedName || ''
+        }
+
+        await db.insertAsync(userData)
+        return userData
     }
 }
