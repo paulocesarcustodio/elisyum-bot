@@ -13,7 +13,7 @@ export class BotService {
     private defaultBot : Bot = {
         started : 0,
         host_number: '',
-        name: "LBOT",
+        name: "Ξ ʟ ʏ s ɪ ᴜ ᴍ  ɮ ᴏ ᴛ™",
         prefix: "!",
         executed_cmds: 0,
         db_migrated: true,

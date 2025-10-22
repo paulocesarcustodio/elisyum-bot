@@ -12,7 +12,7 @@ export const mainMenu  = (botInfo : Bot)=> {
 *|*► *${prefix}menu* 3   📥 Downloads
 *|*► *${prefix}menu* 4   🧩 Variado
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU PRINCIPAL (GRUPO)
@@ -28,7 +28,7 @@ export const mainMenuGroup  = (botInfo : Bot)=> {
 *|*► *${prefix}menu* 4   🧩 Variado
 *|*► *${prefix}menu* 5   👨‍👩‍👧‍👦 Grupo
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - STICKER
@@ -47,7 +47,7 @@ export const stickerMenu = (botInfo : Bot)=>{
 *|*► *${prefix}ssf* - Imagem para sticker (sem fundo)
 *|*► *${prefix}emojimix* 💩+😀 - Emoji para sticker
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - INFO
@@ -62,7 +62,7 @@ export const infoMenu = (botInfo : Bot)=>{
 *|*► *${prefix}reportar* texto - Reporte um problema
 *|*► *${prefix}meusdados* - Exibe seus dados de uso
 *|* 
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - DOWNLOAD
@@ -81,7 +81,7 @@ export const downloadMenu = (botInfo : Bot)=>{
 *|*► *${prefix}tk* link - Vídeo do Tiktok
 *|*► *${prefix}img* tema - Imagens do Google
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - UTILIDADE
@@ -125,7 +125,7 @@ export const utilityMenu = (botInfo : Bot)=>{
 *|*► *${prefix}qualmusica* - Reconhecimento de música
 *|*► *${prefix}qualanime* - Reconhecimento de anime
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - GRUPO
@@ -142,7 +142,7 @@ export const groupMenu = (botInfo : Bot) =>{
 *|*► *${prefix}adms* - Lista de administradores
 *|*► *${prefix}dono* - Dono do grupo
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - GRUPO (ADMINISTRADOR)
@@ -226,7 +226,7 @@ export const groupAdminMenu = (botInfo : Bot)=>{
 *|*► *${prefix}addfiltros* palavra - Adiciona palavras ao filtro
 *|*► *${prefix}rmfiltros* palavra - Remove palavras do filtro
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - VARIADO
@@ -249,7 +249,7 @@ export const miscMenu = (botInfo : Bot) =>{
 *|*► *${prefix}frase* - Frase dúvidosa do WhatsApp Jr
 *|*► *${prefix}chance* texto - Chance de algo acontecer
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - VARIADO (GRUPO)
@@ -280,7 +280,7 @@ export const miscGroupMenu = (botInfo : Bot) =>{
 *|*► *${prefix}top5* tema - Ranking de top 5
 *|*► *${prefix}par* @pessoa1 @pessoa2 - Nível de compatibilidade
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
 // MENU - ADMIN
@@ -337,6 +337,6 @@ export const adminMenu = (botInfo : Bot)=>{
 *|*━ ✦ 📩 *MENSAGENS PRIVADAS* ✦
 *|*► *${prefix}comandospv* - Ativa/desativa os comandos em mensagens privadas
 *|*
-*|*━━✦༻ _*Feito por: Leal*_ ༺✦`
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 

@@ -8,7 +8,7 @@ import { Jimp } from 'jimp'
 import { StickerOptions, StickerType } from "../interfaces/library.interface.js"
 import botTexts from '../helpers/bot.texts.helper.js'
 
-export async function createSticker(mediaBuffer : Buffer, {pack = 'LBOT', author = 'LBOT Stickers', fps = 9, type = 'resize'}: StickerOptions){
+export async function createSticker(mediaBuffer : Buffer, {pack = 'Ξ ʟ ʏ s ɪ ᴜ ᴍ  ɮ ᴏ ᴛ™', author = 'Elisyum Stickers', fps = 9, type = 'resize'}: StickerOptions){
     try {
         const bufferSticker = await stickerCreation(mediaBuffer, {pack, author, fps, type})
 

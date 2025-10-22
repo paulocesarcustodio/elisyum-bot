@@ -8,6 +8,11 @@ import { UserController } from "../controllers/user.controller.js";
 import * as menu from "../helpers/menu.builder.helper.js";
 import infoCommands from "./info.list.commands.js";
 import botTexts from "../helpers/bot.texts.helper.js";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function infoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const userController = new UserController()
@@ -141,6 +146,8 @@ export async function menuCommand(client: WASocket, botInfo: Bot, message: Messa
         }
     }
 
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
+    // Enviar imagem com o menu
+    const logoPath = path.resolve(__dirname, '../media/elisyum_logo.jpeg')
+    await waUtil.replyFile(client, message.chat_id, 'imageMessage', logoPath, replyText, message.wa_message, {expiration: message.expiration})
 }
 
