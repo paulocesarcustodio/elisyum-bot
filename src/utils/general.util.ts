@@ -38,7 +38,20 @@ export function messageErrorCommandUsage(prefix: string, message: Message){
 }
 
 export function messageErrorCommand(command: string, reason: string){
-  return buildText(botTexts.error_command, command, reason)
+  const errorMessage = buildText(botTexts.error_command, command, reason)
+  const asciiArt = `
+FAZ VOCÊ FILHA DA PUTA
+……..…../´¯/)………… (\\¯\`\\
+…………/….//……….. …\\\\….\\
+………../….//………… ….\\\\….\\
+…../´¯/…./´¯\\………../¯ \`\\….\\¯\`\\
+.././…/…./…./.|_……_| .\\….\\….\\…\\.\\..
+(.(….(….(…./.)..)..(..(. \\….)….)….)… )
+.\\……………..\\/…/….\\. ..\\/……………./
+..\\…………….. /…….\\……………..…/
+….\\…………..(…………)……………./`
+  
+  return `${errorMessage}\n${asciiArt}`
 }
 
 export function getCurrentBotVersion(){

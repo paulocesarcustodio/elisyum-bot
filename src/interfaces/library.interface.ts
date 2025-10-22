@@ -75,7 +75,8 @@ export interface YTInfo {
     channel: string,
     is_live: boolean,
     duration_formatted: string,
-    url: string
+    url: string,
+    thumbnail?: string
 }
 
 

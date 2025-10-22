@@ -26,12 +26,16 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     }
 
     // Mensagem inicial com barra de progresso
-    const initialMessage = `🎵 *${videoInfo.title}*\n` +
+    const initialCaption = `🎵 *${videoInfo.title}*\n` +
                           `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
                           `📥 Baixando...\n` +
                           `${generateProgressBar(0, 100, 20)}`
     
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialMessage, message.wa_message, {expiration: message.expiration})
+    // Envia imagem com caption (se tiver thumbnail) ou texto puro
+    const sentMessage = videoInfo.thumbnail
+        ? await waUtil.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
+        : await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
+    
     if (!sentMessage || !sentMessage.key) {
         throw new Error('Falha ao enviar mensagem inicial')
     }
@@ -41,42 +45,58 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
     
     // Atualiza para 30%
-    await waUtil.editText(client, message.chat_id, messageKey, 
-        `🎵 *${videoInfo.title}*\n` +
+    const caption30 = `🎵 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
         `📥 Baixando...\n` +
         `${generateProgressBar(30, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption30)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption30)
+    }
     
     const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
     
     // Atualiza para 60% - Download completo
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎵 *${videoInfo.title}*\n` +
+    const caption60 = `🎵 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
         `🔄 Convertendo para MP3...\n` +
         `${generateProgressBar(60, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption60)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption60)
+    }
     
     const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
     
     // Atualiza para 90% - Conversão completa
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎵 *${videoInfo.title}*\n` +
+    const caption90 = `🎵 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
         `📤 Enviando...\n` +
         `${generateProgressBar(90, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption90)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption90)
+    }
     
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
     
     // Atualiza para 100% - Completo
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎵 *${videoInfo.title}*\n` +
+    const caption100 = `🎵 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
         `✅ Concluído!\n` +
         `${generateProgressBar(100, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption100)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption100)
+    }
 }
 
 export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -95,12 +115,16 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     }
 
     // Mensagem inicial com barra de progresso
-    const initialMessage = `🎥 *${videoInfo.title}*\n` +
+    const initialCaption = `🎥 *${videoInfo.title}*\n` +
                           `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
                           `📥 Baixando vídeo...\n` +
                           `${generateProgressBar(0, 100, 20)}`
     
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialMessage, message.wa_message, {expiration: message.expiration})
+    // Envia imagem com caption (se tiver thumbnail) ou texto puro
+    const sentMessage = videoInfo.thumbnail
+        ? await waUtil.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
+        : await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
+    
     if (!sentMessage || !sentMessage.key) {
         throw new Error('Falha ao enviar mensagem inicial')
     }
@@ -109,46 +133,62 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
     
     // Atualiza para 40%
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎥 *${videoInfo.title}*\n` +
+    const caption40 = `🎥 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
         `📥 Baixando vídeo...\n` +
         `${generateProgressBar(40, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption40)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption40)
+    }
     
     const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
     
     // Verifica tamanho
     const videoSizeMB = videoBuffer.length / 1024 / 1024
     if (videoSizeMB > 16) {
-        await waUtil.editText(client, message.chat_id, messageKey,
-            `🎥 *${videoInfo.title}*\n` +
+        const captionError = `🎥 *${videoInfo.title}*\n` +
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
             `❌ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
             `O WhatsApp suporta apenas vídeos de até 16MB.`
-        )
+        
+        if (videoInfo.thumbnail) {
+            await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, captionError)
+        } else {
+            await waUtil.editText(client, message.chat_id, messageKey, captionError)
+        }
         return
     }
     
     // Atualiza para 80% - Download completo
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎥 *${videoInfo.title}*\n` +
+    const caption80 = `🎥 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
         `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
         `📤 Enviando...\n` +
         `${generateProgressBar(80, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption80)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption80)
+    }
     
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
     // Atualiza para 100% - Completo
-    await waUtil.editText(client, message.chat_id, messageKey,
-        `🎥 *${videoInfo.title}*\n` +
+    const caption100 = `🎥 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
         `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
         `✅ Concluído!\n` +
         `${generateProgressBar(100, 100, 20)}`
-    )
+    
+    if (videoInfo.thumbnail) {
+        await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption100)
+    } else {
+        await waUtil.editText(client, message.chat_id, messageKey, caption100)
+    }
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
