@@ -289,8 +289,14 @@ export async function replyFileFromUrl (client: WASocket, chatId: string, type: 
 
 export async function replyFileFromBuffer (client: WASocket, chatId: string, type: MessageTypes, buffer: Buffer, caption: string, quoted: WAMessage, options?: MessageOptions){ 
     if (type == "videoMessage"){
-        const base64Thumb = await convertLibrary.convertVideoToThumbnail('buffer', buffer)
-        return client.sendMessage(chatId, {video: buffer, caption, mimetype: options?.mimetype, jpegThumbnail: base64Thumb}, {quoted, ephemeralExpiration: options?.expiration})
+        try {
+            const base64Thumb = await convertLibrary.convertVideoToThumbnail('buffer', buffer)
+            return client.sendMessage(chatId, {video: buffer, caption, mimetype: options?.mimetype, jpegThumbnail: base64Thumb}, {quoted, ephemeralExpiration: options?.expiration})
+        } catch (thumbError) {
+            console.warn('[replyFileFromBuffer] Failed to generate thumbnail, sending without it:', thumbError)
+            // Se falhar a geração de thumbnail, envia sem thumbnail
+            return client.sendMessage(chatId, {video: buffer, caption, mimetype: options?.mimetype}, {quoted, ephemeralExpiration: options?.expiration})
+        }
     } else if (type == "imageMessage"){
         return client.sendMessage(chatId, {image: buffer, caption}, {quoted, ephemeralExpiration: options?.expiration})
     } else if (type == "audioMessage"){

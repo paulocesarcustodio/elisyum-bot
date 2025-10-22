@@ -59,14 +59,26 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     const waitReply = buildText(downloadCommands.yt.msgs.wait, videoInfo.title, videoInfo.duration_formatted)
     await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
     
-    // Constrói a URL completa do YouTube e baixa o vídeo
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
-    console.log('[ytCommand] Downloading video:', youtubeUrl)
-    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
-    console.log('[ytCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
-    console.log('[ytCommand] Sending video to WhatsApp...')
-    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
-    console.log('[ytCommand] Video sent successfully!')
+    try {
+        // Constrói a URL completa do YouTube e baixa o vídeo
+        const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
+        console.log('[ytCommand] Downloading video:', youtubeUrl)
+        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+        console.log('[ytCommand] Video downloaded, size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+        
+        // Verificar se o vídeo não é muito grande (limite do WhatsApp é ~16MB para vídeos)
+        const videoSizeMB = videoBuffer.length / 1024 / 1024
+        if (videoSizeMB > 16) {
+            throw new Error(`Vídeo muito grande (${videoSizeMB.toFixed(2)}MB). O WhatsApp suporta apenas vídeos de até 16MB.`)
+        }
+        
+        console.log('[ytCommand] Sending video to WhatsApp...')
+        await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+        console.log('[ytCommand] Video sent successfully!')
+    } catch (error) {
+        console.error('[ytCommand] Error:', error)
+        throw new Error(`Erro ao enviar vídeo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    }
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){

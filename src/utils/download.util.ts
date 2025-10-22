@@ -10,9 +10,15 @@ import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../i
 import botTexts from '../helpers/bot.texts.helper.js'
 
 const resolveYtDlpBinary = () => {
-    const currentDir = path.dirname(fileURLToPath(new URL('.', import.meta.url)))
+    const currentFile = fileURLToPath(import.meta.url)
+    const currentDir = path.dirname(currentFile)
     const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
-    return path.join(currentDir, '..', '..', 'bin', binaryName)
+    
+    // From src/utils or dist/utils, go up two levels to project root
+    const projectRoot = path.resolve(currentDir, '..', '..')
+    
+    // Binary is in project_root/bin/
+    return path.join(projectRoot, 'bin', binaryName)
 }
 
 export async function xMedia (url: string){
