@@ -3,6 +3,20 @@
 
 set -e  # Para na primeira erro
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+BIN_DIR="${PROJECT_ROOT}/bin"
+
+cd "${PROJECT_ROOT}"
+mkdir -p "${BIN_DIR}"
+
+if [ "${OS}" = "Windows_NT" ]; then
+    YTDLP_FILENAME="yt-dlp.exe"
+else
+    YTDLP_FILENAME="yt-dlp"
+fi
+LOCAL_YTDLP="${BIN_DIR}/${YTDLP_FILENAME}"
+
 echo "🚀 Elisyum Bot - Setup/Deploy Script"
 echo "======================================"
 echo ""
@@ -23,7 +37,7 @@ echo "📦 Verificando Node.js..."
 if command_exists node; then
     NODE_VERSION=$(node --version)
     echo -e "${GREEN}✓${NC} Node.js instalado: $NODE_VERSION"
-    
+
     # Verificar se é v20+
     MAJOR_VERSION=$(echo $NODE_VERSION | cut -d'v' -f2 | cut -d'.' -f1)
     if [ "$MAJOR_VERSION" -lt 20 ]; then
@@ -70,14 +84,32 @@ if command_exists yt-dlp; then
 fi
 
 # Sempre garantir que existe o binário local também
-if [ -f "./yt-dlp" ]; then
-    YTDLP_LOCAL_VERSION=$(./yt-dlp --version 2>/dev/null || echo "desconhecido")
-    echo -e "${GREEN}✓${NC} yt-dlp local encontrado: $YTDLP_LOCAL_VERSION"
-    YTDLP_INSTALLED=true
+if [ -f "${LOCAL_YTDLP}" ]; then
+    if [ "${OS}" != "Windows_NT" ] && [ ! -x "${LOCAL_YTDLP}" ]; then
+        echo "🔧 Corrigindo permissões do yt-dlp local..."
+        chmod +x "${LOCAL_YTDLP}"
+    fi
+
+    if "${LOCAL_YTDLP}" --version >/dev/null 2>&1; then
+        YTDLP_LOCAL_VERSION=$("${LOCAL_YTDLP}" --version)
+        echo -e "${GREEN}✓${NC} yt-dlp local encontrado: $YTDLP_LOCAL_VERSION"
+        YTDLP_INSTALLED=true
+    else
+        echo -e "${YELLOW}⚠${NC}  yt-dlp local inválido. Reinstalando..."
+        curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_FILENAME}" -o "${LOCAL_YTDLP}"
+        if [ "${OS}" != "Windows_NT" ]; then
+            chmod +x "${LOCAL_YTDLP}"
+        fi
+        YTDLP_LOCAL_VERSION=$("${LOCAL_YTDLP}" --version)
+        echo -e "${GREEN}✓${NC} yt-dlp local reinstalado: $YTDLP_LOCAL_VERSION"
+        YTDLP_INSTALLED=true
+    fi
 else
     echo "📥 Baixando yt-dlp local..."
-    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
-    chmod +x yt-dlp
+    curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_FILENAME}" -o "${LOCAL_YTDLP}"
+    if [ "${OS}" != "Windows_NT" ]; then
+        chmod +x "${LOCAL_YTDLP}"
+    fi
     echo -e "${GREEN}✓${NC} yt-dlp local instalado!"
     YTDLP_INSTALLED=true
 fi

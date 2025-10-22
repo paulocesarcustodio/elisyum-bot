@@ -1,5 +1,5 @@
 // Test downloading YouTube video with yt-dlp
-import { downloadYouTubeVideo } from './dist/utils/download.util.js';
+import { downloadYouTubeVideo } from '../../dist/utils/download.util.js';
 import fs from 'fs';
 
 async function testDownload() {
