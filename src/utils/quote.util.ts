@@ -36,18 +36,18 @@ export async function createWhatsAppBubble({
     time
 }: WhatsAppBubbleOptions): Promise<Buffer> {
     try {
-        const baseSize = 600
-        const avatarSize = 90
-        const padding = 35
-        const bubblePadding = 22
-        const lineHeight = 38
-        const fontSize = 28
-        const nameFontSize = 26
-        const timeFontSize = 18
-        const maxBubbleWidth = baseSize - avatarSize - (padding * 3)
+        const canvasSize = 512
+        const avatarSize = 110
+        const padding = 20
+        const bubblePadding = 18
+        const lineHeight = 42
+        const fontSize = 32
+        const nameFontSize = 28
+        const timeFontSize = 20
+        const maxBubbleWidth = canvasSize - avatarSize - (padding * 2) - 10
         
         // Criar canvas temporário para medir o texto
-        const tempCanvas = createCanvas(baseSize, 100)
+        const tempCanvas = createCanvas(canvasSize, 100)
         const tempCtx = tempCanvas.getContext('2d')
         tempCtx.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
         
@@ -88,31 +88,29 @@ export async function createWhatsAppBubble({
         
         // Calcular dimensões responsivas do balão
         const bubbleTextHeight = lines.length * lineHeight
-        const bubbleHeight = bubbleTextHeight + (bubblePadding * 2) + 45 // 45 para nome
+        const bubbleHeight = bubbleTextHeight + (bubblePadding * 2) + 40 // 40 para nome
         
-        // Largura do balão se ajusta ao conteúdo (min: 250, max: maxBubbleWidth)
+        // Largura do balão se ajusta ao conteúdo disponível (usa quase toda largura)
+        const maxAvailableWidth = canvasSize - avatarSize - (padding * 2) - 10
         const responsiveBubbleWidth = Math.min(
-            Math.max(maxLineWidth + (bubblePadding * 2), 250),
-            maxBubbleWidth
+            Math.max(maxLineWidth + (bubblePadding * 2), maxAvailableWidth * 0.7),
+            maxAvailableWidth
         )
         
-        // Largura total do canvas se ajusta ao conteúdo
-        const totalWidth = avatarSize + responsiveBubbleWidth + (padding * 3)
-        
-        // Altura se ajusta ao conteúdo (mínimo para caber o avatar)
-        const minHeight = avatarSize + (padding * 2)
-        const totalHeight = Math.max(bubbleHeight + (padding * 2), minHeight)
-        
-        // Criar canvas final com dimensões responsivas
-        const canvas = createCanvas(totalWidth, totalHeight)
+        // Criar canvas final quadrado
+        const canvas = createCanvas(canvasSize, canvasSize)
         const ctx = canvas.getContext('2d')
         
         // Fundo TRANSPARENTE
-        ctx.clearRect(0, 0, totalWidth, totalHeight)
+        ctx.clearRect(0, 0, canvasSize, canvasSize)
+        
+        // Calcular altura do conteúdo para centralizar verticalmente
+        const contentHeight = Math.max(bubbleHeight, avatarSize)
+        const startY = (canvasSize - contentHeight) / 2
         
         // Desenhar avatar
         const avatarX = padding
-        const avatarY = padding
+        const avatarY = startY
         
         if (avatarUrl) {
             try {
@@ -155,9 +153,9 @@ export async function createWhatsAppBubble({
             ctx.fillText(authorName.charAt(0).toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2)
         }
         
-        // Posição do balão
+        // Posição do balão (centralizado verticalmente junto com o avatar)
         const bubbleX = avatarX + avatarSize + padding
-        const bubbleY = padding
+        const bubbleY = startY
         
         // Desenhar balão de mensagem com sombra suave
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'

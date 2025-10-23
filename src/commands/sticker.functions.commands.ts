@@ -164,7 +164,7 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         })
 
         const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
-        const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'contain'})
+        const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
         await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
         return
     }
