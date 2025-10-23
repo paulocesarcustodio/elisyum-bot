@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Adicionamos o comando `!vtnc`, que responde com o ASCII solicitado mencionando o alvo e mandando a pessoa tomar no cu.
 - Reorganizamos scripts, documentação e o binário `yt-dlp` em pastas dedicadas, atualizando utilitários e instruções para a nova estrutura do repositório.
 - Recriamos registros ausentes ao atualizar contadores, avisos e antiflood dos participantes usando um helper compartilhado coberto por novos testes.
 - Corrigimos a perda de privilégios de administrador quando o Baileys envia `modify` sem flag de admin, mantendo o cadastro intacto.
