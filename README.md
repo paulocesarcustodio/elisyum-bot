@@ -1,5 +1,5 @@
 <p align="center">
-<img src="[https://img95.pixhost.to/images/1083/472612217_8876.jpg" width="350" height="350"/>
+<img src="https://i.ibb.co/F4ZHtvCT/elisyum-logo.jpg" width="350" height="350"/>
 </p>
 <h1 align="center">🤖 Elisyum Bot - Robô para WhatsApp</h1>
 
