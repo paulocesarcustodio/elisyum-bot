@@ -4,7 +4,6 @@
 <h1 align="center">🤖 Elisyum Bot - Robô para WhatsApp</h1>
 
 <br>
-<h2 align="center"> Esse projeto não está sendo mais atualizado</h2>
 <h2 align="center"> 🔄 Notas de atualização: <a href="docs/releases/CHANGELOG.md">AQUI</a></h2>
 
 <br>
