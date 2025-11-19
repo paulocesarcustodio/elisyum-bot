@@ -1,6 +1,8 @@
 # Recent Changes
 
+- Refinamos as declarações locais do `ytdlp-nodejs` para espelhar a API documentada (progresso, formatos e helpers) e usamos `VideoProgress` no utilitário de download.
 - Adicionamos testes isolados para download do YouTube (metadata, streaming com progresso, compressão até 19MB e feedback de erros/mensagens).
+- Adicionamos declarações de tipos para o `ytdlp-nodejs` e tipamos o callback de progresso do download do YouTube para restaurar a compilação.
 - Corrigimos o workflow do GitHub Actions para usar Yarn, rodar `yarn build` e empacotar com o webpack sem pular a fase de build.
 - Limitamos downloads do YouTube a 19MB com compressão automática em vídeo/áudio para `yt` e `play`, informando o usuário quando o reprocessamento é necessário.
 - Adicionamos o comando `!vtnc`, que responde com o ASCII solicitado mencionando o alvo e mandando a pessoa tomar no cu.

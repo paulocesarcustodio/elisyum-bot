@@ -6,7 +6,7 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import { helpers, type PlaylistInfo, type VideoInfo, YtDlp } from 'ytdlp-nodejs'
+import { helpers, type PlaylistInfo, type VideoInfo, type VideoProgress, YtDlp } from 'ytdlp-nodejs'
 
 let ytDlpClient: YtDlp | null = null
 
@@ -272,7 +272,7 @@ export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (progr
 
         const file = await ytDlp.getFileAsync(videoUrl, {
             format: formatSelector,
-            onProgress: (progress) => {
+            onProgress: (progress: VideoProgress) => {
                 onProgress?.({
                     stage: 'download',
                     downloadedBytes: progress.downloaded,
