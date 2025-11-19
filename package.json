@@ -3,6 +3,9 @@
   "version": "3.4.6",
   "description": "Bot brasileiro para Whatsapp com diversas utilidades para o dia-a-dia.",
   "type": "module",
+  "imports": {
+    "ytdlp-nodejs": "./tests/stubs/ytdlp-nodejs.js"
+  },
   "main": "dist/app.js",
   "packageManager": "yarn@4.9.4",
   "scripts": {
