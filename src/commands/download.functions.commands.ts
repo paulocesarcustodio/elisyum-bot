@@ -73,6 +73,9 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         )
     }
     
+    const MAX_MEDIA_MB = 19
+    const SAFE_TARGET_MB = 18.5
+
     try {
         console.log('[playCommand] Iniciando download...')
 
@@ -87,13 +90,47 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         await throttledUpdate('🔄 Convertendo para MP3...', 60)
 
         console.log('[playCommand] Iniciando conversão para MP3...')
-        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, (progress) => {
+        let audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, (progress) => {
             if (progress.stage === 'convert') {
                 const percent = progress.percent ?? 0
                 throttledUpdate('🔄 Convertendo para MP3...', 60 + (percent * 0.3))
             }
         })
         console.log('[playCommand] Conversão completa, tamanho:', audioBuffer.length, 'bytes')
+
+        const audioSizeMB = audioBuffer.length / 1024 / 1024
+        if (audioSizeMB > MAX_MEDIA_MB) {
+            if (videoInfo.duration <= 0) {
+                await safeEdit(
+                    `🎵 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    `❌ Áudio com ${audioSizeMB.toFixed(2)}MB mas não foi possível estimar a duração para comprimir.`
+                )
+                throw new Error('Não foi possível comprimir o áudio sem duração válida')
+            }
+
+            console.log(`[playCommand] Áudio acima do limite (${audioSizeMB.toFixed(2)}MB). Iniciando compressão...`)
+            await throttledUpdate('♻️ Comprimindo áudio para caber no limite...', 85)
+
+            const targetBits = SAFE_TARGET_MB * 1024 * 1024 * 8
+            const targetBitrateKbps = Math.max(64, Math.floor((targetBits / videoInfo.duration) / 1000))
+
+            audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, undefined, { audioBitrateKbps: targetBitrateKbps })
+            const compressedSizeMB = audioBuffer.length / 1024 / 1024
+            console.log(`[playCommand] Compressão concluída (${compressedSizeMB.toFixed(2)}MB) com bitrate ${targetBitrateKbps}kbps`)
+
+            if (compressedSizeMB > MAX_MEDIA_MB) {
+                const errorMessage = `❌ Mesmo após compressão, o áudio ficou com ${compressedSizeMB.toFixed(2)}MB (limite ${MAX_MEDIA_MB}MB).`
+                await safeEdit(
+                    `🎵 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    errorMessage
+                )
+                throw new Error('Áudio acima do limite após compressão')
+            } else {
+                await throttledUpdate('✅ Áudio comprimido, enviando...', 90)
+            }
+        }
 
         await throttledUpdate('📤 Enviando...', 90)
         
@@ -165,6 +202,9 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         }
     }
     
+    const MAX_VIDEO_MB = 19
+    const SAFE_VIDEO_TARGET_MB = 18.5
+
     // Atualiza para 40%
     await safeEdit(
         `🎥 *${videoInfo.title}*\n` +
@@ -172,30 +212,63 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         `📥 Baixando vídeo...\n` +
         `${generateProgressBar(40, 100, 20)}`
     )
-    
-    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
-    
-    // Verifica tamanho
-    const videoSizeMB = videoBuffer.length / 1024 / 1024
-    if (videoSizeMB > 16) {
+
+    let videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+
+    // Verifica tamanho e reprocessa se necessário
+    let videoSizeMB = videoBuffer.length / 1024 / 1024
+    if (videoSizeMB > MAX_VIDEO_MB) {
+        console.log(`[ytCommand] Vídeo acima do limite (${videoSizeMB.toFixed(2)}MB). Iniciando compressão...`)
         await safeEdit(
             `🎥 *${videoInfo.title}*\n` +
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `❌ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
-            `O WhatsApp suporta apenas vídeos de até 16MB.`
+            `⚠️ Vídeo com ${videoSizeMB.toFixed(2)}MB. Compactando para caber em ${MAX_VIDEO_MB}MB...\n` +
+            `${generateProgressBar(60, 100, 20)}`
         )
-        return
+
+        try {
+            const compressedBuffer = await convertUtil.compressVideoToTargetSize('buffer', videoBuffer, SAFE_VIDEO_TARGET_MB, videoInfo.duration)
+            const compressedSizeMB = compressedBuffer.length / 1024 / 1024
+            console.log(`[ytCommand] Compressão concluída: ${compressedSizeMB.toFixed(2)}MB`)
+
+            if (compressedSizeMB > MAX_VIDEO_MB) {
+                await safeEdit(
+                    `🎥 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    `❌ Mesmo após compressão, o vídeo ficou com ${compressedSizeMB.toFixed(2)}MB (limite ${MAX_VIDEO_MB}MB).`
+                )
+                return
+            }
+
+            videoBuffer = compressedBuffer
+            videoSizeMB = compressedSizeMB
+            await safeEdit(
+                `🎥 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+                `📦 Compactado para ${videoSizeMB.toFixed(2)}MB\n\n` +
+                `📤 Enviando...\n` +
+                `${generateProgressBar(80, 100, 20)}`
+            )
+        } catch (error) {
+            console.error('[ytCommand] Falha ao comprimir vídeo:', error)
+            await safeEdit(
+                `🎥 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                `❌ Não foi possível comprimir o vídeo (${videoSizeMB.toFixed(2)}MB) para o limite de ${MAX_VIDEO_MB}MB.`
+            )
+            throw error
+        }
+    } else {
+        // Atualiza para 80% - Download completo
+        await safeEdit(
+            `🎥 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+            `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+            `📤 Enviando...\n` +
+            `${generateProgressBar(80, 100, 20)}`
+        )
     }
-    
-    // Atualiza para 80% - Download completo
-    await safeEdit(
-        `🎥 *${videoInfo.title}*\n` +
-        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
-        `📤 Enviando...\n` +
-        `${generateProgressBar(80, 100, 20)}`
-    )
-    
+
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
     // Atualiza para 100% - Completo (sem barra de progresso)
