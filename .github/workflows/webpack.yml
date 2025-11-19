@@ -22,7 +22,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    - name: Enable Corepack
+      run: corepack enable
+
+    - name: Install dependencies
+      run: yarn install --immutable
+
     - name: Build
-      run: |
-        npm install
-        npx webpack
+      run: yarn build
+
+    - name: Bundle with Webpack
+      run: yarn webpack --config webpack.config.js

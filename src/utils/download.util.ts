@@ -6,7 +6,7 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import { helpers, YtDlp } from 'ytdlp-nodejs'
+import { helpers, type PlaylistInfo, type VideoInfo, YtDlp } from 'ytdlp-nodejs'
 
 let ytDlpClient: YtDlp | null = null
 
@@ -189,25 +189,33 @@ export async function youtubeMedia (text: string){
         }
 
         const ytDlp = await ensureYtDlp()
-        const videoInfoRaw = await ytDlp.getInfoAsync(videoUrl, { flatPlaylist: true })
-        
+        const videoInfoRaw: VideoInfo | PlaylistInfo = await ytDlp.getInfoAsync(videoUrl, { flatPlaylist: true })
+
+        const videoInfo = videoInfoRaw._type === 'playlist'
+            ? videoInfoRaw.entries?.[0]
+            : videoInfoRaw
+
+        if (!videoInfo) {
+            return null
+        }
+
         // Verifica se é live
-        if (videoInfoRaw.is_live) {
+        if (videoInfo.is_live) {
             const ytInfo : YTInfo = {
-                id_video : videoInfoRaw.id,
-                title:  videoInfoRaw.title,
-                description: videoInfoRaw.description || '',
+                id_video : videoInfo.id,
+                title:  videoInfo.title,
+                description: videoInfo.description || '',
                 duration: 0,
-                channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
+                channel: videoInfo.uploader || videoInfo.channel || 'Desconhecido',
                 is_live: true,
                 duration_formatted: '00:00',
                 url: '',
-                thumbnail: videoInfoRaw.thumbnail || `https://img.youtube.com/vi/${videoInfoRaw.id}/maxresdefault.jpg`
+                thumbnail: videoInfo.thumbnail || `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`
             }
             return ytInfo
         }
 
-        const formats = videoInfoRaw.formats || []
+        const formats = videoInfo.formats || []
         const videoAndAudioFormats = formats.filter((f: any) => f.vcodec !== 'none' && f.acodec !== 'none')
 
         const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
@@ -223,15 +231,15 @@ export async function youtubeMedia (text: string){
         const bestFormat = sortedCandidates[0]
 
         const ytInfo : YTInfo = {
-            id_video : videoInfoRaw.id,
-            title:  videoInfoRaw.title,
-            description: videoInfoRaw.description || '',
-            duration: Number(videoInfoRaw.duration || 0),
-            channel: videoInfoRaw.uploader || videoInfoRaw.channel || 'Desconhecido',
+            id_video : videoInfo.id,
+            title:  videoInfo.title,
+            description: videoInfo.description || '',
+            duration: Number(videoInfo.duration || 0),
+            channel: videoInfo.uploader || videoInfo.channel || 'Desconhecido',
             is_live: false,
-            duration_formatted: formatSeconds(Number(videoInfoRaw.duration || 0)),
-            url: bestFormat?.url || videoInfoRaw.url || '',
-            thumbnail: videoInfoRaw.thumbnail || `https://img.youtube.com/vi/${videoInfoRaw.id}/maxresdefault.jpg`
+            duration_formatted: formatSeconds(Number(videoInfo.duration || 0)),
+            url: bestFormat?.url || videoInfo.url || '',
+            thumbnail: videoInfo.thumbnail || `https://img.youtube.com/vi/${videoInfo.id}/maxresdefault.jpg`
         }
         
         return ytInfo
