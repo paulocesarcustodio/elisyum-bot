@@ -1,17 +1,9 @@
 <p align="center">
-<img src="https://img95.pixhost.to/images/1083/472612217_8876.jpg" width="350" height="350"/>
+<img src="https://i.ibb.co/F4ZHtvCT/elisyum-logo.jpg" width="350" height="350"/>
 </p>
-<h1 align="center">🤖 LBot - Robô para WhatsApp</h1>
-<p align="center">
-<a href="#"><img title="Versão" src="https://img.shields.io/github/package-json/v/victorsouzaleal/lbot-whatsapp?label=vers%C3%A3o&color=#79C83D"/></a>
-<a href="https://github.com/victorsouzaleal/followers"><img title="Seguidores" src="https://img.shields.io/github/followers/victorsouzaleal?label=seguidores&style=flat&color=#79C83D"/></a>
-<a href="https://github.com/victorsouzaleal/lbot-whatsapp/stargazers/"><img title="Estrelas" src="https://img.shields.io/github/stars/victorsouzaleal/lbot-whatsapp?label=estrelas&style=flat&color=#79C83D"></a>
-<a href="https://github.com/victorsouzaleal/lbot-whatsapp/watchers"><img title="Acompanhando" src="https://img.shields.io/github/watchers/victorsouzaleal/lbot-whatsapp?label=acompanhando&style=flat&color=#79C83D"></a>
-<a href="https://github.com/victorsouzaleal"><img title="Autor" src="https://img.shields.io/badge/autor-victorsouzaleal-blue.svg?logo=github&color=#79C83D"></a>
-</p>
+<h1 align="center">🤖 Elisyum Bot - Robô para WhatsApp</h1>
 
 <br>
-<h2 align="center"> Esse projeto não está sendo mais atualizado</h2>
 <h2 align="center"> 🔄 Notas de atualização: <a href="docs/releases/CHANGELOG.md">AQUI</a></h2>
 
 <br>
