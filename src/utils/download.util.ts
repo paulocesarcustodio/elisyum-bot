@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { formatSeconds, showConsoleLibraryError } from './general.util.js'
 import {instagramGetUrl} from 'instagram-url-direct'
 import { getFbVideoInfo } from 'fb-downloader-scrapper'
@@ -9,6 +10,51 @@ import botTexts from '../helpers/bot.texts.helper.js'
 import { helpers, type PlaylistInfo, type VideoInfo, type VideoProgress, YtDlp } from 'ytdlp-nodejs'
 
 let ytDlpClient: YtDlp | null = null
+let resolvedFfmpegPath: string | undefined
+let triedFfmpegDownload = false
+
+const resolveFfmpegPath = async (): Promise<string | undefined> => {
+    if (resolvedFfmpegPath) {
+        return resolvedFfmpegPath
+    }
+
+    const envPath = process.env.FFMPEG_PATH
+    if (envPath && fs.existsSync(envPath)) {
+        resolvedFfmpegPath = envPath
+        return resolvedFfmpegPath
+    }
+
+    try {
+        const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg')
+        if (ffmpegInstaller?.path && fs.existsSync(ffmpegInstaller.path)) {
+            resolvedFfmpegPath = ffmpegInstaller.path
+            return resolvedFfmpegPath
+        }
+    } catch {
+        // optional dependency might not be installed or supported
+    }
+
+    const helperPath = helpers.findFFmpegBinary()
+    if (helperPath && fs.existsSync(helperPath)) {
+        resolvedFfmpegPath = helperPath
+        return resolvedFfmpegPath
+    }
+
+    if (!triedFfmpegDownload) {
+        triedFfmpegDownload = true
+        try {
+            const downloaded = await helpers.downloadFFmpeg()
+            if (downloaded && fs.existsSync(downloaded)) {
+                resolvedFfmpegPath = downloaded
+                return resolvedFfmpegPath
+            }
+        } catch (error) {
+            showConsoleLibraryError(error, 'ensureYtDlp.ffmpeg')
+        }
+    }
+
+    return undefined
+}
 
 const ensureYtDlp = async () => {
     if (process.env.YTDLP_TEST_STUB === '1') {
@@ -37,6 +83,7 @@ const ensureYtDlp = async () => {
 
     try {
         let binaryPath = helpers.findYtdlpBinary()
+        const ffmpegPath = await resolveFfmpegPath()
 
         if (!binaryPath) {
             binaryPath = await helpers.downloadYtDlp()
@@ -46,7 +93,7 @@ const ensureYtDlp = async () => {
             throw new Error('yt-dlp binary not found after download attempt')
         }
 
-        ytDlpClient = new YtDlp({ binaryPath })
+        ytDlpClient = new YtDlp({ binaryPath, ffmpegPath })
         return ytDlpClient
     } catch (error) {
         showConsoleLibraryError(error, 'ensureYtDlp')
