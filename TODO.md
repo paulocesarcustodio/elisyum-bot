@@ -6,3 +6,5 @@
 - Implementar expiração automática para membros silenciados após um período configurável, revertendo o mute sem intervenção manual.
 - Monitorar o impacto das chamadas extras do `ensureParticipantRecord` nos fluxos de atividade/antiflood e avaliar se vale consolidar a criação com os updates para reduzir round-trips em grupos grandes.
 - Converter os roteiros de `scripts/manual-tests` em testes automatizados sempre que possível para cobrir regressões de mídia no CI.
+
+- Investigar fallback do download automático do yt-dlp para ambientes sem acesso direto ao GitHub (cache local ou mirror).

@@ -4,7 +4,21 @@ import axios from 'axios'
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 
-export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string){
+export type ConvertProgressEvent = {
+    stage: 'convert'
+    percent?: number
+}
+
+type ConvertMp4ToMp3Options = {
+    audioBitrateKbps?: number
+}
+
+export async function convertMp4ToMp3 (
+    sourceType: 'buffer' | 'url',
+    video: Buffer | string,
+    onProgress?: (progress: ConvertProgressEvent) => void,
+    options?: ConvertMp4ToMp3Options
+){
     try {
         const inputVideoPath = getTempPath('mp4')
         const outputAudioPath = getTempPath('mp3')
@@ -28,9 +42,21 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
         }
         
         await new Promise <void> ((resolve, reject)=>{
-            ffmpeg(inputVideoPath)
-            .outputOptions(['-vn', '-codec:a libmp3lame', '-q:a 3'])
+            const audioBitrate = options?.audioBitrateKbps
+            const command = ffmpeg(inputVideoPath).outputOptions(['-vn'])
+
+            if (audioBitrate && Number.isFinite(audioBitrate)) {
+                command.outputOptions([`-codec:a libmp3lame`, `-b:a ${audioBitrate}k`])
+            } else {
+                command.outputOptions(['-codec:a libmp3lame', '-q:a 3'])
+            }
+
+            command
             .save(outputAudioPath)
+            .on('progress', (progress) => {
+                const percent = progress.percent ?? undefined
+                onProgress?.({ stage: 'convert', percent })
+            })
             .on('end', () => resolve())
             .on("error", (err: Error) => reject(err))
         }).catch((err) =>{
@@ -102,6 +128,84 @@ export async function convertVideoToWhatsApp(sourceType: 'buffer' | 'url',  vide
         return videoBuffer
     } catch(err){
         showConsoleLibraryError(err, 'convertVideoToWhatsApp')
+        throw new Error(botTexts.library_error)
+    }
+}
+
+export async function compressVideoToTargetSize(
+    sourceType: 'buffer' | 'url',
+    video: Buffer | string,
+    targetSizeMB: number,
+    durationSeconds?: number,
+){
+    try {
+        const inputVideoPath = getTempPath('mp4')
+        const outputVideoPath = getTempPath('mp4')
+
+        if(sourceType == 'buffer'){
+            if (!Buffer.isBuffer(video)) {
+                throw new Error('The media type is Buffer, but the video parameter is not a Buffer.')
+            }
+
+            fs.writeFileSync(inputVideoPath, video)
+        } else if (sourceType == 'url'){
+            if (typeof video != 'string') {
+                throw new Error('The media type is URL, but the video parameter is not a String.')
+            }
+
+            const {data : mediaResponse} = await axios.get(video, {responseType: 'arraybuffer'})
+            const videoBuffer = Buffer.from(mediaResponse)
+            fs.writeFileSync(inputVideoPath, videoBuffer)
+        } else {
+            throw new Error('Unsupported media type.')
+        }
+
+        const budgetBytes = Math.max(targetSizeMB, 1) * 1024 * 1024
+        const budgetBits = budgetBytes * 8
+        const audioBitrateKbps = 96
+
+        if (!durationSeconds || durationSeconds <= 0) {
+            throw new Error('Invalid video duration for compression')
+        }
+
+        const targetVideoBitrateKbps = Math.floor((budgetBits / durationSeconds) / 1000 - audioBitrateKbps)
+
+        if (!Number.isFinite(targetVideoBitrateKbps) || targetVideoBitrateKbps <= 0) {
+            throw new Error('Unable to calculate target bitrate for compression')
+        }
+
+        const maxRate = Math.max(targetVideoBitrateKbps * 1.5, targetVideoBitrateKbps + 50)
+        const bufferSize = Math.max(targetVideoBitrateKbps * 3, targetVideoBitrateKbps + 100)
+
+        await new Promise <void> ((resolve, reject)=>{
+            ffmpeg(inputVideoPath)
+            .outputOptions([
+                '-c:v libx264',
+                `-b:v ${targetVideoBitrateKbps}k`,
+                `-maxrate ${Math.floor(maxRate)}k`,
+                `-bufsize ${Math.floor(bufferSize)}k`,
+                '-preset veryfast',
+                '-pix_fmt yuv420p',
+                '-movflags faststart',
+                '-c:a aac',
+                `-b:a ${audioBitrateKbps}k`,
+                '-ar 44100'
+            ])
+            .save(outputVideoPath)
+            .on('end', () => resolve())
+            .on("error", (err: Error) => reject(err))
+        }).catch((err) =>{
+            fs.unlinkSync(inputVideoPath)
+            throw err
+        })
+
+        const compressedBuffer = fs.readFileSync(outputVideoPath)
+        fs.unlinkSync(inputVideoPath)
+        fs.unlinkSync(outputVideoPath)
+
+        return compressedBuffer
+    } catch(err){
+        showConsoleLibraryError(err, 'compressVideoToTargetSize')
         throw new Error(botTexts.library_error)
     }
 }

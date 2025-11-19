@@ -1,5 +1,7 @@
 # Recent Changes
 
+- Adicionamos testes isolados para download do YouTube (metadata, streaming com progresso, compressão até 19MB e feedback de erros/mensagens).
+- Limitamos downloads do YouTube a 19MB com compressão automática em vídeo/áudio para `yt` e `play`, informando o usuário quando o reprocessamento é necessário.
 - Adicionamos o comando `!vtnc`, que responde com o ASCII solicitado mencionando o alvo e mandando a pessoa tomar no cu.
 - Reorganizamos scripts, documentação e o binário `yt-dlp` em pastas dedicadas, atualizando utilitários e instruções para a nova estrutura do repositório.
 - Recriamos registros ausentes ao atualizar contadores, avisos e antiflood dos participantes usando um helper compartilhado coberto por novos testes.
@@ -29,3 +31,6 @@
 - Protegido o estado NeDB com mutexes e desserialização via `proto.Message.AppStateSyncKeyData`, validado pelo teste `npx tsx tests/session.auth.helper.test.ts` para garantir persistência e limpeza das novas chaves de login.
 - Ajustados eventos/formatadores para o Baileys 7 (participantes como objetos, requestId e contexto de download de mídia) e cobrimos os fluxos com novos testes de fila, mídia e formatação.
 - Instaladas as dependências opcionais do Baileys (sharp, audio-decode, link-preview-js) com testes de mídia cobrindo miniaturas e waveform, além de documentação atualizada para setup e troubleshooting.
+- Adicionada instrumentação de progresso no download/conversão do YouTube para atualizar a barra em tempo real via `safeEdit`.
+
+- Migramos o utilitário de download do YouTube para `ytdlp-nodejs`, consumindo streams direto em memória com limite de qualidade configurável.

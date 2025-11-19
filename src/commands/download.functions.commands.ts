@@ -10,12 +10,22 @@ import { imageSearchGoogle } from '../utils/image.util.js'
 import format from 'format-duration'
 import downloadCommands from "./download.list.commands.js"
 
-export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+type DownloadCommandDeps = {
+    downloadUtil?: typeof import('../utils/download.util.js')
+    convertUtil?: typeof import('../utils/convert.util.js')
+    waUtil?: typeof import('../utils/whatsapp.util.js')
+}
+
+export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group, deps?: DownloadCommandDeps){
+    const downloads = deps?.downloadUtil ?? downloadUtil
+    const conversions = deps?.convertUtil ?? convertUtil
+    const wa = deps?.waUtil ?? waUtil
+
     if (!message.args.length){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    } 
+    }
 
-    const videoInfo = await downloadUtil.youtubeMedia(message.text_command)
+    const videoInfo = await downloads.youtubeMedia(message.text_command)
 
     if (!videoInfo){
         throw new Error(downloadCommands.play.msgs.error_not_found)
@@ -33,66 +43,109 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     
     // Envia imagem com caption (se tiver thumbnail) ou texto puro
     const sentMessage = videoInfo.thumbnail
-        ? await waUtil.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
-        : await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
+        ? await wa.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
+        : await wa.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
     
     if (!sentMessage || !sentMessage.key) {
         throw new Error('Falha ao enviar mensagem inicial')
     }
     const messageKey = sentMessage.key
 
-    // Simula progresso do download (0-60%)
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
     
     // Função auxiliar para editar com segurança
     const safeEdit = async (caption: string) => {
         try {
             if (videoInfo.thumbnail) {
-                await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption)
+                await wa.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption)
             } else {
-                await waUtil.editText(client, message.chat_id, messageKey, caption)
+                await wa.editText(client, message.chat_id, messageKey, caption)
             }
         } catch (err) {
             console.error('[playCommand] Erro ao editar mensagem:', err)
         }
     }
+
+    let lastProgressUpdate = 0
+    const throttledUpdate = async (stageLabel: string, percent: number) => {
+        const now = Date.now()
+        if (percent < 100 && now - lastProgressUpdate < 500) {
+            return
+        }
+        lastProgressUpdate = now
+
+        const clampedPercent = Math.min(Math.max(percent, 0), 100)
+        await safeEdit(
+            `🎵 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+            `${stageLabel}\n` +
+            `${generateProgressBar(clampedPercent, 100, 20)}`
+        )
+    }
     
+    const MAX_MEDIA_MB = 19
+    const SAFE_TARGET_MB = 18.5
+
     try {
-        // Atualiza para 30%
         console.log('[playCommand] Iniciando download...')
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📥 Baixando...\n` +
-            `${generateProgressBar(30, 100, 20)}`
-        )
-        
-        console.log('[playCommand] Baixando vídeo do YouTube...')
-        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+
+        const videoBuffer = await downloads.downloadYouTubeVideo(youtubeUrl, (progress) => {
+            if (progress.stage === 'download') {
+                const percent = progress.percent ?? (progress.totalBytes ? (progress.downloadedBytes / progress.totalBytes) * 100 : 0)
+                throttledUpdate('📥 Baixando...', percent * 0.6)
+            }
+        })
         console.log('[playCommand] Vídeo baixado, tamanho:', videoBuffer.length, 'bytes')
-        
-        // Atualiza para 60% - Download completo
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `🔄 Convertendo para MP3...\n` +
-            `${generateProgressBar(60, 100, 20)}`
-        )
-        
+
+        await throttledUpdate('🔄 Convertendo para MP3...', 60)
+
         console.log('[playCommand] Iniciando conversão para MP3...')
-        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
+        let audioBuffer = await conversions.convertMp4ToMp3('buffer', videoBuffer, (progress) => {
+            if (progress.stage === 'convert') {
+                const percent = progress.percent ?? 0
+                throttledUpdate('🔄 Convertendo para MP3...', 60 + (percent * 0.3))
+            }
+        })
         console.log('[playCommand] Conversão completa, tamanho:', audioBuffer.length, 'bytes')
-        
-        // Atualiza para 90% - Conversão completa
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📤 Enviando...\n` +
-            `${generateProgressBar(90, 100, 20)}`
-        )
+
+        const audioSizeMB = audioBuffer.length / 1024 / 1024
+        if (audioSizeMB > MAX_MEDIA_MB) {
+            if (videoInfo.duration <= 0) {
+                await safeEdit(
+                    `🎵 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    `❌ Áudio com ${audioSizeMB.toFixed(2)}MB mas não foi possível estimar a duração para comprimir.`
+                )
+                throw new Error('Não foi possível comprimir o áudio sem duração válida')
+            }
+
+            console.log(`[playCommand] Áudio acima do limite (${audioSizeMB.toFixed(2)}MB). Iniciando compressão...`)
+            await throttledUpdate('♻️ Comprimindo áudio para caber no limite...', 85)
+
+            const targetBits = SAFE_TARGET_MB * 1024 * 1024 * 8
+            const targetBitrateKbps = Math.max(64, Math.floor((targetBits / videoInfo.duration) / 1000))
+
+            audioBuffer = await conversions.convertMp4ToMp3('buffer', videoBuffer, undefined, { audioBitrateKbps: targetBitrateKbps })
+            const compressedSizeMB = audioBuffer.length / 1024 / 1024
+            console.log(`[playCommand] Compressão concluída (${compressedSizeMB.toFixed(2)}MB) com bitrate ${targetBitrateKbps}kbps`)
+
+            if (compressedSizeMB > MAX_MEDIA_MB) {
+                const errorMessage = `❌ Mesmo após compressão, o áudio ficou com ${compressedSizeMB.toFixed(2)}MB (limite ${MAX_MEDIA_MB}MB).`
+                await safeEdit(
+                    `🎵 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    errorMessage
+                )
+                throw new Error('Áudio acima do limite após compressão')
+            } else {
+                await throttledUpdate('✅ Áudio comprimido, enviando...', 90)
+            }
+        }
+
+        await throttledUpdate('📤 Enviando...', 90)
         
         console.log('[playCommand] Enviando áudio...')
-        await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
+    await wa.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
         console.log('[playCommand] Áudio enviado com sucesso')
         
         // Atualiza para 100% - Completo (sem barra de progresso)
@@ -113,12 +166,16 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     }
 }
 
-export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group, deps?: DownloadCommandDeps){
+    const downloads = deps?.downloadUtil ?? downloadUtil
+    const conversions = deps?.convertUtil ?? convertUtil
+    const wa = deps?.waUtil ?? waUtil
+
     if (!message.args.length){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const videoInfo = await downloadUtil.youtubeMedia(message.text_command)
+    const videoInfo = await downloads.youtubeMedia(message.text_command)
 
     if (!videoInfo){
         throw new Error(downloadCommands.yt.msgs.error_not_found)
@@ -136,8 +193,8 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     
     // Envia imagem com caption (se tiver thumbnail) ou texto puro
     const sentMessage = videoInfo.thumbnail
-        ? await waUtil.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
-        : await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
+        ? await wa.replyImageFromUrl(client, message.chat_id, videoInfo.thumbnail, initialCaption, message.wa_message, {expiration: message.expiration})
+        : await wa.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
     
     if (!sentMessage || !sentMessage.key) {
         throw new Error('Falha ao enviar mensagem inicial')
@@ -150,15 +207,18 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     const safeEdit = async (caption: string) => {
         try {
             if (videoInfo.thumbnail) {
-                await waUtil.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption)
+                await wa.editImageCaption(client, message.chat_id, messageKey, videoInfo.thumbnail, caption)
             } else {
-                await waUtil.editText(client, message.chat_id, messageKey, caption)
+                await wa.editText(client, message.chat_id, messageKey, caption)
             }
         } catch (err) {
             console.error('[ytCommand] Erro ao editar mensagem:', err)
         }
     }
     
+    const MAX_VIDEO_MB = 19
+    const SAFE_VIDEO_TARGET_MB = 18.5
+
     // Atualiza para 40%
     await safeEdit(
         `🎥 *${videoInfo.title}*\n` +
@@ -166,31 +226,64 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         `📥 Baixando vídeo...\n` +
         `${generateProgressBar(40, 100, 20)}`
     )
-    
-    const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
-    
-    // Verifica tamanho
-    const videoSizeMB = videoBuffer.length / 1024 / 1024
-    if (videoSizeMB > 16) {
+
+    let videoBuffer = await downloads.downloadYouTubeVideo(youtubeUrl)
+
+    // Verifica tamanho e reprocessa se necessário
+    let videoSizeMB = videoBuffer.length / 1024 / 1024
+    if (videoSizeMB > MAX_VIDEO_MB) {
+        console.log(`[ytCommand] Vídeo acima do limite (${videoSizeMB.toFixed(2)}MB). Iniciando compressão...`)
         await safeEdit(
             `🎥 *${videoInfo.title}*\n` +
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `❌ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
-            `O WhatsApp suporta apenas vídeos de até 16MB.`
+            `⚠️ Vídeo com ${videoSizeMB.toFixed(2)}MB. Compactando para caber em ${MAX_VIDEO_MB}MB...\n` +
+            `${generateProgressBar(60, 100, 20)}`
         )
-        return
+
+        try {
+            const compressedBuffer = await conversions.compressVideoToTargetSize('buffer', videoBuffer, SAFE_VIDEO_TARGET_MB, videoInfo.duration)
+            const compressedSizeMB = compressedBuffer.length / 1024 / 1024
+            console.log(`[ytCommand] Compressão concluída: ${compressedSizeMB.toFixed(2)}MB`)
+
+            if (compressedSizeMB > MAX_VIDEO_MB) {
+                await safeEdit(
+                    `🎥 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    `❌ Mesmo após compressão, o vídeo ficou com ${compressedSizeMB.toFixed(2)}MB (limite ${MAX_VIDEO_MB}MB).`
+                )
+                return
+            }
+
+            videoBuffer = compressedBuffer
+            videoSizeMB = compressedSizeMB
+            await safeEdit(
+                `🎥 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+                `📦 Compactado para ${videoSizeMB.toFixed(2)}MB\n\n` +
+                `📤 Enviando...\n` +
+                `${generateProgressBar(80, 100, 20)}`
+            )
+        } catch (error) {
+            console.error('[ytCommand] Falha ao comprimir vídeo:', error)
+            await safeEdit(
+                `🎥 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                `❌ Não foi possível comprimir o vídeo (${videoSizeMB.toFixed(2)}MB) para o limite de ${MAX_VIDEO_MB}MB.`
+            )
+            throw error
+        }
+    } else {
+        // Atualiza para 80% - Download completo
+        await safeEdit(
+            `🎥 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
+            `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+            `📤 Enviando...\n` +
+            `${generateProgressBar(80, 100, 20)}`
+        )
     }
-    
-    // Atualiza para 80% - Download completo
-    await safeEdit(
-        `🎥 *${videoInfo.title}*\n` +
-        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
-        `📤 Enviando...\n` +
-        `${generateProgressBar(80, 100, 20)}`
-    )
-    
-    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+
+    await wa.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
     // Atualiza para 100% - Completo (sem barra de progresso)
     await safeEdit(

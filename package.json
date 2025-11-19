@@ -3,6 +3,9 @@
   "version": "3.4.6",
   "description": "Bot brasileiro para Whatsapp com diversas utilidades para o dia-a-dia.",
   "type": "module",
+  "imports": {
+    "ytdlp-nodejs": "./tests/stubs/ytdlp-nodejs.js"
+  },
   "main": "dist/app.js",
   "packageManager": "yarn@4.9.4",
   "scripts": {
@@ -87,8 +90,8 @@
     "pretty-num": "^0.5.0",
     "qrcode-terminal": "^0.12.0",
     "user-agents": "^1.1.231",
-    "yt-dlp-wrap": "^2.3.12",
-    "yt-search": "^2.13.1"
+    "yt-search": "^2.13.1",
+    "ytdlp-nodejs": "^2.3.5"
   },
   "optionalDependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
