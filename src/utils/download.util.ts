@@ -11,6 +11,26 @@ import { helpers, YtDlp } from 'ytdlp-nodejs'
 let ytDlpClient: YtDlp | null = null
 
 const ensureYtDlp = async () => {
+    if (process.env.YTDLP_TEST_STUB === '1') {
+        const testMock = (globalThis as any).__ytDlpMock
+        return (testMock ?? {
+            getInfoAsync: async () => ({
+                id: 'stub',
+                title: 'stub',
+                description: '',
+                duration: 0,
+                uploader: 'stub',
+                thumbnail: '',
+                is_live: false,
+                formats: []
+            }),
+            getFileAsync: async (_url: string, options?: any) => {
+                options?.onProgress?.({ downloaded: 0, total: 0, percentage: 0 })
+                return { async arrayBuffer() { return new ArrayBuffer(0) } }
+            }
+        }) as unknown as YtDlp
+    }
+
     if (ytDlpClient) {
         return ytDlpClient
     }

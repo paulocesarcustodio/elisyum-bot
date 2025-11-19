@@ -1,5 +1,6 @@
 # Recent Changes
 
+- Adicionamos testes isolados para download do YouTube (metadata, streaming com progresso, compressão até 19MB e feedback de erros/mensagens).
 - Limitamos downloads do YouTube a 19MB com compressão automática em vídeo/áudio para `yt` e `play`, informando o usuário quando o reprocessamento é necessário.
 - Adicionamos o comando `!vtnc`, que responde com o ASCII solicitado mencionando o alvo e mandando a pessoa tomar no cu.
 - Reorganizamos scripts, documentação e o binário `yt-dlp` em pastas dedicadas, atualizando utilitários e instruções para a nova estrutura do repositório.
