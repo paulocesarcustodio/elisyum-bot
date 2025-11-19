@@ -4,7 +4,12 @@ import axios from 'axios'
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 
-export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string){
+export type ConvertProgressEvent = {
+    stage: 'convert'
+    percent?: number
+}
+
+export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string, onProgress?: (progress: ConvertProgressEvent) => void){
     try {
         const inputVideoPath = getTempPath('mp4')
         const outputAudioPath = getTempPath('mp3')
@@ -31,6 +36,10 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
             ffmpeg(inputVideoPath)
             .outputOptions(['-vn', '-codec:a libmp3lame', '-q:a 3'])
             .save(outputAudioPath)
+            .on('progress', (progress) => {
+                const percent = progress.percent ?? undefined
+                onProgress?.({ stage: 'convert', percent })
+            })
             .on('end', () => resolve())
             .on("error", (err: Error) => reject(err))
         }).catch((err) =>{

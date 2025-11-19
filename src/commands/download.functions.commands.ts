@@ -41,7 +41,6 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     }
     const messageKey = sentMessage.key
 
-    // Simula progresso do download (0-60%)
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
     
     // Função auxiliar para editar com segurança
@@ -56,40 +55,47 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
             console.error('[playCommand] Erro ao editar mensagem:', err)
         }
     }
+
+    let lastProgressUpdate = 0
+    const throttledUpdate = async (stageLabel: string, percent: number) => {
+        const now = Date.now()
+        if (percent < 100 && now - lastProgressUpdate < 500) {
+            return
+        }
+        lastProgressUpdate = now
+
+        const clampedPercent = Math.min(Math.max(percent, 0), 100)
+        await safeEdit(
+            `🎵 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+            `${stageLabel}\n` +
+            `${generateProgressBar(clampedPercent, 100, 20)}`
+        )
+    }
     
     try {
-        // Atualiza para 30%
         console.log('[playCommand] Iniciando download...')
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📥 Baixando...\n` +
-            `${generateProgressBar(30, 100, 20)}`
-        )
-        
-        console.log('[playCommand] Baixando vídeo do YouTube...')
-        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
+
+        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl, (progress) => {
+            if (progress.stage === 'download') {
+                const percent = progress.percent ?? (progress.totalBytes ? (progress.downloadedBytes / progress.totalBytes) * 100 : 0)
+                throttledUpdate('📥 Baixando...', percent * 0.6)
+            }
+        })
         console.log('[playCommand] Vídeo baixado, tamanho:', videoBuffer.length, 'bytes')
-        
-        // Atualiza para 60% - Download completo
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `🔄 Convertendo para MP3...\n` +
-            `${generateProgressBar(60, 100, 20)}`
-        )
-        
+
+        await throttledUpdate('🔄 Convertendo para MP3...', 60)
+
         console.log('[playCommand] Iniciando conversão para MP3...')
-        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
+        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, (progress) => {
+            if (progress.stage === 'convert') {
+                const percent = progress.percent ?? 0
+                throttledUpdate('🔄 Convertendo para MP3...', 60 + (percent * 0.3))
+            }
+        })
         console.log('[playCommand] Conversão completa, tamanho:', audioBuffer.length, 'bytes')
-        
-        // Atualiza para 90% - Conversão completa
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📤 Enviando...\n` +
-            `${generateProgressBar(90, 100, 20)}`
-        )
+
+        await throttledUpdate('📤 Enviando...', 90)
         
         console.log('[playCommand] Enviando áudio...')
         await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
