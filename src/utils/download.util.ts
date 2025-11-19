@@ -1,6 +1,4 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import {formatSeconds, showConsoleLibraryError} from './general.util.js'
+import { formatSeconds, showConsoleLibraryError } from './general.util.js'
 import {instagramGetUrl} from 'instagram-url-direct'
 import { getFbVideoInfo } from 'fb-downloader-scrapper'
 import Tiktok from '@tobyg74/tiktok-api-dl'
@@ -8,17 +6,32 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { FacebookMedia, InstagramMedia, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
+import { helpers, YtDlp } from 'ytdlp-nodejs'
 
-const resolveYtDlpBinary = () => {
-    const currentFile = fileURLToPath(import.meta.url)
-    const currentDir = path.dirname(currentFile)
-    const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
-    
-    // From src/utils or dist/utils, go up two levels to project root
-    const projectRoot = path.resolve(currentDir, '..', '..')
-    
-    // Binary is in project_root/bin/
-    return path.join(projectRoot, 'bin', binaryName)
+let ytDlpClient: YtDlp | null = null
+
+const ensureYtDlp = async () => {
+    if (ytDlpClient) {
+        return ytDlpClient
+    }
+
+    try {
+        let binaryPath = helpers.findYtdlpBinary()
+
+        if (!binaryPath) {
+            binaryPath = await helpers.downloadYtDlp()
+        }
+
+        if (!binaryPath) {
+            throw new Error('yt-dlp binary not found after download attempt')
+        }
+
+        ytDlpClient = new YtDlp({ binaryPath })
+        return ytDlpClient
+    } catch (error) {
+        showConsoleLibraryError(error, 'ensureYtDlp')
+        throw new Error(botTexts.library_error)
+    }
 }
 
 export async function xMedia (url: string){
@@ -155,19 +168,8 @@ export async function youtubeMedia (text: string){
             return null
         }
 
-        // Obtém informações do vídeo usando yt-dlp (import dinâmico para compatibilidade CJS/ESM)
-        const ytDlpPath = resolveYtDlpBinary()
-        const YTDlpModule: any = await import('yt-dlp-wrap')
-        
-        // O constructor está em YTDlpModule.default.default (double default export)
-        const YTDlpWrap = YTDlpModule.default?.default || YTDlpModule.default || YTDlpModule
-        
-        if (typeof YTDlpWrap !== 'function') {
-            throw new Error('YTDlpWrap constructor not found in module')
-        }
-        
-        const ytDlpWrap = new YTDlpWrap(ytDlpPath)
-        const videoInfoRaw = await ytDlpWrap.getVideoInfo(videoUrl)
+        const ytDlp = await ensureYtDlp()
+        const videoInfoRaw = await ytDlp.getInfoAsync(videoUrl, { flatPlaylist: true })
         
         // Verifica se é live
         if (videoInfoRaw.is_live) {
@@ -185,20 +187,20 @@ export async function youtubeMedia (text: string){
             return ytInfo
         }
 
-        // Pega a melhor qualidade de vídeo+áudio
         const formats = videoInfoRaw.formats || []
         const videoAndAudioFormats = formats.filter((f: any) => f.vcodec !== 'none' && f.acodec !== 'none')
-        
-        let bestFormat
-        if (videoAndAudioFormats.length > 0) {
-            bestFormat = videoAndAudioFormats.sort((a: any, b: any) => {
-                const qualityA = a.height || 0
-                const qualityB = b.height || 0
-                return qualityB - qualityA
-            })[0]
-        } else {
-            bestFormat = formats[0]
-        }
+
+        const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
+        const limitHeight = Number.isFinite(YOUTUBE_QUALITY_LIMIT) ? Number(YOUTUBE_QUALITY_LIMIT) : undefined
+
+        const withinLimit = limitHeight
+            ? videoAndAudioFormats.filter((f: any) => f.height && f.height <= limitHeight)
+            : []
+
+        const sortedCandidates = (withinLimit.length ? withinLimit : videoAndAudioFormats.length ? videoAndAudioFormats : formats)
+            .sort((a: any, b: any) => (b.height || 0) - (a.height || 0))
+
+        const bestFormat = sortedCandidates[0]
 
         const ytInfo : YTInfo = {
             id_video : videoInfoRaw.id,
@@ -226,98 +228,35 @@ export type DownloadProgressEvent = {
     percent?: number
 }
 
-const sizeToBytes = (size?: string): number | undefined => {
-    if (!size) return undefined
-    const match = size.trim().match(/([\d\.]+)\s*([KMG]?i?B)?/i)
-    if (!match) return undefined
-
-    const value = parseFloat(match[1])
-    const unit = match[2]?.toUpperCase() || 'B'
-
-    const multipliers: Record<string, number> = {
-        B: 1,
-        KB: 1024,
-        KIB: 1024,
-        MB: 1024 ** 2,
-        MIB: 1024 ** 2,
-        GB: 1024 ** 3,
-        GIB: 1024 ** 3
-    }
-
-    return value * (multipliers[unit] ?? 1)
-}
-
 export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (progress: DownloadProgressEvent) => void): Promise<Buffer> {
-    const fs = await import('fs')
-    const path = await import('path')
-    const crypto = await import('crypto')
     const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
-    
+
     try {
-        const ytDlpPath = resolveYtDlpBinary()
-        const YTDlpModule: any = await import('yt-dlp-wrap')
-        
-        // O constructor está em YTDlpModule.default.default (double default export)
-        const YTDlpWrap = YTDlpModule.default?.default || YTDlpModule.default || YTDlpModule
-        
-        if (typeof YTDlpWrap !== 'function') {
-            throw new Error('YTDlpWrap constructor not found in module')
-        }
-        
-        const ytDlpWrap = new YTDlpWrap(ytDlpPath)
-        
+        const ytDlp = await ensureYtDlp()
+
         console.log('[downloadYouTubeVideo] Starting download:', videoUrl)
-        
-        // Cria um arquivo temporário para o download
-        const tempFileName = `yt-${crypto.randomBytes(8).toString('hex')}.mp4`
-        const tempFilePath = path.join('/tmp', tempFileName)
-        
-        console.log('[downloadYouTubeVideo] Temp file:', tempFilePath)
+
         console.log('[downloadYouTubeVideo] Quality limit:', YOUTUBE_QUALITY_LIMIT + 'p')
-        
+
         // Baixa o vídeo para o arquivo temporário com qualidade configurável
         // Prioriza velocidade e tamanho menor, ideal para WhatsApp
         const formatSelector = `bestvideo[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[height<=${YOUTUBE_QUALITY_LIMIT}]/worst`
-        
-        const downloadEmitter = ytDlpWrap.exec([
-            videoUrl,
-            '-f', formatSelector,
-            '-o', tempFilePath,
-            '--no-playlist',
-            '--no-warnings',
-            '--merge-output-format', 'mp4',
-            '--add-header', 'User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            '--extractor-args', 'youtube:player_client=android,web'
-        ])
 
-        downloadEmitter.on('progress', (progress: any) => {
-            const totalBytes = sizeToBytes(progress.totalSize)
-            const downloadedBytes = sizeToBytes(progress.downloaded) ?? 0
-            const percent = progress.percent ?? (totalBytes ? (downloadedBytes / totalBytes) * 100 : undefined)
-
-            onProgress?.({
-                stage: 'download',
-                downloadedBytes,
-                totalBytes,
-                percent
-            })
+        const file = await ytDlp.getFileAsync(videoUrl, {
+            format: formatSelector,
+            onProgress: (progress) => {
+                onProgress?.({
+                    stage: 'download',
+                    downloadedBytes: progress.downloaded,
+                    totalBytes: progress.total,
+                    percent: progress.percentage
+                })
+            }
         })
 
-        await new Promise<void>((resolve, reject) => {
-            downloadEmitter.once('close', () => resolve())
-            downloadEmitter.once('error', (error: Error) => reject(error))
-        })
-
-        console.log('[downloadYouTubeVideo] Download complete, reading file...')
-        
-        // Lê o arquivo em buffer
-        const videoBuffer = fs.readFileSync(tempFilePath)
+        const videoBuffer = Buffer.from(await file.arrayBuffer())
         console.log('[downloadYouTubeVideo] File size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
-        
-        // Remove o arquivo temporário
-        fs.unlinkSync(tempFilePath)
-        console.log('[downloadYouTubeVideo] Temp file cleaned up')
-        
+
         return videoBuffer
     } catch(err) {
         showConsoleLibraryError(err, 'downloadYouTubeVideo')

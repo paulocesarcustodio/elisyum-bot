@@ -30,3 +30,5 @@
 - Ajustados eventos/formatadores para o Baileys 7 (participantes como objetos, requestId e contexto de download de mídia) e cobrimos os fluxos com novos testes de fila, mídia e formatação.
 - Instaladas as dependências opcionais do Baileys (sharp, audio-decode, link-preview-js) com testes de mídia cobrindo miniaturas e waveform, além de documentação atualizada para setup e troubleshooting.
 - Adicionada instrumentação de progresso no download/conversão do YouTube para atualizar a barra em tempo real via `safeEdit`.
+
+- Migramos o utilitário de download do YouTube para `ytdlp-nodejs`, consumindo streams direto em memória com limite de qualidade configurável.
