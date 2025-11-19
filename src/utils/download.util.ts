@@ -219,7 +219,35 @@ export async function youtubeMedia (text: string){
     }
 }
 
-export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
+export type DownloadProgressEvent = {
+    stage: 'download'
+    downloadedBytes: number
+    totalBytes?: number
+    percent?: number
+}
+
+const sizeToBytes = (size?: string): number | undefined => {
+    if (!size) return undefined
+    const match = size.trim().match(/([\d\.]+)\s*([KMG]?i?B)?/i)
+    if (!match) return undefined
+
+    const value = parseFloat(match[1])
+    const unit = match[2]?.toUpperCase() || 'B'
+
+    const multipliers: Record<string, number> = {
+        B: 1,
+        KB: 1024,
+        KIB: 1024,
+        MB: 1024 ** 2,
+        MIB: 1024 ** 2,
+        GB: 1024 ** 3,
+        GIB: 1024 ** 3
+    }
+
+    return value * (multipliers[unit] ?? 1)
+}
+
+export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (progress: DownloadProgressEvent) => void): Promise<Buffer> {
     const fs = await import('fs')
     const path = await import('path')
     const crypto = await import('crypto')
@@ -251,7 +279,7 @@ export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
         // Prioriza velocidade e tamanho menor, ideal para WhatsApp
         const formatSelector = `bestvideo[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[height<=${YOUTUBE_QUALITY_LIMIT}]/worst`
         
-        await ytDlpWrap.execPromise([
+        const downloadEmitter = ytDlpWrap.exec([
             videoUrl,
             '-f', formatSelector,
             '-o', tempFilePath,
@@ -261,7 +289,25 @@ export async function downloadYouTubeVideo(videoUrl: string): Promise<Buffer> {
             '--add-header', 'User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             '--extractor-args', 'youtube:player_client=android,web'
         ])
-        
+
+        downloadEmitter.on('progress', (progress: any) => {
+            const totalBytes = sizeToBytes(progress.totalSize)
+            const downloadedBytes = sizeToBytes(progress.downloaded) ?? 0
+            const percent = progress.percent ?? (totalBytes ? (downloadedBytes / totalBytes) * 100 : undefined)
+
+            onProgress?.({
+                stage: 'download',
+                downloadedBytes,
+                totalBytes,
+                percent
+            })
+        })
+
+        await new Promise<void>((resolve, reject) => {
+            downloadEmitter.once('close', () => resolve())
+            downloadEmitter.once('error', (error: Error) => reject(error))
+        })
+
         console.log('[downloadYouTubeVideo] Download complete, reading file...')
         
         // Lê o arquivo em buffer
