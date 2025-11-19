@@ -53,7 +53,7 @@ export async function convertMp4ToMp3 (
 
             command
             .save(outputAudioPath)
-            .on('progress', (progress) => {
+            .on('progress', (progress: { percent?: number }) => {
                 const percent = progress.percent ?? undefined
                 onProgress?.({ stage: 'convert', percent })
             })
