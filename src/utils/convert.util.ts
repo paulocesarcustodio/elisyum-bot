@@ -4,7 +4,7 @@ import axios from 'axios'
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 
-export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string){
+export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string, onProgress?: (percent: number) => void){
     try {
         const inputVideoPath = getTempPath('mp4')
         const outputAudioPath = getTempPath('mp3')
@@ -27,9 +27,39 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
             throw new Error("Unsupported media type.")
         }
         
+        // Obtém metadados do vídeo para calcular progresso corretamente
+        const metadata = await new Promise<any>((resolve, reject) => {
+            ffmpeg.ffprobe(inputVideoPath, (err: any, data: any) => {
+                if (err) reject(err)
+                else resolve(data)
+            })
+        })
+        
+        const duration = metadata?.format?.duration || 0
+        
         await new Promise <void> ((resolve, reject)=>{
-            ffmpeg(inputVideoPath)
+            const command = ffmpeg(inputVideoPath)
             .outputOptions(['-vn', '-codec:a libmp3lame', '-q:a 3'])
+            
+            // Monitora progresso se callback foi fornecido
+            if (onProgress && duration > 0) {
+                command.on('progress', (progress: any) => {
+                    // ffmpeg retorna progresso com timemark e percent
+                    if (progress.percent && progress.percent > 0 && progress.percent <= 100) {
+                        onProgress(Math.floor(progress.percent))
+                    } else if (progress.timemark && duration > 0) {
+                        // Calcula percent baseado no timemark vs duração total
+                        const [hours, minutes, seconds] = progress.timemark.split(':').map(Number)
+                        const currentSeconds = hours * 3600 + minutes * 60 + (seconds || 0)
+                        const percent = Math.min(100, Math.floor((currentSeconds / duration) * 100))
+                        if (percent > 0) {
+                            onProgress(percent)
+                        }
+                    }
+                })
+            }
+            
+            command
             .save(outputAudioPath)
             .on('end', () => resolve())
             .on("error", (err: Error) => reject(err))

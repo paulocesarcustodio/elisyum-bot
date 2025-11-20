@@ -10,6 +10,12 @@
  * - 480p é ideal para WhatsApp (equilíbrio entre qualidade e tamanho)
  * - Arquivos menores = downloads mais rápidos = melhor experiência
  * - WhatsApp tem limite de 16MB para vídeos, 480p geralmente fica abaixo disso
+ * 
+ * Otimizações de Performance:
+ * - Download paralelo de fragmentos (--concurrent-fragments)
+ * - Buffer aumentado (--buffer-size)
+ * - Chunks maiores para reduzir overhead (--http-chunk-size)
+ * - Prioriza formatos pré-mesclados para evitar merge de vídeo+áudio
  */
 
 export const YOUTUBE_QUALITY_LIMIT = 480

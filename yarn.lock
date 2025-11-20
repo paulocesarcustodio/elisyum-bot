@@ -5031,8 +5031,8 @@ __metadata:
     user-agents: "npm:^1.1.231"
     webpack: "npm:^5.102.1"
     webpack-cli: "npm:^5.1.4"
-    yt-dlp-wrap: "npm:^2.3.12"
     yt-search: "npm:^2.13.1"
+    ytdlp-nodejs: "npm:^2.3.5"
   dependenciesMeta:
     "@ffmpeg-installer/ffmpeg":
       optional: true
@@ -8221,13 +8221,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yt-dlp-wrap@npm:^2.3.12":
-  version: 2.3.12
-  resolution: "yt-dlp-wrap@npm:2.3.12"
-  checksum: 10c0/6164a538203fa58690bdf73268dab416f439812ab0840dab813e8b6b00a238fb588d55a8bf14aba33da8d21767397db25e7100f7fadfb318208f891b9ce9f8ef
-  languageName: node
-  linkType: hard
-
 "yt-search@npm:^2.13.1":
   version: 2.13.1
   resolution: "yt-search@npm:2.13.1"
@@ -8245,6 +8238,15 @@ __metadata:
     yt-search-audio: bin/mpv_audio.sh
     yt-search-video: bin/mpv_video.sh
   checksum: 10c0/fb3949ab38e6d627c00482c8022c59a2aa76d230e4e37c7e7e9f5f2b7ac9e15496e648f050394e0c8420e666acf05a397ce2a1606593be2882e3d2ee9e86fbfc
+  languageName: node
+  linkType: hard
+
+"ytdlp-nodejs@npm:^2.3.5":
+  version: 2.3.5
+  resolution: "ytdlp-nodejs@npm:2.3.5"
+  bin:
+    ytdlp-nodejs: dist/cli.js
+  checksum: 10c0/4becabeca63f9feca4e0f725a9e6becb292f38845d7f895b35bc4c7e8c0ae525b006fb59700be9ad4af9d23f8c34855e1586e95de2ba69fd92fa68f0dde731c9
   languageName: node
   linkType: hard
 

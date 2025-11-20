@@ -9,6 +9,27 @@ import NodeCache from "node-cache"
 import { clearBlockedContactsCache } from "../helpers/blocked-contacts.cache.js"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
+import axios from "axios"
+
+/**
+ * Valida se uma URL de thumbnail está acessível
+ * @param url URL da thumbnail
+ * @param timeout Tempo máximo de espera em ms (padrão: 3000)
+ * @returns true se acessível, false caso contrário
+ */
+async function isImageUrlAccessible(url: string, timeout: number = 3000): Promise<boolean> {
+    try {
+        const response = await axios.head(url, {
+            timeout,
+            validateStatus: (status) => status === 200
+        })
+        return response.status === 200 && response.headers['content-type']?.startsWith('image/')
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.warn('[isImageUrlAccessible] Thumbnail não acessível:', url, errorMsg)
+        return false
+    }
+}
 
 function invalidateBlockedContactsCache(){
     try {
@@ -276,21 +297,106 @@ export async function editText(client: WASocket, chatId: string, messageKey: any
 }
 
 export async function editImageCaption(client: WASocket, chatId: string, messageKey: any, imageUrl: string, caption: string): Promise<any> {
-    return client.sendMessage(chatId, { 
-        image: { url: imageUrl },
-        caption,
-        edit: messageKey 
-    })
+    try {
+        return await client.sendMessage(chatId, { 
+            image: { url: imageUrl },
+            caption,
+            edit: messageKey 
+        })
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error('[editImageCaption] Erro ao editar com thumbnail, tentando logo do bot:', errorMsg)
+        // Fallback: usa logo do bot
+        const path = await import('path')
+        const fs = await import('fs')
+        const { fileURLToPath } = await import('url')
+        const __filename = fileURLToPath(import.meta.url)
+        const __dirname = path.dirname(__filename)
+        const logoPath = path.resolve(__dirname, '../media/elisyum_logo.jpeg')
+        
+        try {
+            const logoBuffer = fs.readFileSync(logoPath)
+            return client.sendMessage(chatId, {
+                image: logoBuffer,
+                caption,
+                edit: messageKey
+            })
+        } catch (logoError) {
+            const logoErrorMsg = logoError instanceof Error ? logoError.message : String(logoError)
+            console.error('[editImageCaption] Erro ao carregar logo, editando apenas texto:', logoErrorMsg)
+            // Último fallback: edita apenas o texto
+            return client.sendMessage(chatId, {
+                text: caption,
+                edit: messageKey
+            })
+        }
+    }
 }
 
 export async function replyImageFromUrl(client: WASocket, chatId: string, imageUrl: string, caption: string, quoted: WAMessage, options?: MessageOptions) {
-    return client.sendMessage(chatId, {
-        image: { url: imageUrl },
-        caption
-    }, {
-        quoted,
-        ephemeralExpiration: options?.expiration
-    })
+    // Valida se a imagem está acessível (timeout de 3s)
+    const isAccessible = await isImageUrlAccessible(imageUrl, 3000)
+    
+    if (!isAccessible) {
+        console.warn('[replyImageFromUrl] Thumbnail não acessível, usando logo do bot como fallback')
+        // Usa logo do bot como fallback
+        const path = await import('path')
+        const fs = await import('fs')
+        const { fileURLToPath } = await import('url')
+        const __filename = fileURLToPath(import.meta.url)
+        const __dirname = path.dirname(__filename)
+        const logoPath = path.resolve(__dirname, '../media/elisyum_logo.jpeg')
+        
+        try {
+            const logoBuffer = fs.readFileSync(logoPath)
+            return client.sendMessage(chatId, {
+                image: logoBuffer,
+                caption
+            }, {
+                quoted,
+                ephemeralExpiration: options?.expiration
+            })
+        } catch (logoError) {
+            const logoErrorMsg = logoError instanceof Error ? logoError.message : String(logoError)
+            console.error('[replyImageFromUrl] Erro ao carregar logo, usando texto:', logoErrorMsg)
+            return replyText(client, chatId, caption, quoted, options)
+        }
+    }
+    
+    try {
+        return await client.sendMessage(chatId, {
+            image: { url: imageUrl },
+            caption
+        }, {
+            quoted,
+            ephemeralExpiration: options?.expiration
+        })
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error('[replyImageFromUrl] Erro ao enviar thumbnail, tentando logo do bot:', errorMsg)
+        // Fallback para logo do bot
+        const path = await import('path')
+        const fs = await import('fs')
+        const { fileURLToPath } = await import('url')
+        const __filename = fileURLToPath(import.meta.url)
+        const __dirname = path.dirname(__filename)
+        const logoPath = path.resolve(__dirname, '../media/elisyum_logo.jpeg')
+        
+        try {
+            const logoBuffer = fs.readFileSync(logoPath)
+            return client.sendMessage(chatId, {
+                image: logoBuffer,
+                caption
+            }, {
+                quoted,
+                ephemeralExpiration: options?.expiration
+            })
+        } catch (logoError) {
+            const logoErrorMsg = logoError instanceof Error ? logoError.message : String(logoError)
+            console.error('[replyImageFromUrl] Erro ao carregar logo, usando texto:', logoErrorMsg)
+            return replyText(client, chatId, caption, quoted, options)
+        }
+    }
 }
 
 export async function replyFile (client: WASocket, chatId: string, type: MessageTypes, url: string, caption: string, quoted: WAMessage, options?: MessageOptions){ 
