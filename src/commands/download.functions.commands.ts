@@ -169,6 +169,7 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     
     const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl)
     
+    
     // Verifica tamanho
     const videoSizeMB = videoBuffer.length / 1024 / 1024
     if (videoSizeMB > 16) {
