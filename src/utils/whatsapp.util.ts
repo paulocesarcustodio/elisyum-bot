@@ -101,6 +101,71 @@ export async function downloadMessageAsBuffer(
     return buffer
 }
 
+export async function extractViewOnceMessage(client: WASocket, message: WAMessage): Promise<{ type: 'imageMessage' | 'videoMessage', buffer: Buffer, caption?: string } | null> {
+    if (!message.message) {
+        return null
+    }
+
+    const messageContent = message.message
+    let viewOnceMessage: proto.IMessage | null | undefined = null
+
+    console.log(`[EXTRACT-VIEW-ONCE] Verificando tipo de mensagem...`)
+
+    // Extrai o conteúdo da mensagem view once
+    if (messageContent.viewOnceMessage) {
+        console.log(`[EXTRACT-VIEW-ONCE] Encontrado viewOnceMessage`)
+        viewOnceMessage = messageContent.viewOnceMessage.message
+    } else if (messageContent.viewOnceMessageV2) {
+        console.log(`[EXTRACT-VIEW-ONCE] Encontrado viewOnceMessageV2`)
+        viewOnceMessage = messageContent.viewOnceMessageV2.message
+    } else if (messageContent.viewOnceMessageV2Extension) {
+        console.log(`[EXTRACT-VIEW-ONCE] Encontrado viewOnceMessageV2Extension`)
+        viewOnceMessage = messageContent.viewOnceMessageV2Extension.message
+    }
+    // Fallback: se a mensagem quoted já é image/video diretamente
+    else if (messageContent.imageMessage || messageContent.videoMessage) {
+        console.log(`[EXTRACT-VIEW-ONCE] Fallback: mensagem direta (sem wrapper view once)`)
+        viewOnceMessage = messageContent
+    }
+
+    if (!viewOnceMessage) {
+        console.log(`[EXTRACT-VIEW-ONCE] Nenhuma mensagem de mídia encontrada`)
+        return null
+    }
+
+    // Verifica se contém imagem ou vídeo
+    if (viewOnceMessage.imageMessage) {
+        console.log(`[EXTRACT-VIEW-ONCE] Baixando imageMessage...`)
+        const imageMessage = viewOnceMessage.imageMessage
+        const tempMessage: WAMessage = {
+            key: message.key,
+            message: { imageMessage }
+        }
+        const buffer = await downloadMessageAsBuffer(client, tempMessage)
+        return {
+            type: 'imageMessage',
+            buffer,
+            caption: imageMessage.caption || undefined
+        }
+    } else if (viewOnceMessage.videoMessage) {
+        console.log(`[EXTRACT-VIEW-ONCE] Baixando videoMessage...`)
+        const videoMessage = viewOnceMessage.videoMessage
+        const tempMessage: WAMessage = {
+            key: message.key,
+            message: { videoMessage }
+        }
+        const buffer = await downloadMessageAsBuffer(client, tempMessage)
+        return {
+            type: 'videoMessage',
+            buffer,
+            caption: videoMessage.caption || undefined
+        }
+    }
+
+    console.log(`[EXTRACT-VIEW-ONCE] Tipo de mídia não suportado`)
+    return null
+}
+
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
     await client.presenceSubscribe(chatId)
     await randomDelay(200, 400)
@@ -511,6 +576,21 @@ export function getMessageFromCache(messageId: string, messageCache: NodeCache){
     return message
 }
 
+export function storeViewOnceMessage(message: WAMessage, viewOnceCache: NodeCache){
+    if (message.key && message.key.id && message.message){
+        const messageType = getContentType(message.message)
+        if (messageType === 'viewOnceMessage' || messageType === 'viewOnceMessageV2' || messageType === 'viewOnceMessageV2Extension') {
+            viewOnceCache.set(message.key.id, message)
+            return true
+        }
+    }
+    return false
+}
+
+export function getViewOnceMessageFromCache(messageId: string, viewOnceCache: NodeCache): WAMessage | undefined {
+    return viewOnceCache.get(messageId) as WAMessage | undefined
+}
+
 export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string, requestId?: string){
     if (!m.message) return
 
@@ -593,7 +673,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
         if (!quotedMessage) return
 
-        const typeQuoted = getContentType(quotedMessage)
+        let typeQuoted = getContentType(quotedMessage)
         const quotedStanzaId = contextInfo.stanzaId ?? undefined
         const senderQuoted = normalizeWhatsappJid(contextInfo.participant || contextInfo.remoteJid)
 
@@ -602,15 +682,6 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         const captionQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "caption" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].caption as string | null : undefined
         const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: senderQuoted, messageId: quotedStanzaId })
         quotedWAMessage.key.fromMe = (normalizedHostId == senderQuoted)
-
-        // Debug: log completo do contextInfo
-        console.log(`[DEBUG-CONTEXT] contextInfo completo:`, JSON.stringify({
-            notifyName: (contextInfo as any)?.notifyName,
-            pushName: (contextInfo as any)?.pushName,
-            participant: contextInfo.participant,
-            remoteJid: contextInfo.remoteJid,
-            keys: Object.keys(contextInfo || {})
-        }, null, 2))
 
         formattedMessage.quotedMessage = {
             type: typeQuoted,

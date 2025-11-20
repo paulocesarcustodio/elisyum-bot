@@ -318,6 +318,18 @@ const utilityCommands = {
             error_not_found: 'Nenhum anime compatível foi encontrado'
         },
         function: utilityFunctions.qualanimeCommand
+    },
+    revelar: {
+        guide: `Ex: Responda uma mensagem de *visualização única* com *{$p}revelar* - Revela a imagem/vídeo de visualização única.\n\n`+
+        `*Obs*: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).\n`,
+        msgs: {
+            error_not_view_once: "Este comando só funciona com mensagens de *visualização única* (view once).",
+            error_message: "Houve um erro ao obter os dados da mensagem.",
+            wait: "👁️ Revelando mensagem de visualização única...",
+            reply_image: "🖼️ *Imagem revelada*\n\n{$1}",
+            reply_video: "🎬 *Vídeo revelado*\n\n{$1}"
+        },
+        function: utilityFunctions.revelarCommand
     }
 }
 

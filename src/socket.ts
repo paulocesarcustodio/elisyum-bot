@@ -24,6 +24,8 @@ const retryCache = new NodeCache()
 const eventsCache = new NodeCache()
 //Cache de mensagens para serem reenviadas em caso de falha
 const messagesCache = new NodeCache({stdTTL: 5*60, useClones: false})
+//Cache de mensagens de visualização única (view once) - TTL de 24 horas
+const viewOnceCache = new NodeCache({stdTTL: 24*60*60, useClones: false})
 
 export default async function connect(){
     const { state, saveCreds } = await useNeDBAuthState()
@@ -94,7 +96,7 @@ export default async function connect(){
 
             if (otherMessages.length){
                 const regularMessages = { ...message, messages: otherMessages }
-                if (isBotReady) await messageReceived(client, regularMessages, botInfo, messagesCache)
+                if (isBotReady) await messageReceived(client, regularMessages, botInfo, messagesCache, viewOnceCache)
             }
         }
 

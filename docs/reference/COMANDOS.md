@@ -36,6 +36,7 @@
 - Detector de anime
 - Noticias atuais
 - Tradutor de texto
+- Revelar mensagens de visualização única
 
 ### 👾 Variado
 - Pedra, papel e tesoura

@@ -493,3 +493,71 @@ export async function qualanimeCommand(client: WASocket, botInfo: Bot, message: 
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, replyText, message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
 }
 
+export async function revelarCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    if (!message.isQuoted || !message.quotedMessage) {
+        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+    }
+
+    const quotedType = message.quotedMessage.type
+    
+    console.log(`[REVELAR] Tipo da mensagem respondida: ${quotedType}`)
+    
+    // Verifica se é mensagem de visualização única
+    if (quotedType !== 'viewOnceMessage' && quotedType !== 'viewOnceMessageV2' && quotedType !== 'viewOnceMessageV2Extension') {
+        // Tenta verificar se a mensagem original era view once (fallback)
+        if (!message.quotedMessage.media) {
+            throw new Error(utilityCommands.revelar.msgs.error_not_view_once)
+        }
+        
+        // Se tem mídia mas não é view once, mostra erro
+        const isImage = quotedType === 'imageMessage'
+        const isVideo = quotedType === 'videoMessage'
+        
+        if (!isImage && !isVideo) {
+            throw new Error(utilityCommands.revelar.msgs.error_not_view_once)
+        }
+        
+        console.log(`[REVELAR] AVISO: Mensagem é ${quotedType}, mas vou tentar revelar mesmo assim`)
+    }
+
+    if (!message.quotedMessage.wa_message) {
+        throw new Error(utilityCommands.revelar.msgs.error_message)
+    }
+
+    await waUtil.replyText(client, message.chat_id, utilityCommands.revelar.msgs.wait, message.wa_message, {expiration: message.expiration})
+
+    try {
+        // Tenta extrair como view once primeiro
+        const viewOnceContent = await waUtil.extractViewOnceMessage(client, message.quotedMessage.wa_message)
+        
+        if (viewOnceContent) {
+            const { type: contentType, buffer: mediaBuffer, caption: mediaCaption } = viewOnceContent
+
+            // Envia a mídia revelada
+            if (contentType === 'imageMessage') {
+                const replyText = buildText(utilityCommands.revelar.msgs.reply_image, mediaCaption || '')
+                await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', mediaBuffer, replyText, message.wa_message, {expiration: message.expiration})
+            } else if (contentType === 'videoMessage') {
+                const replyText = buildText(utilityCommands.revelar.msgs.reply_video, mediaCaption || '')
+                await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', mediaBuffer, replyText, message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+            }
+        } else {
+            // Fallback: baixa diretamente como mídia normal
+            console.log(`[REVELAR] Fallback: baixando como mídia normal`)
+            const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
+            const mediaCaption = message.quotedMessage.caption || ''
+            
+            if (quotedType === 'imageMessage') {
+                const replyText = buildText(utilityCommands.revelar.msgs.reply_image, mediaCaption)
+                await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', mediaBuffer, replyText, message.wa_message, {expiration: message.expiration})
+            } else if (quotedType === 'videoMessage') {
+                const replyText = buildText(utilityCommands.revelar.msgs.reply_video, mediaCaption)
+                await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', mediaBuffer, replyText, message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+            }
+        }
+    } catch (error: any) {
+        console.error(`[REVELAR] Erro ao processar:`, error)
+        throw new Error(utilityCommands.revelar.msgs.error_message)
+    }
+}
+
