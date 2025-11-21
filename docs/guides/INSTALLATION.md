@@ -16,11 +16,16 @@ Este guia explica como instalar e configurar o bot do zero.
 curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
 ```
 
+**⚠️ IMPORTANTE:** Após a instalação, recarregue o shell:
+```bash
+source ~/.bashrc
+```
+
 Este comando único:
 - 📥 Clona o repositório automaticamente
-- 🔧 Instala todas as dependências
+- 🔧 Instala todas as dependências (Bun, FFmpeg, etc)
 - 🏗️ Compila o projeto
-- ✅ Deixa tudo pronto para usar!
+- ✅ Adiciona Bun ao PATH permanentemente
 
 ### Opção 2: Clonar Primeiro (Mais Seguro)
 
@@ -83,7 +88,22 @@ DEBUG=false
 
 ```bash
 cd elisyum-bot  # Se ainda não estiver no diretório
+
+# Opção 1: Use o script auxiliar (recomendado)
+./start-bot.sh
+
+# Opção 2: Use bun diretamente
 bun start
+```
+
+**Se `bun: command not found`:**
+```bash
+# Recarregue o shell
+source ~/.bashrc
+
+# Ou adicione ao PATH manualmente nesta sessão
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
 ```
 
 Escaneie o QR Code que aparecerá no terminal com seu WhatsApp.

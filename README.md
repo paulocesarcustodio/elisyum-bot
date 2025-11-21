@@ -37,12 +37,19 @@ curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main
 curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
 ```
 
-Ou se preferir revisar o script antes de executar:
-
+**Após a instalação:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh -o install.sh
-chmod +x install.sh
-./install.sh
+# Recarregue o shell para usar o Bun
+source ~/.bashrc
+
+# Entre no diretório
+cd elisyum-bot
+
+# Configure o .env
+nano .env
+
+# Inicie o bot (use o script auxiliar ou bun start)
+./start-bot.sh
 ```
 
 O script instala automaticamente:
@@ -53,8 +60,6 @@ O script instala automaticamente:
 - ✅ Todas as dependências npm
 - ✅ SQLite (integrado no Bun)
 - ✅ Compila o TypeScript
-
-Após a instalação, configure o `.env` e inicie com `bun start`!
 
 📖 **Guia completo**: [docs/guides/INSTALLATION.md](docs/guides/INSTALLATION.md)
 

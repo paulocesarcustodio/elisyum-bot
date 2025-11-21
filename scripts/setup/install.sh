@@ -59,6 +59,13 @@ fi
 
 # 1. Verificar se Bun está instalado
 echo -e "\n${BLUE}[1/6]${NC} Verificando Bun..."
+
+# Adicionar Bun ao PATH se existir mas não estiver no PATH
+if [ -d "$HOME/.bun" ] && [ ! -x "$(command -v bun 2>/dev/null)" ]; then
+    export BUN_INSTALL="$HOME/.bun"
+    export PATH="$BUN_INSTALL/bin:$PATH"
+fi
+
 if command_exists bun; then
     BUN_VERSION=$(bun --version)
     print_success "Bun já está instalado (v$BUN_VERSION)"
@@ -218,7 +225,27 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${BLUE}📁 Diretório do bot:${NC} $(pwd)"
 echo ""
-echo -e "${BLUE}Próximos passos:${NC}"
+
+# Verificar se Bun está no PATH permanentemente
+if ! grep -q "BUN_INSTALL" "$HOME/.bashrc" 2>/dev/null; then
+    print_warning "Adicionando Bun ao ~/.bashrc para persistir entre sessões..."
+    echo '' >> "$HOME/.bashrc"
+    echo '# Bun runtime' >> "$HOME/.bashrc"
+    echo 'export BUN_INSTALL="$HOME/.bun"' >> "$HOME/.bashrc"
+    echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$HOME/.bashrc"
+    print_success "Bun adicionado ao ~/.bashrc"
+fi
+
+echo ""
+echo -e "${YELLOW}⚠ IMPORTANTE:${NC} Bun foi instalado! Execute um dos comandos abaixo:"
+echo ""
+echo -e "${BLUE}Opção 1 (recarregar shell atual):${NC}"
+echo -e "  ${YELLOW}source ~/.bashrc${NC}"
+echo ""
+echo -e "${BLUE}Opção 2 (nova sessão):${NC}"
+echo -e "  ${YELLOW}exit${NC} e faça login novamente"
+echo ""
+echo -e "${BLUE}Depois, continue:${NC}"
 echo ""
 echo "1. Entre no diretório: ${YELLOW}cd elisyum-bot${NC} (se não estiver nele)"
 echo "2. Configure o arquivo .env: ${YELLOW}nano .env${NC}"
