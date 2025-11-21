@@ -39,17 +39,16 @@ curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main
 
 **Após a instalação:**
 ```bash
-# Recarregue o shell para usar o Bun
-source ~/.bashrc
-
-# Entre no diretório
+# Opção 1: Use o script run.sh (não precisa recarregar shell!)
 cd elisyum-bot
+nano .env          # Configure suas variáveis
+./run.sh           # Inicia o bot automaticamente
 
-# Configure o .env
+# Opção 2: Recarregue o shell e use bun
+source ~/.bashrc
+cd elisyum-bot
 nano .env
-
-# Inicie o bot (use o script auxiliar ou bun start)
-./start-bot.sh
+bun start
 ```
 
 O script instala automaticamente:

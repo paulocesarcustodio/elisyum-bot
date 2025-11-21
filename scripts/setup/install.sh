@@ -237,32 +237,60 @@ if ! grep -q "BUN_INSTALL" "$HOME/.bashrc" 2>/dev/null; then
 fi
 
 echo ""
-echo -e "${YELLOW}⚠ IMPORTANTE:${NC} Bun foi instalado! Execute um dos comandos abaixo:"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}⚠  AÇÃO NECESSÁRIA${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "${BLUE}Opção 1 (recarregar shell atual):${NC}"
-echo -e "  ${YELLOW}source ~/.bashrc${NC}"
+echo -e "${RED}O Bun foi instalado, mas você precisa recarregar o shell!${NC}"
 echo ""
-echo -e "${BLUE}Opção 2 (nova sessão):${NC}"
-echo -e "  ${YELLOW}exit${NC} e faça login novamente"
+echo -e "${GREEN}Execute AGORA:${NC}"
 echo ""
-echo -e "${BLUE}Depois, continue:${NC}"
+echo -e "  ${BLUE}source ~/.bashrc${NC}"
 echo ""
-echo "1. Entre no diretório: ${YELLOW}cd elisyum-bot${NC} (se não estiver nele)"
-echo "2. Configure o arquivo .env: ${YELLOW}nano .env${NC}"
-echo "3. Execute: ${YELLOW}bun start${NC}"
-echo "4. Escaneie o QR Code com seu WhatsApp"
+echo -e "${GREEN}Depois disso, para iniciar o bot:${NC}"
 echo ""
-echo -e "${BLUE}Comandos úteis:${NC}"
+echo "1. ${YELLOW}cd elisyum-bot${NC}"
+echo "2. ${YELLOW}nano .env${NC}  (configure suas variáveis)"
+echo "3. ${YELLOW}bun start${NC}  (ou use ${YELLOW}./start-bot.sh${NC})"
+echo ""
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${BLUE}📚 Comandos úteis:${NC}"
 echo ""
 echo "  ${YELLOW}bun start${NC}        - Iniciar o bot"
+echo "  ${YELLOW}./start-bot.sh${NC}   - Script auxiliar que configura PATH automaticamente"
 echo "  ${YELLOW}bun run dev${NC}      - Modo desenvolvimento (recompila)"
 echo "  ${YELLOW}bun run build${NC}    - Recompilar TypeScript"
-echo "  ${YELLOW}bun run migrate${NC}  - Executar migrações do banco"
 echo ""
-echo -e "${BLUE}Documentação:${NC}"
+echo -e "${BLUE}📖 Documentação:${NC}"
 echo ""
 echo "  Comandos: docs/reference/COMANDOS.md"
 echo "  Deploy: docs/guides/DEPLOY.md"
 echo ""
+
+# Tentar criar um script wrapper que funciona mesmo sem recarregar
+cat > elisyum-bot/run.sh << 'RUNSCRIPT'
+#!/bin/bash
+# Wrapper que adiciona Bun ao PATH automaticamente
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+if ! command -v bun >/dev/null 2>&1; then
+    echo "❌ Erro: Bun não encontrado em $BUN_INSTALL/bin"
+    echo ""
+    echo "Execute: source ~/.bashrc"
+    exit 1
+fi
+
+cd "$(dirname "$0")"
+exec bun start
+RUNSCRIPT
+
+chmod +x elisyum-bot/run.sh
+
 print_success "Tudo pronto! 🚀"
+echo ""
+echo -e "${GREEN}💡 DICA: Para iniciar o bot agora mesmo sem recarregar:${NC}"
+echo ""
+echo -e "  ${BLUE}cd elisyum-bot && ./run.sh${NC}"
 echo ""
