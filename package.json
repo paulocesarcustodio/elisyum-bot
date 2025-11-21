@@ -4,16 +4,17 @@
   "description": "Bot brasileiro para Whatsapp com diversas utilidades para o dia-a-dia.",
   "type": "module",
   "main": "dist/app.js",
-  "packageManager": "yarn@4.9.4",
+  "packageManager": "bun@1.1.0",
   "scripts": {
-    "start": "node dist/app.js",
+    "start": "bun dist/app.js",
     "clean": "rimraf dist/",
     "copy-media": "copyfiles -u 2 src/media/* dist/media",
-    "prestart": "yarn install --immutable",
-    "dev": "yarn build && node dist/app.js",
-    "migrate": "cross-env migrate=y yarn dev",
-    "build": "yarn clean && tsc && yarn copy-media",
-    "zip": "yarn build && bestzip LBOT-v$npm_package_version.zip dist package.json LICENSE yarn.lock .yarnrc.yml"
+    "prestart": "bun install --frozen-lockfile",
+    "dev": "bun run build && bun dist/app.js",
+    "migrate": "cross-env migrate=y bun run dev",
+    "build": "bun run clean && bun run tsc && bun run copy-media",
+    "zip": "bun run build && bestzip LBOT-v$npm_package_version.zip dist package.json LICENSE bun.lock",
+    "tsc": "tsc"
   },
   "author": "Leal",
   "license": "GPL-3.0-only",
@@ -25,8 +26,7 @@
     "sticker"
   ],
   "engines": {
-    "node": ">=20",
-    "yarn": ">=1.22"
+    "bun": ">=1.1.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

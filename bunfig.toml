@@ -1,0 +1,20 @@
+[install]
+# Configura o comportamento de instalação do Bun
+peer = true
+production = false
+optional = true
+dev = true
+exact = false
+
+[install.cache]
+# Habilita cache de instalação
+disable = false
+
+[install.lockfile]
+# Configurações do lockfile
+save = true
+print = "yarn"
+
+[run]
+# Shell para executar scripts
+shell = "system"

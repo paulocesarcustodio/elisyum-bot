@@ -38,20 +38,7 @@ export function messageErrorCommandUsage(prefix: string, message: Message){
 }
 
 export function messageErrorCommand(command: string, reason: string){
-  const errorMessage = buildText(botTexts.error_command, command, reason)
-  const asciiArt = `
-FAZ VOCÊ FILHA DA PUTA
-……..…../´¯/)………… (\\¯\`\\
-…………/….//……….. …\\\\….\\
-………../….//………… ….\\\\….\\
-…../´¯/…./´¯\\………../¯ \`\\….\\¯\`\\
-.././…/…./…./.|_……_| .\\….\\….\\…\\.\\..
-(.(….(….(…./.)..)..(..(. \\….)….)….)… )
-.\\……………..\\/…/….\\. ..\\/……………./
-..\\…………….. /…….\\……………..…/
-….\\…………..(…………)……………./`
-  
-  return `${errorMessage}\n${asciiArt}`
+  return buildText(botTexts.error_command, command, reason)
 }
 
 export function getCurrentBotVersion(){
@@ -172,6 +159,56 @@ export function deepMerge<T>(defaultObj: T, overrideObj: any): T {
   }
 
   return result
+}
+
+/**
+ * Extrai URLs de uma string
+ */
+export function extractUrls(text: string): string[] {
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  return text.match(urlRegex) || []
+}
+
+/**
+ * Extrai o texto do comando ou da mensagem respondida, priorizando URLs
+ */
+export function getTextOrQuotedText(message: Message): string {
+  // Se há argumentos, usa o texto do comando
+  if (message.args.length) {
+    return message.text_command
+  }
+  
+  // Se não há argumentos mas há mensagem respondida, tenta extrair URL dela
+  if (message.isQuoted && message.quotedMessage) {
+    const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
+    const urls = extractUrls(quotedText)
+    if (urls.length > 0) {
+      return urls[0] // Retorna a primeira URL encontrada
+    }
+  }
+  
+  return message.text_command
+}
+
+/**
+ * Detecta a plataforma de uma URL
+ */
+export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'unknown' {
+  const urlLower = url.toLowerCase()
+  
+  if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    return 'youtube'
+  } else if (urlLower.includes('instagram.com')) {
+    return 'instagram'
+  } else if (urlLower.includes('facebook.com') || urlLower.includes('fb.watch') || urlLower.includes('fb.com')) {
+    return 'facebook'
+  } else if (urlLower.includes('tiktok.com') || urlLower.includes('vt.tiktok.com')) {
+    return 'tiktok'
+  } else if (urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
+    return 'twitter'
+  }
+  
+  return 'unknown'
 }
 
 

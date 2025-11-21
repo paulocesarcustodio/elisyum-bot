@@ -2,7 +2,7 @@ import { WASocket } from "@whiskeysockets/baileys"
 import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
-import { buildText, messageErrorCommandUsage, generateProgressBar } from "../utils/general.util.js"
+import { buildText, messageErrorCommandUsage, generateProgressBar, getTextOrQuotedText, detectPlatform, extractUrls } from "../utils/general.util.js"
 import * as waUtil from "../utils/whatsapp.util.js"
 import * as downloadUtil from '../utils/download.util.js'
 import * as convertUtil from '../utils/convert.util.js'
@@ -11,11 +11,28 @@ import format from 'format-duration'
 import downloadCommands from "./download.list.commands.js"
 
 export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    } 
+    }
+    
+    // Se estiver respondendo uma mensagem, valida se é um link do YouTube
+    if (message.isQuoted && !message.args.length && message.quotedMessage) {
+        const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
+        const urls = extractUrls(quotedText)
+        
+        if (urls.length === 0) {
+            throw new Error(buildText(downloadCommands.play.msgs.error_no_youtube_link, botInfo.prefix))
+        }
+        
+        const platform = detectPlatform(urls[0])
+        if (platform !== 'youtube') {
+            throw new Error(buildText(downloadCommands.play.msgs.error_only_youtube, botInfo.prefix))
+        }
+    }
 
-    const videoInfo = await downloadUtil.youtubeMedia(message.text_command)
+    const videoInfo = await downloadUtil.youtubeMedia(textToProcess)
 
     if (!videoInfo){
         throw new Error(downloadCommands.play.msgs.error_not_found)
@@ -142,11 +159,13 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
 }
 
 export async function ytCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const videoInfo = await downloadUtil.youtubeMedia(message.text_command)
+    const videoInfo = await downloadUtil.youtubeMedia(textToProcess)
 
     if (!videoInfo){
         throw new Error(downloadCommands.yt.msgs.error_not_found)
@@ -234,11 +253,13 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const fbInfo = await downloadUtil.facebookMedia(message.text_command)
+    const fbInfo = await downloadUtil.facebookMedia(textToProcess)
 
     if (fbInfo.duration > 360){
         throw new Error(downloadCommands.fb.msgs.error_limit)
@@ -302,11 +323,13 @@ export async function fbCommand(client: WASocket, botInfo: Bot, message: Message
 }
 
 export async function igCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const igInfo = await downloadUtil.instagramMedia(message.text_command)
+    const igInfo = await downloadUtil.instagramMedia(textToProcess)
     
     // Mensagem inicial com barra de progresso
     const totalMedia = igInfo.media.length
@@ -385,11 +408,13 @@ export async function igCommand(client: WASocket, botInfo: Bot, message: Message
 }
 
 export async function xCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const xInfo = await downloadUtil.xMedia(message.text_command)
+    const xInfo = await downloadUtil.xMedia(textToProcess)
 
     if (!xInfo){
         throw new Error(downloadCommands.x.msgs.error_not_found)
@@ -467,11 +492,13 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
 }
 
 export async function tkCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    if (!message.args.length) {
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted) {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     }
 
-    const tiktok = await downloadUtil.tiktokMedia(message.text_command)
+    const tiktok = await downloadUtil.tiktokMedia(textToProcess)
 
     if (!tiktok) {
         throw new Error(downloadCommands.tk.msgs.error_not_found)
@@ -617,6 +644,40 @@ export async function imgCommand(client: WASocket, botInfo: Bot, message: Messag
 
     if (!imagesSent) {
         throw new Error (downloadCommands.img.msgs.error) 
+    }
+}
+
+export async function downCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const textToProcess = getTextOrQuotedText(message)
+    
+    if (!message.args.length && !message.isQuoted){
+        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+    }
+
+    // Extrai URLs do texto
+    const urls = extractUrls(textToProcess)
+    
+    if (urls.length === 0) {
+        // Se não há URL, tenta fazer busca no YouTube (comportamento do yt)
+        return await ytCommand(client, botInfo, message, group)
+    }
+
+    // Detecta a plataforma da primeira URL
+    const platform = detectPlatform(urls[0])
+    
+    switch (platform) {
+        case 'youtube':
+            return await ytCommand(client, botInfo, message, group)
+        case 'instagram':
+            return await igCommand(client, botInfo, message, group)
+        case 'facebook':
+            return await fbCommand(client, botInfo, message, group)
+        case 'tiktok':
+            return await tkCommand(client, botInfo, message, group)
+        case 'twitter':
+            return await xCommand(client, botInfo, message, group)
+        default:
+            throw new Error('❌ Link não reconhecido. Plataformas suportadas: YouTube, Instagram, Facebook, TikTok, Twitter/X')
     }
 }
 
