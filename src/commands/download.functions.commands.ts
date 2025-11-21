@@ -665,17 +665,24 @@ export async function downCommand(client: WASocket, botInfo: Bot, message: Messa
     // Detecta a plataforma da primeira URL
     const platform = detectPlatform(urls[0])
     
+    // Cria uma nova mensagem com a URL como argumento para garantir processamento correto
+    const modifiedMessage: Message = {
+        ...message,
+        args: [urls[0]],
+        text_command: urls[0]
+    }
+    
     switch (platform) {
         case 'youtube':
-            return await ytCommand(client, botInfo, message, group)
+            return await ytCommand(client, botInfo, modifiedMessage, group)
         case 'instagram':
-            return await igCommand(client, botInfo, message, group)
+            return await igCommand(client, botInfo, modifiedMessage, group)
         case 'facebook':
-            return await fbCommand(client, botInfo, message, group)
+            return await fbCommand(client, botInfo, modifiedMessage, group)
         case 'tiktok':
-            return await tkCommand(client, botInfo, message, group)
+            return await tkCommand(client, botInfo, modifiedMessage, group)
         case 'twitter':
-            return await xCommand(client, botInfo, message, group)
+            return await xCommand(client, botInfo, modifiedMessage, group)
         default:
             throw new Error('❌ Link não reconhecido. Plataformas suportadas: YouTube, Instagram, Facebook, TikTok, Twitter/X')
     }

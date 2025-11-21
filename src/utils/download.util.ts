@@ -137,6 +137,8 @@ export async function instagramMedia (url: string){
 
 export async function youtubeMedia (text: string){
     try {
+        console.log('[youtubeMedia] 📝 Texto recebido:', text)
+        
         let videoUrl : string | undefined
         let videoId : string | undefined
         let quickInfo: any = null
@@ -144,12 +146,15 @@ export async function youtubeMedia (text: string){
         // Verifica se é uma URL válida do YouTube
         const urlPattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/
         const isURLValid = urlPattern.test(text)
+        
+        console.log('[youtubeMedia] ✅ É URL válida do YouTube?', isURLValid)
 
         if(isURLValid) {
             videoUrl = text
-            // Extrai o ID do vídeo da URL
-            const idMatch = text.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
+            // Extrai o ID do vídeo da URL (incluindo /shorts/)
+            const idMatch = text.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&\s?]+)/)
             videoId = idMatch ? idMatch[1] : undefined
+            console.log('[youtubeMedia] 🔍 Video ID extraído:', videoId)
         } else {
             // Busca o vídeo por título
             const {videos} = await yts(text)
@@ -169,6 +174,7 @@ export async function youtubeMedia (text: string){
 
         // Se temos quickInfo do yts, retorna rapidamente sem chamar yt-dlp
         if (quickInfo) {
+            console.log('[youtubeMedia] 📦 Usando dados do yts (busca)')
             // Valida e converte duração (yts retorna duration.seconds)
             const duration = Number(quickInfo.duration?.seconds) || Number(quickInfo.timestamp) || 0
             
@@ -183,13 +189,16 @@ export async function youtubeMedia (text: string){
                 url: '', // URL será obtida apenas no download
                 thumbnail: quickInfo.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
             }
+            console.log('[youtubeMedia] ✅ Retornando:', ytInfo.title)
             return ytInfo
         }
 
         // Para URLs diretas, usa yts com a URL completa para obter metadados básicos
         try {
+            console.log('[youtubeMedia] 🔎 Buscando metadados no yts com videoId:', videoId)
             const quickInfo = await yts({videoId: videoId})
             if (quickInfo) {
+                console.log('[youtubeMedia] 📦 Dados obtidos do yts (por ID)')
                 // Valida e converte duração (yts retorna duration.seconds)
                 const duration = Number(quickInfo.duration?.seconds) || Number(quickInfo.timestamp) || 0
                 
@@ -204,10 +213,12 @@ export async function youtubeMedia (text: string){
                     url: '',
                     thumbnail: quickInfo.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
                 }
+                console.log('[youtubeMedia] ✅ Retornando:', ytInfo.title)
                 return ytInfo
             }
+            console.log('[youtubeMedia] ⚠️ yts retornou vazio')
         } catch(ytsError) {
-            console.log('[youtubeMedia] yts by ID failed, falling back to yt-dlp')
+            console.log('[youtubeMedia] ❌ yts by ID failed, falling back to yt-dlp:', ytsError)
         }
 
         // Fallback: usa yt-dlp apenas se yts falhar (raro)

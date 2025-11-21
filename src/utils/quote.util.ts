@@ -219,6 +219,8 @@ export async function createWhatsAppBubble({
         let currentLine = ''
         const maxTextWidth = maxBubbleWidth - (bubblePadding * 2)
         
+        let maxLineWidth = 0
+
         for (const word of words) {
             const testLine = currentLine ? `${currentLine} ${word}` : word
             const metrics = measureTextWithEmojis(tempCtx, testLine, fontSize)
@@ -226,9 +228,13 @@ export async function createWhatsAppBubble({
             if (metrics.width > maxTextWidth) {
                 if (currentLine) {
                     lines.push(currentLine)
+                    const currentMetrics = measureTextWithEmojis(tempCtx, currentLine, fontSize)
+                    if (currentMetrics.width > maxLineWidth) maxLineWidth = currentMetrics.width
                     currentLine = word
                 } else {
                     lines.push(word)
+                    const wordMetrics = measureTextWithEmojis(tempCtx, word, fontSize)
+                    if (wordMetrics.width > maxLineWidth) maxLineWidth = wordMetrics.width
                     currentLine = ''
                 }
             } else {
@@ -238,6 +244,8 @@ export async function createWhatsAppBubble({
         
         if (currentLine) {
             lines.push(currentLine)
+            const currentMetrics = measureTextWithEmojis(tempCtx, currentLine, fontSize)
+            if (currentMetrics.width > maxLineWidth) maxLineWidth = currentMetrics.width
         }
         
         // Calcular espaço para o horário
@@ -245,6 +253,11 @@ export async function createWhatsAppBubble({
         const timeMetrics = tempCtx.measureText(time || '')
         const timeWidth = timeMetrics.width
         
+        // Medir largura do nome
+        tempCtx.font = `bold ${nameFontSize}px "Segoe UI", Arial, sans-serif`
+        const nameMetrics = measureTextWithEmojis(tempCtx, authorName, nameFontSize)
+        const nameWidth = nameMetrics.width
+
         // Verificar se o horário cabe na última linha ou precisa de nova linha
         tempCtx.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
         const lastLine = lines[lines.length - 1] || ''
@@ -252,19 +265,35 @@ export async function createWhatsAppBubble({
         
         let additionalHeightForTime = 0
         
-        // Se a última linha + horário + espaço passar do limite do balão, joga horário pra baixo
-        // maxTextWidth já considera o padding
-        if (lastLineMetrics.width + timeWidth + 20 > maxTextWidth) {
+        // Calcular largura necessária do balão
+        // Base: maior linha de texto ou nome do autor
+        let contentWidth = Math.max(maxLineWidth, nameWidth)
+        
+        // Ajuste para o horário
+        if (lastLineMetrics.width + timeWidth + 20 <= maxTextWidth) {
+            // Cabe na mesma linha, expandir se necessário
+            if (lastLineMetrics.width + timeWidth + 20 > contentWidth) {
+                contentWidth = lastLineMetrics.width + timeWidth + 20
+            }
+        } else {
+            // Nova linha para o horário
             additionalHeightForTime = timeFontSize + 5
+            if (timeWidth > contentWidth) {
+                contentWidth = timeWidth
+            }
         }
+
+        // Definir largura final do balão com padding
+        let bubbleWidth = contentWidth + (bubblePadding * 2)
+        
+        // Respeitar limites
+        bubbleWidth = Math.min(bubbleWidth, maxBubbleWidth)
+        bubbleWidth = Math.max(bubbleWidth, 150) // Largura mínima
         
         // Calcular dimensões finais
         const nameHeight = nameFontSize + 15
         const textHeight = lines.length * lineHeight
         const bubbleHeight = textHeight + nameHeight + (bubblePadding * 2) + additionalHeightForTime
-        
-        // Força largura total disponível
-        const bubbleWidth = maxBubbleWidth
         
         // Criar canvas final
         const canvas = createCanvas(canvasSize, canvasSize)
@@ -328,18 +357,40 @@ export async function createWhatsAppBubble({
         
         const borderRadius = 10
         
-        // Desenhar retângulo arredondado do balão
-        ctx.beginPath()
-        ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, borderRadius)
-        ctx.fill()
-        
-        // Desenhar o "rabinho" do balão - conectado ao arredondamento
-        ctx.beginPath()
-        // Começa ligeiramente abaixo do topo para conectar após o border-radius
-        ctx.moveTo(bubbleX, bubbleY + borderRadius + 5)
-        ctx.lineTo(bubbleX - 8, bubbleY + borderRadius - 2) // Ponta esquerda
-        ctx.lineTo(bubbleX, bubbleY + borderRadius + 12) // Base no balão
-        ctx.closePath()
+        // Função para desenhar o caminho do balão
+        const drawBubblePath = () => {
+            ctx.beginPath()
+            // Começa no topo, logo após a curva do rabinho
+            ctx.moveTo(bubbleX + 10, bubbleY)
+            
+            // Linha superior
+            ctx.lineTo(bubbleX + bubbleWidth - borderRadius, bubbleY)
+            // Canto superior direito
+            ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + borderRadius)
+            
+            // Linha direita
+            ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - borderRadius)
+            // Canto inferior direito
+            ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - borderRadius, bubbleY + bubbleHeight)
+            
+            // Linha inferior
+            ctx.lineTo(bubbleX + borderRadius, bubbleY + bubbleHeight)
+            // Canto inferior esquerdo
+            ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - borderRadius)
+            
+            // Linha esquerda (até o início do rabinho)
+            ctx.lineTo(bubbleX, bubbleY + 10)
+            
+            // Rabinho
+            // Curva para fora (ponta)
+            ctx.lineTo(bubbleX - 8, bubbleY)
+            // Volta para o topo
+            ctx.lineTo(bubbleX + 10, bubbleY)
+            
+            ctx.closePath()
+        }
+
+        drawBubblePath()
         ctx.fill()
         
         // Resetar sombra
@@ -347,8 +398,7 @@ export async function createWhatsAppBubble({
         
         // Criar clipping path para evitar que o texto vaze do balão
         ctx.save()
-        ctx.beginPath()
-        ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, borderRadius)
+        drawBubblePath()
         ctx.clip()
         
         // 3. Desenhar Nome do Autor
