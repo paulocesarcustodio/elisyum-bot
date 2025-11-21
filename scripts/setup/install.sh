@@ -13,25 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Instalação do Elisyum Bot${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
-
-# Verificar se já está dentro do repositório
-if [ ! -f "package.json" ] || ! grep -q "elisyum-bot\|lbot-whatsapp" package.json 2>/dev/null; then
-    print_info "Não está dentro do repositório. Clonando..."
-    
-    if command_exists git; then
-        git clone https://github.com/paulocesarcustodio/elisyum-bot.git
-        cd elisyum-bot || exit 1
-        print_success "Repositório clonado com sucesso!"
-    else
-        print_error "Git não está instalado. Instale com: sudo apt-get install git"
-        exit 1
-    fi
-fi
-
 # Função para verificar se um comando existe
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -56,6 +37,25 @@ print_warning() {
 print_info() {
     echo -e "${BLUE}ℹ${NC} $1"
 }
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  Instalação do Elisyum Bot${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Verificar se já está dentro do repositório
+if [ ! -f "package.json" ] || ! grep -q "elisyum-bot\|lbot-whatsapp" package.json 2>/dev/null; then
+    print_info "Não está dentro do repositório. Clonando..."
+    
+    if command_exists git; then
+        git clone https://github.com/paulocesarcustodio/elisyum-bot.git
+        cd elisyum-bot || exit 1
+        print_success "Repositório clonado com sucesso!"
+    else
+        print_error "Git não está instalado. Instale com: sudo apt-get install git"
+        exit 1
+    fi
+fi
 
 # 1. Verificar se Bun está instalado
 echo -e "\n${BLUE}[1/6]${NC} Verificando Bun..."
