@@ -44,7 +44,5 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# Iniciar o bot
-echo -e "${BLUE}🚀 Iniciando Elisyum Bot...${NC}"
-echo ""
-exec bun start
+# Iniciar o bot (usando o novo script bonito)
+exec bun start.js

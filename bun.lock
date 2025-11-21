@@ -56,6 +56,7 @@
         "@types/user-agents": "^1.0.4",
         "@types/yt-search": "^2.10.3",
         "bestzip": "^2.2.1",
+        "coloredcli": "^1.0.30",
         "copyfiles": "^2.4.1",
         "cross-env": "^7.0.3",
         "rimraf": "^6.0.1",
@@ -651,6 +652,8 @@
     "color-name": ["color-name@1.1.4", "", {}, "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA=="],
 
     "color-string": ["color-string@1.9.1", "", { "dependencies": { "color-name": "^1.0.0", "simple-swizzle": "^0.2.2" } }, "sha512-shrVawQFojnZv6xM40anx4CkoDP+fZsw/ZerEMsW/pyzsRbElpsL/DBVW7q3ExxwusdNXI3lXpuhEZkzs8p5Eg=="],
+
+    "coloredcli": ["coloredcli@1.0.30", "", { "dependencies": { "coloredcli": "^1.0.4" } }, "sha512-+ca5Vnhq9OpPR/xLyPFNecxm7TNKSp0O60buscCQUkQ7gqtBTwAyAycVunEH+ii3SAg9VSteinCP5DOhiJdUcA=="],
 
     "colorette": ["colorette@2.0.20", "", {}, "sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w=="],
 
