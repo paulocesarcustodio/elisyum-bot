@@ -326,20 +326,30 @@ export async function createWhatsAppBubble({
         // Cor do balão (Dark Mode WhatsApp)
         ctx.fillStyle = '#202c33'
         
+        const borderRadius = 10
+        
         // Desenhar retângulo arredondado do balão
         ctx.beginPath()
-        ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 10)
+        ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, borderRadius)
         ctx.fill()
         
-        // Desenhar o "rabinho" do balão
+        // Desenhar o "rabinho" do balão - conectado ao arredondamento
         ctx.beginPath()
-        ctx.moveTo(bubbleX, bubbleY)
-        ctx.lineTo(bubbleX - 10, bubbleY) // Ponta esquerda
-        ctx.lineTo(bubbleX, bubbleY + 15) // Base no balão
+        // Começa ligeiramente abaixo do topo para conectar após o border-radius
+        ctx.moveTo(bubbleX, bubbleY + borderRadius + 5)
+        ctx.lineTo(bubbleX - 8, bubbleY + borderRadius - 2) // Ponta esquerda
+        ctx.lineTo(bubbleX, bubbleY + borderRadius + 12) // Base no balão
+        ctx.closePath()
         ctx.fill()
         
         // Resetar sombra
         ctx.shadowColor = 'transparent'
+        
+        // Criar clipping path para evitar que o texto vaze do balão
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, borderRadius)
+        ctx.clip()
         
         // 3. Desenhar Nome do Autor
         ctx.fillStyle = getNameColor(authorName)
@@ -368,6 +378,9 @@ export async function createWhatsAppBubble({
             // Posição: canto inferior direito do balão
             ctx.fillText(time, bubbleX + bubbleWidth - bubblePadding, bubbleY + bubbleHeight - 5)
         }
+        
+        // Restaurar contexto após clipping
+        ctx.restore()
         
         return canvas.toBuffer('image/png')
     } catch (err) {

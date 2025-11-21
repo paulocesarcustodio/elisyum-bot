@@ -21,7 +21,8 @@
 
 Antes da instalação você tem que instalar os programas abaixo, no Windows é só instalar pelo link indicado e no Linux você tem que pesquisar qual é o comando para instalar na sua distribuição.
 - Git 64-bit - [DOWNLOAD](https://git-scm.com/downloads/win)<br>
-- Node.js (>= 20) - [DOWNLOAD](https://nodejs.org/en/)<br>
+- Bun (>= 1.0) - [DOWNLOAD](https://bun.sh/)<br>
+  - **Windows/Linux/macOS**: `curl -fsSL https://bun.sh/install | bash`<br>
 - FFmpeg - [DOWNLOAD](https://ffmpeg.org/download.html) (necessário para conversão de áudio/vídeo)<br>
   - **Windows**: Baixe o build e adicione ao PATH do sistema
   - **Linux/Ubuntu/Debian**: `sudo apt install ffmpeg`
@@ -36,22 +37,13 @@ Faça o download do **.zip** da última versão lançada [AQUI](https://github.c
 
 <br>
 
-Se for a sua primeira vez instalando o bot você vai ter que digitar esse comando para instalar o **Yarn**
-```bash
-npm i -g yarn
-```
-
-**OBS**: Caso o comando retorne erro no **Linux** você vai precisar se elevar a superusuário utilizando **sudo** antes do comando.
+> ℹ️ Este projeto utiliza **Bun** como runtime e gerenciador de pacotes oficial. Execute `bun install` sempre que atualizar o repositório.
 
 <br>
 
-> ℹ️ Este projeto utiliza **Yarn 4 (node-modules linker)** como gerenciador oficial. Mantenha o `yarn.lock` versionado, execute `yarn install` sempre que atualizar o repositório e evite usar `npm install`, pois o `package-lock.json` não é mais distribuído.
-
-<br>
-
-Após instalar o **Yarn** ou se ele já tiver instalado, você só precisa iniciar o bot com o comando abaixo:
+Após instalar o **Bun**, você só precisa iniciar o bot com o comando abaixo:
 ```bash
-yarn start
+bun start
 ```
 
 <br>
@@ -66,7 +58,7 @@ Faça a instalação do .apk mais atual do Termux: [AQUI](https://github.com/ter
 
 Abra o **Termux** comece usando este comando para fazer o download e instalação do bot, isso pode demorar algum tempo até instalar tudo.
 ```bash
-pkg install wget -y && wget -O - tinyurl.com/lbot-termux | bash && cd ~/LBOT && yarn start
+pkg install wget -y && wget -O - tinyurl.com/lbot-termux | bash && cd ~/LBOT && bun start
 ```
 <br>
 
@@ -77,7 +69,7 @@ pkg install wget -y && wget -O - tinyurl.com/lbot-termux | bash && cd ~/LBOT && 
 
 Caso você feche o Termux e queira iniciar o bot novamente faça o comando abaixo:
 ```bash
-cd ~/LBOT && yarn start
+cd ~/LBOT && bun start
 ```
 
 <br>
@@ -86,7 +78,7 @@ cd ~/LBOT && yarn start
 ## 🗂️ Estrutura do projeto
 
 - `src/` — código-fonte TypeScript organizado em controllers, services, eventos e utilitários.
-- `dist/` — saída compilada pelo TypeScript após o `yarn build`.
+- `dist/` — saída compilada pelo TypeScript após o `bun run build`.
 - `bin/` — binários auxiliares versionados, como o `yt-dlp` local usado nos downloads.
 - `scripts/` — utilitários para manutenção:
   - `setup/` contém `deploy.sh` e `install-ytdlp.js` para preparar o ambiente.
@@ -151,7 +143,7 @@ Diversos para administrar o bot e ter controle sobre ele.
 
 ## 🧰 Notas técnicas
 
-- O pacote `libsignal` exigido pelo Baileys é obtido diretamente do repositório oficial [`whiskeysockets/libsignal-node`](https://github.com/whiskeysockets/libsignal-node) com o commit `e81ecfc3`. O `yarn.lock` já referencia essa origem e dispensa hashes adicionais desde que a instalação seja feita via Yarn 4.
+- O pacote `libsignal` exigido pelo Baileys é obtido diretamente do repositório oficial [`whiskeysockets/libsignal-node`](https://github.com/whiskeysockets/libsignal-node) com o commit `e81ecfc3`.
 
 ### 🔌 Dependências opcionais do Baileys 7
 
@@ -160,7 +152,7 @@ Diversos para administrar o bot e ter controle sobre ele.
 - **`link-preview-js`** continua opcional, mas documentado. Ele permite que `getUrlInfo` gere metadados e miniaturas de links quando o texto enviado contém URLs.【F:node_modules/@whiskeysockets/baileys/README.md†L600-L611】【F:node_modules/@whiskeysockets/baileys/lib/Utils/link-preview.js†L17-L84】 Em ambientes sem acesso externo, as prévias simplesmente não são geradas; mantenha a dependência instalada para fluxos que dependem disso.
 - **`@ffmpeg-installer/ffmpeg`** permanece como fallback interno quando o binário do sistema não está disponível. Ainda assim, recomendamos instalar o `ffmpeg` do sistema operacional para aproveitar aceleração por hardware quando possível.【F:node_modules/@whiskeysockets/baileys/README.md†L730-L732】 Em caso de erro, o Baileys continua registrando logs e tenta prosseguir com o envio.
 
-> ℹ️ **Política adotada:** essas bibliotecas ficam em `optionalDependencies`. O Yarn 4 as instala automaticamente quando o ambiente suporta os binários pré-compilados (como o `sharp`). Caso uma delas falhe na instalação, o `yarn install` continuará, mas o recurso correspondente ficará indisponível até que a dependência seja instalada manualmente.
+> ℹ️ **Política adotada:** essas bibliotecas ficam em `optionalDependencies`. O Bun as instala automaticamente quando o ambiente suporta os binários pré-compilados (como o `sharp`). Caso uma delas falhe na instalação, o `bun install` continuará, mas o recurso correspondente ficará indisponível até que a dependência seja instalada manualmente.
 
 ### 📣 Monitoramento de canais/newsletters
 

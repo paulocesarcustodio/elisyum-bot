@@ -2,26 +2,20 @@
 
 ## 📋 Pré-requisitos no Servidor
 
-### 1. Instalar Node.js (v20+)
+### 1. Instalar Bun
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+curl -fsSL https://bun.sh/install | bash
 ```
 
-### 2. Instalar Yarn
-```bash
-npm install -g yarn
-```
-
-### 3. Instalar FFmpeg (necessário para conversão de áudio/vídeo)
+### 2. Instalar FFmpeg (necessário para conversão de áudio/vídeo)
 ```bash
 sudo apt update
 sudo apt install -y ffmpeg
 ```
 
-> ℹ️ O `sharp` é instalado automaticamente pelo Yarn como dependência opcional do Baileys. Em distribuições sem binários pré-compilados, instale o toolchain (`sudo apt install -y build-essential python3 make g++`) antes de rodar o `yarn install` para permitir a compilação local. Sem o `sharp`, a geração de miniaturas em stickers/imagens falhará.
+> ℹ️ O `sharp` é instalado automaticamente pelo Bun como dependência opcional do Baileys. Em distribuições sem binários pré-compilados, instale o toolchain (`sudo apt install -y build-essential python3 make g++`) antes de rodar o `bun install` para permitir a compilação local. Sem o `sharp`, a geração de miniaturas em stickers/imagens falhará.
 
-### 4. Instalar yt-dlp (para downloads do YouTube)
+### 3. Instalar yt-dlp (para downloads do YouTube)
 ```bash
 sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
@@ -38,27 +32,27 @@ cd elisyum-bot
 
 ### 2. Instalar dependências (incluindo dev)
 ```bash
-yarn install
+bun install
 ```
 
 ### 3. Baixar yt-dlp local (backup)
 ```bash
-node scripts/setup/install-ytdlp.js
+bun run scripts/setup/install-ytdlp.js
 ```
 
 ### 4. Compilar o projeto
 ```bash
-yarn build
+bun run build
 ```
 Ou manualmente:
 ```bash
-./node_modules/.bin/tsc
-./node_modules/.bin/copyfiles -u 2 src/media/* dist/media
+bun run tsc
+bun run copyfiles -u 2 src/media/* dist/media
 ```
 
 ### 5. Iniciar o bot
 ```bash
-yarn start
+bun start
 ```
 
 > 💡 Prefere automatizar todo o processo? Execute `./scripts/setup/deploy.sh` para validar dependências, baixar o `yt-dlp` local e compilar o projeto em um único comando.
@@ -69,56 +63,55 @@ yarn start
 ```bash
 cd ~/elisyum-bot
 git pull origin main
-yarn build
-yarn start
+bun run build
+bun start
 ```
 
 ### Atualização completa (com novas dependências)
 ```bash
 cd ~/elisyum-bot
 git pull origin main
-yarn install
-yarn build
-yarn start
+bun install
+bun run build
+bun start
 ```
 
 ## 🛠️ Comandos Úteis
 
 ### Verificar instalação
 ```bash
-node --version    # Deve ser v20+
-yarn --version    # Deve ser 1.22+
+bun --version     # Deve ser 1.0+
 ffmpeg -version   # Deve existir
 yt-dlp --version  # Deve existir
 ```
 
 ### Limpar e rebuildar
 ```bash
-yarn clean
-yarn build
+bun run clean
+bun run build
 ```
 
 ### Verificar tipos TypeScript
 ```bash
-yarn tsc --noEmit
+bun run tsc --noEmit
 ```
 
 ### Ver logs em tempo real
 ```bash
-yarn start
+bun start
 # Ou para manter rodando em background:
-nohup yarn start > bot.log 2>&1 &
+nohup bun start > bot.log 2>&1 &
 ```
 
 ## 🐛 Solução de Problemas
 
 ### Erro: "rimraf: not found" ou "tsc: not found"
-**Causa:** `yarn install --prod` remove dependências de desenvolvimento
+**Causa:** Dependências não foram instaladas corretamente
 
 **Solução:**
 ```bash
-yarn install  # Reinstala TODAS as dependências
-yarn build
+bun install  # Reinstala TODAS as dependências
+bun run build
 ```
 
 ### Erro: "Cannot find module '/root/elisyum-bot/dist/app.js'"
@@ -126,8 +119,8 @@ yarn build
 
 **Solução:**
 ```bash
-yarn install  # Garante que tem TypeScript
-yarn build    # Compila o projeto
+bun install    # Garante que tem TypeScript
+bun run build  # Compila o projeto
 ```
 
 ### Erro: "ffmpeg exited with code 1"
@@ -144,9 +137,9 @@ sudo apt install -y ffmpeg
 **Solução:**
 ```bash
 sudo apt install -y build-essential python3 make g++
-yarn install --check-cache
+bun install
 ```
-Se o ambiente bloquear o download de binários do `sharp`, execute `npm_config_sharp_ignore_global_libvips=1 yarn install` para forçar a recompilação usando as bibliotecas do sistema.
+Se o ambiente bloquear o download de binários do `sharp`, instale as bibliotecas do sistema para permitir compilação local.
 
 ### Erro: "spawn yt-dlp ENOENT"
 **Causa:** yt-dlp não instalado ou não encontrado
@@ -158,7 +151,7 @@ sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o
 sudo chmod a+rx /usr/local/bin/yt-dlp
 
 # OU usar o local (já está no projeto)
-node scripts/setup/install-ytdlp.js
+bun run scripts/setup/install-ytdlp.js
 ```
 
 ## 📦 Estrutura após Build
@@ -192,7 +185,7 @@ npm install -g pm2
 ### Iniciar com PM2
 ```bash
 cd ~/elisyum-bot
-pm2 start yarn --name "elisyum-bot" -- start
+pm2 start bun --name "elisyum-bot" -- start
 ```
 
 ### Gerenciar com PM2
@@ -212,8 +205,8 @@ pm2 save
 
 ## 📝 Notas Importantes
 
-1. **Sempre use `yarn install` (sem --prod) no servidor** para ter as ferramentas de build
-2. **Compile antes de iniciar** com `yarn build`
+1. **Sempre use `bun install` no servidor** para ter as ferramentas de build
+2. **Compile antes de iniciar** com `bun run build`
 3. **FFmpeg é obrigatório** para comandos de áudio/vídeo
 4. **yt-dlp pode ser global ou local** (o bot tenta ambos)
 5. **Use PM2 em produção** para restart automático

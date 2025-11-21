@@ -17,9 +17,6 @@ storage
 dist
 #Sessao
 session
-# Yarn
-.yarn/install-state.gz
-yarn.lock
-.yarnrc.yml
 # Bun
 node_modules.bun
+bun.lockb

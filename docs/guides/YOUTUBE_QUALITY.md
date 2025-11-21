@@ -55,8 +55,8 @@ export const YOUTUBE_QUALITY_LIMIT = 240
 ## 🎬 Após Alterar
 
 1. Salve o arquivo `src/config/youtube.config.ts`
-2. Recompile: `yarn build` ou `./node_modules/typescript/bin/tsc`
-3. Reinicie o bot: `yarn start`
+2. Recompile: `bun run build` ou `bun run tsc`
+3. Reinicie o bot: `bun start`
 
 ## 📝 Nota
 

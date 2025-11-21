@@ -51,15 +51,16 @@ else
     exit 1
 fi
 
-# Verificar Yarn
-echo "📦 Verificando Yarn..."
-if command_exists yarn; then
-    YARN_VERSION=$(yarn --version)
-    echo -e "${GREEN}✓${NC} Yarn instalado: v$YARN_VERSION"
+# Verificar Bun
+echo "📦 Verificando Bun..."
+if command_exists bun; then
+    BUN_VERSION=$(bun --version)
+    echo -e "${GREEN}✓${NC} Bun instalado: v$BUN_VERSION"
 else
-    echo -e "${YELLOW}⚠${NC}  Yarn não instalado. Instalando..."
-    npm install -g yarn
-    echo -e "${GREEN}✓${NC} Yarn instalado!"
+    echo -e "${YELLOW}⚠${NC}  Bun não instalado. Instalando..."
+    curl -fsSL https://bun.sh/install | bash
+    export PATH="$HOME/.bun/bin:$PATH"
+    echo -e "${GREEN}✓${NC} Bun instalado!"
 fi
 
 # Verificar FFmpeg
@@ -122,20 +123,20 @@ fi
 echo ""
 echo "🔧 Instalando dependências..."
 rm -rf node_modules
-yarn install --force
+bun install
 
 echo ""
 echo "🏗️  Compilando projeto..."
-yarn build
+bun run build
 
 echo ""
 echo -e "${GREEN}✅ Setup completo!${NC}"
 echo ""
 echo "Para iniciar o bot:"
-echo "  yarn start"
+echo "  bun start"
 echo ""
 echo "Para usar PM2 (recomendado para produção):"
 echo "  npm install -g pm2"
-echo "  pm2 start yarn --name elisyum-bot -- start"
+echo "  pm2 start bun --name elisyum-bot -- start"
 echo "  pm2 save"
 echo ""
