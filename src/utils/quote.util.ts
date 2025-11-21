@@ -202,7 +202,7 @@ export async function createWhatsAppBubble({
             lineHeight = 42
         }
 
-        const nameFontSize = 24
+        const nameFontSize = 36 // Aumentado de 30 para 36
         const timeFontSize = 20
         
         // Balão ocupa toda a largura disponível

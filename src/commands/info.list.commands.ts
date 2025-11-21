@@ -1,6 +1,22 @@
 import * as infoFunctions from "./info.functions.commands.js"
+import * as infoAdminFunctions from "./info.admin.commands.js"
 
 const infoCommands = {
+    dbstats: {
+        guide: `Ex: *{$p}dbstats* - Exibe estatísticas do banco de dados (contatos e comandos).\n`,
+        msgs: {},
+        function: infoAdminFunctions.dbStatsCommand
+    },
+    logs: {
+        guide: `Ex: *{$p}logs* [quantidade] - Exibe os últimos comandos executados.\n`,
+        msgs: {},
+        function: infoAdminFunctions.logsCommand
+    },
+    contatos: {
+        guide: `Ex: *{$p}contatos* - Lista os contatos salvos no cache do banco de dados.\n`,
+        msgs: {},
+        function: infoAdminFunctions.contactsListCommand
+    },
     menu: {
         guide: `Ex: *{$p}menu* - Exibe o menu de comandos gerais.\n`,
         msgs: {

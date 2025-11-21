@@ -3,6 +3,20 @@
 </p>
 <h1 align="center">🤖 Elisyum Bot - Robô para WhatsApp</h1>
 
+<div align="center">
+
+[![Instalação com 1 comando](https://img.shields.io/badge/Instalação-1%20comando-brightgreen?style=for-the-badge)](INSTALL.md)
+[![Documentação](https://img.shields.io/badge/Docs-Completa-blue?style=for-the-badge)](docs/guides/INSTALLATION.md)
+[![License](https://img.shields.io/badge/License-GPL--3.0-red?style=for-the-badge)](LICENSE)
+
+### 🚀 Instale agora com um único comando!
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
+```
+
+</div>
+
 <br>
 <h2 align="center"> 🔄 Notas de atualização: <a href="docs/releases/CHANGELOG.md">AQUI</a></h2>
 
@@ -17,7 +31,36 @@
 
 ## 💿 Instalação
 
-### 🖥️ Desktop (Windows/Linux)
+### 🚀 Instalação com Um Comando (Linux/macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
+```
+
+Ou se preferir revisar o script antes de executar:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+```
+
+O script instala automaticamente:
+- ✅ Clona o repositório
+- ✅ Bun runtime
+- ✅ FFmpeg
+- ✅ Dependências do Canvas (Linux)
+- ✅ Todas as dependências npm
+- ✅ SQLite (integrado no Bun)
+- ✅ Compila o TypeScript
+
+Após a instalação, configure o `.env` e inicie com `bun start`!
+
+📖 **Guia completo**: [docs/guides/INSTALLATION.md](docs/guides/INSTALLATION.md)
+
+---
+
+### 🖥️ Instalação Manual (Windows/Linux)
 
 Antes da instalação você tem que instalar os programas abaixo, no Windows é só instalar pelo link indicado e no Linux você tem que pesquisar qual é o comando para instalar na sua distribuição.
 - Git 64-bit - [DOWNLOAD](https://git-scm.com/downloads/win)<br>

@@ -2,12 +2,13 @@ import { proto, WAMessage, type WAMessageAddressingMode } from '@whiskeysockets/
 
 export type MessageTypes = keyof proto.IMessage
 
-export type MimeTypes = "audio/mpeg"| "audio/mp4" | "audio/mp3" | "image/png" | "image/webp" | "video/mp4" | "document/pdf" | "application/pdf" | "image/jpeg"
+export type MimeTypes = "audio/mpeg"| "audio/mp4" | "audio/mp3" | "audio/ogg; codecs=opus" | "image/png" | "image/webp" | "video/mp4" | "document/pdf" | "application/pdf" | "image/jpeg"
 
 export interface MessageOptions {
     expiration?: number,
     mimetype?: MimeTypes,
-    noLinkPreview?: boolean
+    noLinkPreview?: boolean,
+    ptt?: boolean
 }
 
 export interface Message {
@@ -41,7 +42,8 @@ export interface Message {
         mimetype: string,
         url: string,
         seconds?: number,
-        file_length: number | Long 
+        file_length: number | Long,
+        ptt?: boolean
     },
     quotedMessage?: {
         type: keyof proto.IMessage,
@@ -55,6 +57,7 @@ export interface Message {
             mimetype: string,
             file_length: number | Long,
             seconds?: number,
+            ptt?: boolean
         }
         wa_message : WAMessage
     }

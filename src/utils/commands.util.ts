@@ -55,12 +55,25 @@ export function getCommandsByCategory(prefix: string, category: CategoryCommand)
     }
 }
 
+// Mapa de aliases de comandos
+const COMMAND_ALIASES: Record<string, string> = {
+    'audio': 'audio',
+    'áudio': 'audio',
+    'audios': 'audios',
+    'áudios': 'audios'
+}
+
 export function getCommandCategory(prefix: string, command: string){
     let foundCategory : CategoryCommand | null = null
-    const categories = COMMAND_CATEGORIES as CategoryCommand[] 
+    const categories = COMMAND_CATEGORIES as CategoryCommand[]
+    const commandName = removePrefix(prefix, command)
+    
+    // Verifica se existe alias
+    const resolvedCommand = COMMAND_ALIASES[commandName] || commandName
+    const resolvedFullCommand = prefix + resolvedCommand
 
     for (let category of categories){
-        if (getCommandsByCategory(prefix, category).includes(command)) {
+        if (getCommandsByCategory(prefix, category).includes(resolvedFullCommand)) {
             foundCategory = category as CategoryCommand
         }
     }

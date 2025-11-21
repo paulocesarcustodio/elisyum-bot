@@ -1,20 +1,29 @@
-import NodeCache from "node-cache"
 import { Contact } from "@whiskeysockets/baileys"
 import { normalizeWhatsappJid } from "../utils/whatsapp.util.js"
-
-const CONTACTS_STORE_KEY = "contacts"
-
-// Cache de 1 hora para contatos
-const contactsStore = new NodeCache({ stdTTL: 3600, checkperiod: 600 })
+import { contactsDb } from "../database/db.js"
 
 export function getContactsStore(): Record<string, Partial<Contact>> {
-    return contactsStore.get<Record<string, Partial<Contact>>>(CONTACTS_STORE_KEY) || {}
+    // Retorna todos os contatos do banco como um objeto (para compatibilidade)
+    const contacts = contactsDb.getAll()
+    const result: Record<string, Partial<Contact>> = {}
+    
+    for (const contact of contacts) {
+        result[contact.jid] = {
+            id: contact.jid,
+            name: contact.name || undefined,
+            notify: contact.notify || undefined,
+            verifiedName: contact.verified_name || undefined,
+            phoneNumber: contact.phone_number || undefined,
+            lid: contact.lid || undefined
+        }
+    }
+    
+    return result
 }
 
 export function updateContactInStore(contact: Partial<Contact>) {
     if (!contact.id) return
 
-    const contacts = getContactsStore()
     const identifiers = new Set<string>()
 
     const addIdentifier = (value?: string | null) => {
@@ -39,30 +48,45 @@ export function updateContactInStore(contact: Partial<Contact>) {
 
     if (!identifiers.size) return
 
+    // Salvar todos os identificadores no banco
     for (const identifier of identifiers) {
         if (!identifier) continue
 
-        contacts[identifier] = {
-            ...contacts[identifier],
-            ...contact,
-            id: contact.id
-        }
+        contactsDb.upsert({
+            jid: identifier,
+            name: contact.name,
+            notify: contact.notify,
+            verifiedName: contact.verifiedName,
+            phoneNumber: contact.phoneNumber,
+            lid: contact.lid
+        })
     }
-
-    contactsStore.set(CONTACTS_STORE_KEY, contacts)
 }
 
 export function getContactFromStore(jid: string): Partial<Contact> | undefined {
-    const contacts = getContactsStore()
     const normalizedJid = normalizeWhatsappJid(jid)
-
-    if (normalizedJid && contacts[normalizedJid]) {
-        return contacts[normalizedJid]
+    
+    // Buscar primeiro com JID normalizado
+    let contact = contactsDb.get(normalizedJid || jid)
+    
+    if (!contact && normalizedJid !== jid) {
+        // Tentar com JID original
+        contact = contactsDb.get(jid)
     }
 
-    return contacts[jid]
+    if (!contact) return undefined
+
+    return {
+        id: contact.jid,
+        name: contact.name || undefined,
+        notify: contact.notify || undefined,
+        verifiedName: contact.verified_name || undefined,
+        phoneNumber: contact.phone_number || undefined,
+        lid: contact.lid || undefined
+    }
 }
 
 export function clearContactsStore() {
-    contactsStore.del(CONTACTS_STORE_KEY)
+    // Não vamos limpar o banco de dados, mas podemos adicionar se necessário
+    console.log('[CONTACTS] clearContactsStore chamado (não limpa BD permanente)')
 }

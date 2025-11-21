@@ -54,6 +54,7 @@
     "@deepgram/sdk": "^3.11.3",
     "@distube/ytdl-core": "^4.16.12",
     "@hapi/boom": "^10.0.1",
+    "@mrnima/instagram-downloader": "^1.0.0",
     "@seald-io/nedb": "^4.1.1",
     "@tobyg74/tiktok-api-dl": "^1.3.2",
     "@victorsouzaleal/brasileirao": "^1.1.2",

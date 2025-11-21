@@ -12,7 +12,9 @@ logs/session/*
 #Ignorar arquivos temporarios
 temp
 #Ignorar DB e etc
-storage
+storage/*.db
+storage/*.db-shm
+storage/*.db-wal
 # Codigo JS
 dist
 #Sessao

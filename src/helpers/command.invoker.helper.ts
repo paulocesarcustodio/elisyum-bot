@@ -15,11 +15,23 @@ import miscCommands from "../commands/misc.list.commands.js";
 import groupCommands from "../commands/group.list.commands.js";
 import adminCommands from "../commands/admin.list.commands.js";
 import { getCommandCategory, getCommandGuide } from "../utils/commands.util.js";
+import { logsDb } from "../database/db.js";
+
+// Mapa de aliases de comandos (sincronizado com commands.util.ts)
+const COMMAND_ALIASES: Record<string, string> = {
+    'audio': 'audio',
+    'áudio': 'audio',
+    'audios': 'audios',
+    'áudios': 'audios'
+}
 
 export async function commandInvoker(client: WASocket, botInfo: Bot, message: Message, group: Group|null){
     const isGuide = (!message.args.length) ? false : message.args[0] === 'guia'
     const categoryCommand = getCommandCategory(botInfo.prefix, message.command)
-    const commandName = waUtil.removePrefix(botInfo.prefix, message.command)
+    let commandName = waUtil.removePrefix(botInfo.prefix, message.command)
+    
+    // Resolve alias
+    commandName = COMMAND_ALIASES[commandName] || commandName
 
     try{
         if (isGuide) {
@@ -33,6 +45,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = infoCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "INFO", message.command, "#8ac46e", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -42,6 +55,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = utilityCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "UTILIDADE", message.command, "#de9a07", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -51,6 +65,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = stickerCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "STICKER", message.command, "#ae45d1", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -60,6 +75,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = downloadCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "DOWNLOAD", message.command, "#2195cf", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -69,6 +85,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = miscCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "VARIADO", message.command, "#22e3dd", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -80,6 +97,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = groupCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group)
                     showCommandConsole(message.isGroupMsg, "GRUPO", message.command, "#e0e031", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -91,6 +109,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                     const commands = adminCommands as Commands
                     await commands[commandName].function(client, botInfo, message, group || undefined)
                     showCommandConsole(message.isGroupMsg, "ADMINISTRAÇÃO", message.command, "#d1d1d1", message.t, message.pushname, group?.name)
+                    logsDb.log({ userJid: message.sender, userName: message.pushname, command: commandName, args: message.text_command, chatId: message.chat_id, isGroup: message.isGroupMsg, success: true })
                 }
 
                 break
@@ -104,6 +123,17 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
                 break
         }
     } catch(err: any){
+        // Registrar erro no banco
+        logsDb.log({ 
+            userJid: message.sender, 
+            userName: message.pushname, 
+            command: commandName, 
+            args: message.text_command, 
+            chatId: message.chat_id, 
+            isGroup: message.isGroupMsg, 
+            success: false, 
+            error: err.message 
+        })
         await waUtil.replyText(client, message.chat_id, messageErrorCommand(message.command, err.message), message.wa_message, {expiration: message.expiration})
     }
 
