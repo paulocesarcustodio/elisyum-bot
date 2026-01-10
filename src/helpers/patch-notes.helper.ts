@@ -44,20 +44,40 @@ function saveLastNotifiedVersion(version: string): void {
  */
 function getCurrentPatchNotes(currentVersion: string): string | null {
     try {
-        const changelogPath = path.join(process.cwd(), 'docs', 'releases', 'CHANGELOG.md')
+        // Tenta múltiplos caminhos possíveis para o CHANGELOG
+        const possiblePaths = [
+            path.join(process.cwd(), 'docs', 'releases', 'CHANGELOG.md'),
+            path.join(__dirname, '..', '..', 'docs', 'releases', 'CHANGELOG.md'),
+            '/root/elisyum-bot/docs/releases/CHANGELOG.md'
+        ]
         
-        if (!fs.existsSync(changelogPath)) {
-            console.error('[PatchNotes] CHANGELOG.md não encontrado')
+        let changelogPath: string | null = null
+        for (const testPath of possiblePaths) {
+            if (fs.existsSync(testPath)) {
+                changelogPath = testPath
+                break
+            }
+        }
+        
+        if (!changelogPath) {
+            console.error('[PatchNotes] CHANGELOG.md não encontrado. Caminhos testados:', possiblePaths)
+            console.error('[PatchNotes] process.cwd():', process.cwd())
+            console.error('[PatchNotes] __dirname:', __dirname)
             return null
         }
 
+        console.log('[PatchNotes] CHANGELOG encontrado em:', changelogPath)
         const changelog = fs.readFileSync(changelogPath, 'utf8')
+        console.log('[PatchNotes] CHANGELOG lido com sucesso, tamanho:', changelog.length, 'caracteres')
         
         // Procura pela seção da versão atual (aceita versão com ou sem data/texto adicional)
         const versionRegex = new RegExp(`## ${currentVersion.replace(/\./g, '\\.')}[^\\n]*\\n([\\s\\S]*?)(?=\\n##|$)`, 'm')
+        console.log('[PatchNotes] Regex:', versionRegex.source)
         const match = changelog.match(versionRegex)
+        console.log('[PatchNotes] Match encontrado:', match ? 'SIM' : 'NÃO')
         
         if (match && match[1]) {
+            console.log('[PatchNotes] Conteúdo extraído (primeiros 100 chars):', match[1].substring(0, 100))
             return match[1].trim()
         }
         
