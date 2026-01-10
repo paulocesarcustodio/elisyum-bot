@@ -65,10 +65,8 @@ createServer((req, res) => {
         bun install --frozen-lockfile
         echo "🔨 Building..."
         bun run build
-        echo "🔄 Restarting bot..."
-        pkill -f "bun.*start" || true
-        sleep 2
-        nohup bun run start > bot.log 2>&1 &
+        echo "🔄 Restarting bot service..."
+        systemctl restart lbot
         echo "✅ Deploy completed!"
       `;
 
