@@ -1,0 +1,39 @@
+name: Deploy to LXC
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy Bot to LXC
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚀 Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.LXC_HOST }}
+        username: ${{ secrets.LXC_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          cd ${{ secrets.LXC_BOT_PATH }}
+          
+          echo "🔄 Pulling latest changes..."
+          git pull origin main
+          
+          echo "📦 Installing dependencies..."
+          bun install --frozen-lockfile
+          
+          echo "🔨 Building project..."
+          bun run build
+          
+          echo "🔄 Restarting bot..."
+          pkill -f "bun.*start" || true
+          sleep 2
+          nohup bun run start > bot.log 2>&1 &
+          
+          echo "✅ Deploy completed!"
+          sleep 3
+          ps aux | grep "bun.*start" | grep -v grep || echo "⚠️ Check bot.log"
