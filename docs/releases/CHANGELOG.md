@@ -1,6 +1,18 @@
 # Notas de atualização
 Colocarei neste arquivos as mudanças significativas em cada versão começando na versão 3.0.0
 
+## 3.4.7 - 10/01/2026
+
+### MELHORIAS
+- ✅ **Download do YouTube**: Progresso em tempo real baseado em fragmentos HLS
+- 🔄 **Compressão automática**: Vídeos > 16MB são comprimidos automaticamente para envio no WhatsApp
+- 🚀 **Performance**: Otimizações no download com yt-dlp (spawn direto, 16 fragmentos concorrentes)
+- 📊 **Barras de progresso**: Atualizações suaves durante download, conversão e compressão
+- 🔔 **Patch Notes**: Sistema automático que fixa mensagens com atualizações em todos os grupos
+
+### CORREÇÕES
+- Removido prompt de confirmação do arquivo .env ao iniciar o bot
+
 ## Unreleased
 
 ### ALTERAÇÕES

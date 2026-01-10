@@ -286,80 +286,125 @@ export async function downloadFromUrl(url: string, onProgress?: (percent: number
 }
 
 export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (percent: number) => void): Promise<Buffer> {
-    const fs = await import('fs')
-    const path = await import('path')
-    const crypto = await import('crypto')
-    const { spawn } = await import('child_process')
-    const { YOUTUBE_QUALITY_LIMIT } = await import('../config/youtube.config.js')
-    
-    try {
-        // Cria arquivo temporário
-        const tempFileName = `yt-${crypto.randomBytes(8).toString('hex')}.mp4`
-        const tempFilePath = path.join('/tmp', tempFileName)
+    return new Promise((resolve, reject) => {
+        console.log('[downloadYouTubeVideo] 🚀 Iniciando spawn yt-dlp para:', videoUrl)
+        const startTime = Date.now()
         
-        // Formato customizado
-        const customFormat = `best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/bestvideo[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${YOUTUBE_QUALITY_LIMIT}]/worst`
+        const { spawn } = require('child_process')
+        const fs = require('fs')
         
-        // Spawn yt-dlp com progresso simulado
-        await new Promise<void>((resolve, reject) => {
-            const ytdlpProcess = spawn(ytDlpPath, [
-                '--format', customFormat,
-                '--output', tempFilePath,
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                '--concurrent-fragments', '4',
-                '--buffer-size', '16K',
-                '--http-chunk-size', '10M',
-                '--merge-output-format', 'mp4',
-                '--extractor-args', 'youtube:player_client=android,web',
-                videoUrl
-            ])
+        const tempFilePath = path.join('/tmp', `yt-${Date.now()}.mp4`)
+        console.log('[downloadYouTubeVideo] 📂 Arquivo temporário:', tempFilePath)
+
+        const ytDlpProcess = spawn(ytDlpPath, [
+            videoUrl,
+            '-o', tempFilePath,
+            '--newline',
+            '--progress',
+            '-f', 'best[height<=720][ext=mp4]/best[ext=mp4]/best',
+            '--no-playlist',
+            '--no-check-certificate',
+            '--prefer-free-formats',
+            '--concurrent-fragments', '16',
+            '--buffer-size', '128K',
+            '--http-chunk-size', '50M',
+            '--retries', '10',
+            '--fragment-retries', '10'
+        ])
+
+        // Monitorar fragmentos HLS
+        let totalFragments = 0
+        let currentFragment = 0
+        let lastReportedProgress = 0
+        
+        ytDlpProcess.stdout?.on('data', (data: Buffer) => {
+            const output = data.toString()
             
-            let simulatedProgress = 0
-            let progressInterval: NodeJS.Timeout | null = null
-            
-            // Inicia progresso simulado imediatamente (tempo médio: 25-30s)
-            if (onProgress) {
-                const estimatedSeconds = 28
-                const incrementInterval = (estimatedSeconds * 1000) / 95 // Atinge 95% em ~28s
-                
-                progressInterval = setInterval(() => {
-                    if (simulatedProgress < 95) {
-                        simulatedProgress++
-                        onProgress(simulatedProgress)
-                    }
-                }, incrementInterval)
+            // Captura total de fragmentos HLS
+            const fragmentsMatch = output.match(/Total fragments:\s*(\d+)/)
+            if (fragmentsMatch) {
+                totalFragments = parseInt(fragmentsMatch[1])
+                console.log(`[downloadYouTubeVideo] 📊 Total de fragmentos: ${totalFragments}`)
             }
             
-            // Silencia stdout/stderr
-            ytdlpProcess.stdout.on('data', () => {})
-            ytdlpProcess.stderr.on('data', () => {})
-            
-            ytdlpProcess.on('close', (code) => {
-                if (progressInterval) clearInterval(progressInterval)
-                
-                if (code === 0) {
-                    if (onProgress) onProgress(100)
-                    resolve()
-                } else {
-                    reject(new Error(`yt-dlp exited with code ${code}`))
+            // Captura fragmento atual sendo baixado e REPORTA IMEDIATAMENTE
+            const currentFragmentMatch = output.match(/\(frag\s+(\d+)\/\d+\)/)
+            if (currentFragmentMatch) {
+                const newFragment = parseInt(currentFragmentMatch[1])
+                if (newFragment > currentFragment && totalFragments > 0) {
+                    currentFragment = newFragment
+                    const progress = Math.floor((currentFragment / totalFragments) * 95)
+                    
+                    // Reporta IMEDIATAMENTE quando muda de fragmento
+                    if (progress > lastReportedProgress && onProgress) {
+                        lastReportedProgress = progress
+                        console.log(`[downloadYouTubeVideo] 📥 Progresso: ${progress}% (fragmento ${currentFragment}/${totalFragments})`)
+                        onProgress(progress)
+                    }
                 }
-            })
+            }
             
-            ytdlpProcess.on('error', (err) => {
-                if (progressInterval) clearInterval(progressInterval)
-                reject(err)
-            })
+            // Log apenas linhas importantes
+            if (output.includes('[download]') && (output.includes('%') || output.includes('frag'))) {
+                console.log('[downloadYouTubeVideo] 📄', output.trim())
+            }
         })
-        
-        // Lê o arquivo baixado
-        const videoBuffer = fs.readFileSync(tempFilePath)
-        
-        // Remove arquivo temporário
-        fs.unlinkSync(tempFilePath)
-        
-        return videoBuffer
-    } catch(err) {
-        showConsoleLibraryError(err, 'downloadYouTubeVideo')
-        throw new Error(botTexts.library_error)
-    }
+
+        ytDlpProcess.stderr?.on('data', (data: Buffer) => {
+            console.error('[downloadYouTubeVideo] ⚠️ stderr:', data.toString())
+        })
+
+        // Timeout de 5 minutos
+        const timeout = setTimeout(() => {
+            ytDlpProcess.kill()
+            try { fs.unlinkSync(tempFilePath) } catch {}
+            console.error('[downloadYouTubeVideo] ⏰ TIMEOUT após 5 minutos!')
+            reject(new Error('Download timeout após 5 minutos'))
+        }, 300000)
+
+        ytDlpProcess.on('close', async (code: number | null) => {
+            clearTimeout(timeout)
+            
+            if (code === 0) {
+                try {
+                    const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2)
+                    console.log(`[downloadYouTubeVideo] ✅ Download concluído em ${downloadTime}s`)
+                    
+                    // Só agora marca 100%
+                    if (onProgress) {
+                        console.log(`[downloadYouTubeVideo] 📥 Progresso: 100%`)
+                        onProgress(100)
+                    }
+                    
+                    console.log('[downloadYouTubeVideo] 📂 Lendo arquivo...')
+                    const buffer = fs.readFileSync(tempFilePath)
+                    console.log(`[downloadYouTubeVideo] ✅ Buffer criado: ${buffer.length} bytes`)
+                    
+                    fs.unlinkSync(tempFilePath)
+                    console.log('[downloadYouTubeVideo] 🗑️ Arquivo temporário removido')
+                    
+                    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
+                    console.log(`[downloadYouTubeVideo] 🎉 CONCLUÍDO em ${totalTime}s total`)
+                    
+                    resolve(buffer)
+                } catch (err) {
+                    console.error('[downloadYouTubeVideo] ❌ Erro ao ler arquivo:', err)
+                    showConsoleLibraryError(err, 'downloadYouTubeVideo')
+                    reject(new Error(botTexts.library_error))
+                }
+            } else {
+                console.error('[downloadYouTubeVideo] ❌ yt-dlp falhou com código:', code)
+                try { fs.unlinkSync(tempFilePath) } catch {}
+                reject(new Error(`yt-dlp falhou com código ${code}`))
+            }
+        })
+
+        ytDlpProcess.on('error', (err: Error) => {
+            clearTimeout(timeout)
+            console.error('[downloadYouTubeVideo] ❌ Erro no processo:', err)
+            try { fs.unlinkSync(tempFilePath) } catch {}
+            showConsoleLibraryError(err, 'downloadYouTubeVideo')
+            reject(new Error(botTexts.library_error))
+        })
+    })
 }

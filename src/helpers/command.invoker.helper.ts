@@ -4,7 +4,6 @@ import { Message } from "../interfaces/message.interface.js";
 import { messageErrorCommand, showCommandConsole } from "../utils/general.util.js";
 import { Group } from "../interfaces/group.interface.js";
 import { Commands } from "../interfaces/command.interface.js";
-import { autoSticker } from "../commands/sticker.functions.commands.js";
 import * as waUtil from "../utils/whatsapp.util.js";
 import botTexts from "../helpers/bot.texts.helper.js";
 import infoCommands from "../commands/info.list.commands.js";
@@ -114,12 +113,6 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
 
                 break
             default:
-                //Outros - Autosticker
-                if ((message.isGroupMsg && group?.autosticker) || (!message.isGroupMsg && botInfo.autosticker)){
-                    await autoSticker(client, botInfo, message, group || undefined)
-                    showCommandConsole(message.isGroupMsg, "STICKER", "AUTO-STICKER", "#ae45d1", message.t, message.pushname, group?.name)
-                }
-                
                 break
         }
     } catch(err: any){

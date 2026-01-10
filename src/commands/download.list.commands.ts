@@ -1,8 +1,8 @@
 import * as downloadFunctions from './download.functions.commands.js'
 
 const downloadCommands = {
-    down: {
-        guide: `Ex: *{$p}down* link - Download automático de mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.\nTambém funciona respondendo mensagens com links ou buscando por título no YouTube.\n`,
+    d: {
+        guide: `Ex: *{$p}d* link - Download automático de mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.\nTambém funciona respondendo mensagens com links ou buscando por título no YouTube.\n`,
         msgs: {
             error_not_found: 'Não foi possível baixar a mídia'
         },
@@ -14,11 +14,11 @@ const downloadCommands = {
             wait: "[AGUARDE] 🎧 Sua música está sendo baixada e processada.\n\n"+
             "*Título*: {$1}\n"+
             "*Duração*: {$2}",
-            error_limit: "O vídeo deve ter no máximo *6 minutos*",
+            error_limit: "O vídeo deve ter no máximo *9 minutos*",
             error_live: "Esse vídeo não pode ser convertido em áudio, lives não são aceitas.",
             error_not_found: "Nenhum áudio foi encontrado",
             error_no_youtube_link: "❌ A mensagem respondida não contém nenhum link.\n\n💡 Use *{$p}play* respondendo mensagens com links do YouTube ou digite o título da música.",
-            error_only_youtube: "❌ O comando *{$p}play* só funciona com links do YouTube ao responder mensagens.\n\n💡 Para outras plataformas, use *{$p}down* ou os comandos específicos (*{$p}ig*, *{$p}tk*, etc)."
+            error_only_youtube: "❌ O comando *{$p}play* só funciona com links do YouTube ao responder mensagens.\n\n💡 Para outras plataformas, use *{$p}d* ou os comandos específicos (*{$p}ig*, *{$p}tk*, etc)."
         },
         function: downloadFunctions.playCommand
     },
@@ -28,7 +28,7 @@ const downloadCommands = {
             wait: "[AGUARDE] 🎥 Seu video está sendo baixado e processado.\n\n"+
             "*Título*: {$1}\n"+
             "*Duração*: {$2}",
-            error_limit: "O video deve ter no máximo *6 minutos*",
+            error_limit: "O video deve ter no máximo *9 minutos*",
             error_live: "Houve um erro de download, o bot não aceita download de lives.",
             error_not_found: "Nenhum vídeo foi encontrado"
         },
@@ -40,7 +40,7 @@ const downloadCommands = {
             wait: "[AGUARDE] 🎬 Sua mídia está sendo baixada e processada.\n\n"+
             "*Título*: {$1}\n"+
             "*Duração*: {$2}",
-            error_limit: "O video deve ter no máximo *6 minutos*"
+            error_limit: "O video deve ter no máximo *9 minutos*"
         },
         function: downloadFunctions.fbCommand
     },

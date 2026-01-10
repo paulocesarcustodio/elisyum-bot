@@ -14,6 +14,7 @@ import { logNewslettersUpdate, type NewsletterUpdate } from './events/newsletter
 import { logNewsletterMessages, partitionNewsletterMessages } from './events/newsletter-message.event.js'
 import { syncGroupsOnStart } from './helpers/groups.sync.helper.js'
 import { executeEventQueue, queueEvent } from './helpers/events.queue.helper.js'
+import { checkAndNotifyPatchNotes } from './helpers/patch-notes.helper.js'
 import botTexts from './helpers/bot.texts.helper.js'
 import { askQuestion, colorText } from './utils/general.util.js'
 import { useNeDBAuthState } from './helpers/session.auth.helper.js'
@@ -71,6 +72,13 @@ export default async function connect(){
                 isBotReady = true
                 await executeEventQueue(client, eventsCache)
                 console.log(colorText(botTexts.server_started))
+                
+                // Verifica e envia patch notes se houver nova versão
+                setTimeout(() => {
+                    checkAndNotifyPatchNotes(client).catch(err => {
+                        console.error('[Socket] Erro ao verificar patch notes:', err)
+                    })
+                }, 5000) // Aguarda 5 segundos após o bot estar pronto
             }
             
             if (needReconnect) connect()

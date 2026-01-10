@@ -14,33 +14,11 @@ function showBanner() {
   console.log('');
 }
 
-// Verificar se .env existe
+// Verificar se .env existe (apenas aviso, não bloqueia)
 function checkEnv() {
   if (!existsSync('.env')) {
     console.log(color.applyColor('⚠️  Atenção: Arquivo .env não encontrado!', 'yellow'));
     console.log('');
-    console.log('Configure suas variáveis de ambiente primeiro:');
-    console.log(color.applyColor('  nano .env', 'cyan'));
-    console.log('');
-    
-    const readline = require('readline');
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-    
-    return new Promise((resolve) => {
-      rl.question(color.applyColor('Deseja continuar mesmo assim? (s/N) ', 'yellow'), (answer) => {
-        rl.close();
-        if (answer.toLowerCase() !== 's') {
-          console.log('');
-          console.log(color.applyColor('❌ Instalação cancelada', 'red'));
-          console.log('');
-          process.exit(0);
-        }
-        resolve(true);
-      });
-    });
   }
   return Promise.resolve(true);
 }

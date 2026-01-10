@@ -118,7 +118,7 @@ export async function menuCommand(client: WASocket, botInfo: Bot, message: Messa
                 replyText += menu.stickerMenu(botInfo)
                 break
             case "2":
-                replyText += menu.utilityMenu(botInfo)
+                replyText += userData.owner ? menu.utilityMenuOwner(botInfo) : menu.utilityMenu(botInfo)
                 break
             case "3":
                 replyText += menu.downloadMenu(botInfo)

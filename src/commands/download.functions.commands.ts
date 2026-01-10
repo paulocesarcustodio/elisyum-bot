@@ -11,6 +11,7 @@ import format from 'format-duration'
 import downloadCommands from "./download.list.commands.js"
 
 export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const startTime = performance.now()
     const textToProcess = getTextOrQuotedText(message)
     
     if (!message.args.length && !message.isQuoted){
@@ -32,13 +33,15 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         }
     }
 
+    const metadataStart = performance.now()
     const videoInfo = await downloadUtil.youtubeMedia(textToProcess)
+    console.log(`[playCommand] ⏱️ Metadados: ${((performance.now() - metadataStart) / 1000).toFixed(2)}s`)
 
     if (!videoInfo){
         throw new Error(downloadCommands.play.msgs.error_not_found)
     } else if (videoInfo.is_live){
         throw new Error(downloadCommands.play.msgs.error_live)
-    } else if (videoInfo.duration > 360){
+    } else if (videoInfo.duration > 540){
         throw new Error(downloadCommands.play.msgs.error_limit)
     }
 
@@ -69,76 +72,90 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     }
     
     try {
+        const downloadStart = performance.now()
         console.log('[playCommand] Iniciando download...')
         
-        // Download com progresso real (0-100%)
-        let lastProgress = 0
-        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl, async (percent) => {
-            // Atualiza: primeiro update aos 5%, depois a cada 15%, e sempre em 100%
-            const shouldUpdate = (percent >= 5 && lastProgress === 0) || 
-                                 (percent - lastProgress >= 15) || 
-                                 (percent === 100)
-            
-            if (shouldUpdate) {
-                lastProgress = percent
-                await safeEdit(
-                    `🎵 *${videoInfo.title}*\n` +
-                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                    `📥 Baixando...\n` +
-                    `${generateProgressBar(percent, 100, 20)}`
-                )
-            }
+        // Progresso REAL monitorando o arquivo no filesystem
+        const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl, async (progress) => {
+            await safeEdit(
+                `🎵 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                `📥 Baixando... ${progress}%\n` +
+                `${generateProgressBar(progress, 100, 20)}`
+            )
         })
-        console.log('[playCommand] Vídeo baixado, tamanho:', videoBuffer.length, 'bytes')
         
-        // Conversão com progresso real (0-100%)
+        const downloadTime = (performance.now() - downloadStart) / 1000
+        console.log(`[playCommand] ⏱️ Download: ${downloadTime.toFixed(2)}s - Tamanho: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+        
+        // Conversão com progresso simulado suave
+        const conversionStart = performance.now()
         console.log('[playCommand] Iniciando conversão para MP3...')
+        
+        let conversionProgress = 10 // Começa em 10% imediatamente
         await safeEdit(
             `🎵 *${videoInfo.title}*\n` +
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `🔄 Convertendo para MP3...\n` +
+            `🔄 Convertendo para MP3... ${conversionProgress}%\n` +
+            `${generateProgressBar(conversionProgress, 100, 20)}`
+        )
+        
+        const conversionInterval = setInterval(async () => {
+            if (conversionProgress < 95) {
+                conversionProgress += 10
+                await safeEdit(
+                    `🎵 *${videoInfo.title}*\n` +
+                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                    `🔄 Convertendo para MP3... ${conversionProgress}%\n` +
+                    `${generateProgressBar(conversionProgress, 100, 20)}`
+                )
+            }
+        }, 400) // Atualiza a cada 0.4s (mais rápido)
+        
+        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
+        clearInterval(conversionInterval)
+        
+        // Marca 100% na conversão
+        await safeEdit(
+            `🎵 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+            `🔄 Convertendo para MP3... 100%\n` +
+            `${generateProgressBar(100, 100, 20)}`
+        )
+        
+        const conversionTime = (performance.now() - conversionStart) / 1000
+        console.log(`[playCommand] ⏱️ Conversão: ${conversionTime.toFixed(2)}s - Tamanho: ${(audioBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+        
+        // Atualiza para envio
+        await safeEdit(
+            `🎵 *${videoInfo.title}*\n` +
+            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+            `📤 Enviando áudio... 0%\n` +
             `${generateProgressBar(0, 100, 20)}`
         )
         
-        let lastConvertProgress = 0
-        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, async (percent) => {
-            // Atualiza: primeiro update aos 5%, depois a cada 15%, e sempre em 100%
-            const shouldUpdate = (percent >= 5 && lastConvertProgress === 0) || 
-                                 (percent - lastConvertProgress >= 15) || 
-                                 (percent === 100)
-            
-            if (shouldUpdate) {
-                lastConvertProgress = percent
+        const sendStart = performance.now()
+        console.log('[playCommand] Enviando áudio...')
+        
+        // Progresso simulado durante envio
+        let sendProgress = 0
+        const sendInterval = setInterval(async () => {
+            if (sendProgress < 90) {
+                sendProgress += 30
                 await safeEdit(
                     `🎵 *${videoInfo.title}*\n` +
                     `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                    `🔄 Convertendo para MP3...\n` +
-                    `${generateProgressBar(percent, 100, 20)}`
-                )
+                    `📤 Enviando áudio... ${sendProgress}%\n` +
+                    `${generateProgressBar(sendProgress, 100, 20)}`
+                ).catch(() => {}) // Ignora erro se mensagem já foi enviada
             }
-        })
-        console.log('[playCommand] Conversão completa, tamanho:', audioBuffer.length, 'bytes')
-        
-        // Atualiza para 90% - Conversão completa
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📤 Enviando...\n` +
-            `${generateProgressBar(90, 100, 20)}`
-        )
-        
-        console.log('[playCommand] Enviando áudio...')
-        
-        // Atualiza para 90% - Enviando
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📤 Enviando áudio...\n` +
-            `${generateProgressBar(90, 100, 20)}`
-        )
+        }, 500)
         
         await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
-        console.log('[playCommand] Áudio enviado com sucesso')
+        clearInterval(sendInterval)
+        
+        const sendTime = (performance.now() - sendStart) / 1000
+        console.log(`[playCommand] ⏱️ Envio: ${sendTime.toFixed(2)}s`)
         
         // Atualiza para 100% - Concluído
         await safeEdit(
@@ -146,7 +163,8 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
             `✅ Concluído!`
         )
-        console.log('[playCommand] Comando concluído')
+        const totalTime = (performance.now() - startTime) / 1000
+        console.log(`[playCommand] ⏱️ TOTAL: ${totalTime.toFixed(2)}s (metadata: ${((metadataStart - startTime) / 1000).toFixed(2)}s + download: ${downloadTime.toFixed(2)}s + conversão: ${conversionTime.toFixed(2)}s + envio: ${sendTime.toFixed(2)}s)`)
     } catch (error) {
         console.error('[playCommand] Erro durante o processo:', error)
         await safeEdit(
@@ -171,7 +189,7 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         throw new Error(downloadCommands.yt.msgs.error_not_found)
     } else if (videoInfo.is_live){
         throw new Error(downloadCommands.yt.msgs.error_live)
-    } else if (videoInfo.duration > 360){
+    } else if (videoInfo.duration > 540){
         throw new Error(downloadCommands.yt.msgs.error_limit)
     }
 
@@ -220,34 +238,52 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     })
     
     
-    // Verifica tamanho
+    // Verifica tamanho e comprime se necessário
+    const MAX_WHATSAPP_VIDEO_SIZE = 16 * 1024 * 1024 // 16MB
+    let finalVideoBuffer = videoBuffer
     const videoSizeMB = videoBuffer.length / 1024 / 1024
-    if (videoSizeMB > 16) {
+    
+    if (videoBuffer.length > MAX_WHATSAPP_VIDEO_SIZE) {
         await safeEdit(
             `🎥 *${videoInfo.title}*\n` +
             `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `❌ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
-            `O WhatsApp suporta apenas vídeos de até 16MB.`
+            `⚠️ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
+            `🔄 Comprimindo para 16MB...\n` +
+            `${generateProgressBar(0, 100, 20)}`
         )
-        return
+        
+        // Comprime o vídeo
+        finalVideoBuffer = await convertUtil.compressVideoToLimit(videoBuffer, MAX_WHATSAPP_VIDEO_SIZE, async (percent) => {
+            await safeEdit(
+                `🎥 *${videoInfo.title}*\n` +
+                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
+                `🔄 Comprimindo vídeo... ${percent}%\n` +
+                `${generateProgressBar(percent, 100, 20)}`
+            )
+        })
+        
+        const compressedSizeMB = finalVideoBuffer.length / 1024 / 1024
+        console.log(`[ytCommand] ✅ Vídeo comprimido: ${videoSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB`)
     }
+    
+    const finalSizeMB = finalVideoBuffer.length / 1024 / 1024
     
     // Download completo - Enviando
     await safeEdit(
         `🎥 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+        `📦 Tamanho: ${finalSizeMB.toFixed(2)}MB\n\n` +
         `📤 Enviando vídeo...\n` +
         `${generateProgressBar(100, 100, 20)}`
     )
     
-    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+    await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', finalVideoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
     // Atualiza para 100% - Concluído
     await safeEdit(
         `🎥 *${videoInfo.title}*\n` +
         `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${videoSizeMB.toFixed(2)}MB\n\n` +
+        `📦 Tamanho: ${finalSizeMB.toFixed(2)}MB\n\n` +
         `✅ Concluído!`
     )
 }
@@ -261,7 +297,7 @@ export async function fbCommand(client: WASocket, botInfo: Bot, message: Message
 
     const fbInfo = await downloadUtil.facebookMedia(textToProcess)
 
-    if (fbInfo.duration > 360){
+    if (fbInfo.duration > 540){
         throw new Error(downloadCommands.fb.msgs.error_limit)
     }
 

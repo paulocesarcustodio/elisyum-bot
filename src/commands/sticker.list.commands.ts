@@ -33,24 +33,6 @@ const stickerCommands = {
             author_text: 'Solicitado por: {$1}'
         },
         function: stickerFunctions.ssfCommand
-    },
-    emojimix: {
-        guide: `Ex: *{$p}emojimix* 💩+😀 - Junta os dois emojis e transforma em sticker.\n\n`+
-        `*Obs*: Nem todos os emojis são compátiveis, então vá tentando fazer combinações.\n`,
-        msgs: {
-            error_emoji: "O emoji {$1} não é compatível para essa união",
-            error_emojis: "Os emoji {$1} e {$2} não são compatíveis para a união",
-            error_not_found: "Não foi encontrada uma união válida para esses emojis",
-            author_text: 'Solicitado por: {$1}'
-        },
-        function: stickerFunctions.emojimixCommand
-    },
-    snome: {
-        guide: `Ex: Responda um *STICKER* com *{$p}snome* pack, autor - Renomeia o nome do pack e do autor do sticker.`,
-        msgs: {
-            error_message: "Houve um erro ao obter os dados da mensagem."
-        },
-        function: stickerFunctions.snomeCommand
     }
 }
 
