@@ -129,26 +129,33 @@ export async function checkAndNotifyPatchNotes(client: WASocket): Promise<void> 
         // Envia e fixa a mensagem em cada grupo
         for (const group of allGroups) {
             try {
+                console.log(`[PatchNotes] Tentando enviar para: ${group.name} (${group.id})`)
+                
                 // Envia a mensagem
                 const sentMessage = await client.sendMessage(group.id, { 
                     text: message 
                 })
 
+                console.log(`[PatchNotes] Mensagem enviada. Key:`, sentMessage?.key)
+
                 if (sentMessage && sentMessage.key && sentMessage.key.id) {
                     // Aguarda 500ms antes de fixar (para garantir que a mensagem foi recebida)
                     await new Promise(resolve => setTimeout(resolve, 500))
                     
+                    console.log(`[PatchNotes] Tentando fixar mensagem...`)
+                    
                     // Fixa a mensagem no grupo por 24 horas (pin type 1)
-                    await client.sendMessage(group.id, {
+                    const pinResult = await client.sendMessage(group.id, {
                         pin: sentMessage.key,
                         type: 1, // 1 = pin, 0 = unpin
                         time: 86400 // 24 horas em segundos
                     })
 
+                    console.log(`[PatchNotes] Resultado do pin:`, pinResult)
                     console.log(`[PatchNotes] ✅ Enviado e fixado em: ${group.name}`)
                     successCount++
                 } else {
-                    console.log(`[PatchNotes] ⚠️ Mensagem enviada mas não foi possível fixar em: ${group.name}`)
+                    console.log(`[PatchNotes] ⚠️ Mensagem enviada mas key inválida em: ${group.name}`)
                     successCount++
                 }
 
