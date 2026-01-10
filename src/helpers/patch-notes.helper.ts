@@ -76,8 +76,15 @@ function getCurrentPatchNotes(currentVersion: string): string | null {
         const match = changelog.match(versionRegex)
         console.log('[PatchNotes] Match encontrado:', match ? 'SIM' : 'NÃO')
         
-        if (match && match[1]) {
-            console.log('[PatchNotes] Conteúdo extraído (primeiros 100 chars):', match[1].substring(0, 100))
+        if (match) {
+            console.log('[PatchNotes] match[0] (match completo):', match[0] ? match[0].substring(0, 150) : 'undefined')
+            console.log('[PatchNotes] match[1] (grupo captura):', match[1] ? `"${match[1].substring(0, 100)}"` : 'undefined/vazio')
+            console.log('[PatchNotes] match[1] length:', match[1]?.length || 0)
+            console.log('[PatchNotes] match[1] trimmed length:', match[1]?.trim().length || 0)
+        }
+        
+        if (match && match[1] && match[1].trim()) {
+            console.log('[PatchNotes] ✓ Conteúdo extraído com sucesso')
             return match[1].trim()
         }
         
