@@ -71,7 +71,8 @@ function getCurrentPatchNotes(currentVersion: string): string | null {
         console.log('[PatchNotes] CHANGELOG lido com sucesso, tamanho:', changelog.length, 'caracteres')
         
         // Procura pela seção da versão atual (aceita versão com ou sem data/texto adicional)
-        const versionRegex = new RegExp(`## ${currentVersion.replace(/\./g, '\\.')}[^\\n]*\\n([\\s\\S]*?)(?=\\n##|$)`, 'm')
+        // Importante: o lookahead precisa incluir o espaço após ## para funcionar corretamente
+        const versionRegex = new RegExp(`## ${currentVersion.replace(/\./g, '\\.')}[^\\n]*\\n([\\s\\S]*?)(?=\\n## |$)`, 'm')
         console.log('[PatchNotes] Regex:', versionRegex.source)
         const match = changelog.match(versionRegex)
         console.log('[PatchNotes] Match encontrado:', match ? 'SIM' : 'NÃO')
