@@ -62,9 +62,9 @@ createServer((req, res) => {
         echo "🔄 Pulling changes..."
         git pull origin main
         echo "📦 Installing dependencies..."
-        bun install --frozen-lockfile
+        /root/.bun/bin/bun install --frozen-lockfile
         echo "🔨 Building..."
-        bun run build
+        /root/.bun/bin/bun run build
         echo "🔄 Restarting bot service..."
         systemctl restart lbot
         echo "✅ Deploy completed!"
