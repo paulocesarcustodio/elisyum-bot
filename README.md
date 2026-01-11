@@ -253,4 +253,3 @@ O webhook escuta por pushes na branch `main` e executa automaticamente:
 - `bun install --frozen-lockfile`
 - `bun run build`
 - `systemctl restart lbot` (reinicia o serviço do bot)
-# teste ci/cd
