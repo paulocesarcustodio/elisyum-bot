@@ -1,6 +1,19 @@
 # Notas de atualização
 Colocarei neste arquivos as mudanças significativas em cada versão começando na versão 3.0.0
 
+## 3.4.8 - 10/01/2026
+
+### NOVIDADES
+- 🎥 **Agendamento Kasino**: Sistema automático que busca e envia o vídeo "Kasino no Sabadaço" todo sábado às 12:00 em todos os grupos
+- ⏰ **Scheduler Service**: Nova infraestrutura de agendamento usando node-cron para tarefas automáticas
+- 🧪 **Comando de teste**: Novo comando `!testkasino` para administradores testarem o envio manual
+
+### MELHORIAS
+- 📅 Agendamento configurável por timezone (America/Sao_Paulo)
+- 🔄 Delay automático entre envios para evitar bloqueio
+- 📊 Logs detalhados do processo de busca, download e envio
+- 🛡️ Tratamento de erros individual por grupo
+
 ## 3.4.7 - 10/01/2026
 
 ### MELHORIAS

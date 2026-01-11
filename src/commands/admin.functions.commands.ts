@@ -14,6 +14,7 @@ import botTexts from "../helpers/bot.texts.helper.js";
 import adminCommands from "./admin.list.commands.js";
 import { commandExist, getCommandsByCategory } from "../utils/commands.util.js";
 import { CategoryCommand } from "../interfaces/command.interface.js";
+import { SchedulerService } from "../services/scheduler.service.js";
 
 export async function adminCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     await waUtil.replyText(client, message.chat_id, adminMenu(botInfo), message.wa_message, {expiration: message.expiration})
@@ -559,6 +560,23 @@ export async function pingCommand(client: WASocket, botInfo: Bot, message: Messa
     const botStarted = timestampToDate(botInfo.started)
     const replyText = buildText(adminCommands.ping.msgs.reply, systemName, cpuName, ramUsed, ramTotal, replyTime, currentUsers.length, currentGroups.length, botStarted)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
+}
+
+export async function testkasinoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
+    await waUtil.replyText(client, message.chat_id, adminCommands.testkasino.msgs.reply, message.wa_message, {expiration: message.expiration})
+    
+    try {
+        const scheduler = new SchedulerService(client)
+        await scheduler.testKasinoVideo()
+        
+        const groupController = new GroupController()
+        const currentGroups = await groupController.getAllGroups()
+        const successText = buildText(adminCommands.testkasino.msgs.success, currentGroups.length)
+        await waUtil.replyText(client, message.chat_id, successText, message.wa_message, {expiration: message.expiration})
+    } catch (error) {
+        console.error('[testkasinoCommand] Erro:', error)
+        await waUtil.replyText(client, message.chat_id, adminCommands.testkasino.msgs.error, message.wa_message, {expiration: message.expiration})
+    }
 }
 
 

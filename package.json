@@ -1,6 +1,6 @@
 {
   "name": "lbot-whatsapp",
-  "version": "3.4.7",
+  "version": "3.4.8",
   "description": "Bot brasileiro para Whatsapp com diversas utilidades para o dia-a-dia.",
   "type": "module",
   "main": "dist/app.js",
@@ -36,6 +36,7 @@
     "@types/fs-extra": "^11.0.4",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^24.7.1",
+    "@types/node-cron": "^3.0.11",
     "@types/qrcode": "^1.5.5",
     "@types/qrcode-terminal": "^0.12.2",
     "@types/user-agents": "^1.0.4",
@@ -82,6 +83,7 @@
     "jsdom": "^26.1.0",
     "moment-timezone": "^0.5.47",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
     "node-gtts": "^2.0.2",
     "node-upload-images": "^1.0.1",
     "node-webpmux": "^3.2.0",

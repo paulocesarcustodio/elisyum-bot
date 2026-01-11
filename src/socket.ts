@@ -18,6 +18,7 @@ import { checkAndNotifyPatchNotes } from './helpers/patch-notes.helper.js'
 import botTexts from './helpers/bot.texts.helper.js'
 import { askQuestion, colorText } from './utils/general.util.js'
 import { useNeDBAuthState } from './helpers/session.auth.helper.js'
+import { SchedulerService } from './services/scheduler.service.js'
 
 //Cache de tentativa de envios
 const retryCache = new NodeCache()
@@ -72,6 +73,10 @@ export default async function connect(){
                 isBotReady = true
                 await executeEventQueue(client, eventsCache)
                 console.log(colorText(botTexts.server_started))
+                
+                // Inicializa o scheduler de tarefas agendadas
+                const scheduler = new SchedulerService(client)
+                scheduler.init()
                 
                 // Verifica e envia patch notes se houver nova versão
                 setTimeout(() => {

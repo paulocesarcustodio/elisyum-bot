@@ -282,6 +282,15 @@ const adminCommands = {
             "*Online desde*: {$8}"
         },
         function: adminFunctions.pingCommand
+    },
+    testkasino: {
+        guide: `Ex: *{$p}testkasino* - Testa o envio do vídeo Kasino no Sabadaço para todos os grupos.\n`,
+        msgs: {
+            reply: "🎥 Testando envio do vídeo Kasino para todos os grupos...",
+            success: "✅ Vídeo Kasino enviado com sucesso para {$1} grupos!",
+            error: "❌ Erro ao enviar vídeo Kasino."
+        },
+        function: adminFunctions.testkasinoCommand
     }
 }
 
