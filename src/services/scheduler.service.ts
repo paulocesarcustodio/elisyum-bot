@@ -17,7 +17,7 @@ export class SchedulerService {
      * Inicializa os agendamentos
      */
     public init() {
-        console.log('[Scheduler] 📅 Inicializando agendamentos...')
+        console.log('[Scheduler] 📅 Inicializando agendamentos do bot...')
         
         // Todo sábado às 12:00 (horário de Brasília)
         cron.schedule('0 12 * * 6', async () => {
