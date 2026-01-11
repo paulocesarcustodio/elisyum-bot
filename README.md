@@ -236,10 +236,10 @@ O projeto inclui um servidor webhook (`webhook-deploy.js`) para automatizar depl
 
 2. Configure o webhook no GitHub:
    - Vá em Settings > Webhooks > Add webhook
-   - URL: `http://SEU_IP:3001/webhook`
+   - URL: `http://SEU_IP:3001/webhook` (use a porta configurada em `WEBHOOK_PORT`)
    - Content type: `application/json`
    - Secret: o mesmo configurado em `WEBHOOK_SECRET`
-   - Events: Just the push event
+   - Events: Apenas o evento push
 
 3. Inicie o servidor webhook:
    ```bash
