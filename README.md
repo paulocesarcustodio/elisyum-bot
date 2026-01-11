@@ -220,7 +220,36 @@ Diversos para administrar o bot e ter controle sobre ele.
 
 * A minha mãe e o meu pai que me fizeram com muito amor
 * [`WhiskeySockets/Baileys`](https://github.com/WhiskeySockets/Baileys) - Por disponibilizar a biblioteca Baileys e dar suporte no Discord principalmente a nós brasileiros.
-test
-\n## 🚀 Webhook Deploy Ativo
-test 3
-test 4
+
+## 🚀 Webhook Deploy
+
+O projeto inclui um servidor webhook (`webhook-deploy.js`) para automatizar deploys a partir de pushes no GitHub.
+
+### Configuração
+
+1. Configure as variáveis de ambiente:
+   ```bash
+   WEBHOOK_PORT=3001          # Porta do servidor webhook
+   WEBHOOK_SECRET=your-secret # Secret do webhook do GitHub
+   DEPLOY_PATH=/path/to/bot   # Caminho do projeto no servidor
+   ```
+
+2. Configure o webhook no GitHub:
+   - Vá em Settings > Webhooks > Add webhook
+   - URL: `http://SEU_IP:3001/webhook`
+   - Content type: `application/json`
+   - Secret: o mesmo configurado em `WEBHOOK_SECRET`
+   - Events: Just the push event
+
+3. Inicie o servidor webhook:
+   ```bash
+   bun webhook-deploy.js
+   ```
+
+### Funcionamento
+
+O webhook escuta por pushes na branch `main` e executa automaticamente:
+- `git pull origin main`
+- `bun install --frozen-lockfile`
+- `bun run build`
+- `systemctl restart lbot` (reinicia o serviço do bot)
