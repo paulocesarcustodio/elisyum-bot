@@ -7,7 +7,6 @@ import getEmojiMixUrl, { checkSupported } from 'emoji-mixer'
 import ImageUploadService from 'node-upload-images'
 import { AnimeRecognition, ImageSearch } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import { removeBackground as removeBackgroundImgly } from "@imgly/background-removal-node"
 
 export async function uploadImage(imageBuffer : Buffer){
     try {
@@ -52,35 +51,9 @@ export async function emojiMix(emoji1: string, emoji2: string){
     }
 }
 
-export async function removeBackground(imageBuffer: Buffer){
-    try {
-        console.log('🔄 Iniciando remoção de fundo local...')
-        
-        // Converter para PNG válido se necessário usando @napi-rs/image
-        const { Transformer } = await import('@napi-rs/image')
-        const transformer = new Transformer(imageBuffer)
-        const processedBuffer = await transformer.png()
-        
-        // Usar biblioteca local @imgly/background-removal
-        const blob = new Blob([new Uint8Array(processedBuffer)], { type: 'image/png' })
-        const result = await removeBackgroundImgly(blob, {
-            output: {
-                format: 'image/png',
-                quality: 0.8
-            }
-        })
-        
-        // Converter Blob para Buffer
-        const arrayBuffer = await result.arrayBuffer()
-        const resultBuffer = Buffer.from(arrayBuffer)
-        
-        console.log(`✅ Remoção de fundo concluída (${resultBuffer.length} bytes)`)
-        return resultBuffer
-        
-    } catch(err){
-        showConsoleLibraryError(err, 'removeBackground')
-        throw new Error('❌ Não foi possível remover o fundo da imagem. Tente novamente.')
-    }
+export async function removeBackground(imageBuffer: Buffer): Promise<Buffer>{
+    // Comando !ssf temporariamente desabilitado até encontrar biblioteca compatível com Bun
+    throw new Error('❌ Comando temporariamente desabilitado. Aguarde próxima atualização.')
 }
 
 export async function animeRecognition(imageBuffer : Buffer){ 
