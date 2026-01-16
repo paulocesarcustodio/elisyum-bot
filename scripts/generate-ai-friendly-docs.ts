@@ -260,6 +260,21 @@ Para remover admin: *!rebaixar* @mencionar ou responder mensagem
 
 ═══════════════════════════════════════════════════════════════════
 
+SILENCIAR E CONTROLAR MEMBROS
+
+Para silenciar uma PESSOA específica (impedir de falar no grupo):
+• *!silenciar* @mencionar ou responder mensagem
+• Use novamente para desmutar a pessoa
+
+Para dar avisos/advertências:
+• *!aviso* @mencionar - adiciona aviso
+• *!rmaviso* @mencionar - remove aviso
+• *!zeraravisos* @mencionar - zera todos avisos
+
+🔍 Palavras-chave: silenciar, mutar pessoa, calar, impedir falar, avisos, advertir, advertência, warning
+
+═══════════════════════════════════════════════════════════════════
+
 CONFIGURAR GRUPO
 
 Para mudar foto do grupo: Enviar imagem com *!fotogrupo*
@@ -267,13 +282,14 @@ Para fechar grupo (só admins falam): *!restrito* (ativa/desativa)
 Para ver link do grupo: *!link*
 Para resetar link: *!rlink*
 
+Para desabilitar comandos do bot para membros: *!mutar* (só admins usam comandos)
 Para ativar/desativar bem-vindo: *!bemvindo*
 Para ativar/desativar anti-link: *!antilink*
 Para ativar/desativar anti-fake: *!antifake*
 Para ativar/desativar anti-flood: *!antiflood*
 Para ativar/desativar auto-sticker: *!autosticker*
 
-🔍 Palavras-chave: configurar grupo, fechar grupo, abrir grupo, restringir grupo, bem vindo, bemvindo, antilink, antifake, antiflood, foto grupo, link grupo
+🔍 Palavras-chave: configurar grupo, fechar grupo, abrir grupo, restringir grupo, bem vindo, bemvindo, antilink, antifake, antiflood, foto grupo, link grupo, mutar comandos, desabilitar comandos
 
 ═══════════════════════════════════════════════════════════════════
 
