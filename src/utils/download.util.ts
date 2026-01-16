@@ -332,6 +332,8 @@ export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (perce
         
         const tempFilePath = path.join('/tmp', `yt-${Date.now()}.mp4`)
         console.log('[downloadYouTubeVideo] 📂 Arquivo temporário:', tempFilePath)
+        console.log('[downloadYouTubeVideo] 🔧 Usando Bun path:', bunPath)
+        console.log('[downloadYouTubeVideo] 🔧 Parâmetro completo: --js-runtimes', `bun:${bunPath}`)
 
         const ytDlpProcess = spawn(ytDlpPath, [
             videoUrl,
