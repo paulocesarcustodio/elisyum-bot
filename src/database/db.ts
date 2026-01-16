@@ -59,6 +59,20 @@ db.run(`
   )
 `);
 
+// MIGRAÇÃO: Adicionar coluna owner_jid se não existir (para bancos antigos)
+try {
+  const columns = db.prepare("PRAGMA table_info(saved_audios)").all() as Array<{ name: string }>;
+  const hasOwnerJid = columns.some(col => col.name === 'owner_jid');
+  
+  if (!hasOwnerJid) {
+    console.log('[DB] 🔧 Migrando tabela saved_audios: adicionando coluna owner_jid...');
+    db.run('ALTER TABLE saved_audios ADD COLUMN owner_jid TEXT NOT NULL DEFAULT ""');
+    console.log('[DB] ✅ Migração concluída');
+  }
+} catch (err) {
+  console.log('[DB] ⚠️ Erro na migração:', err);
+}
+
 // Índices para performance
 db.run('CREATE INDEX IF NOT EXISTS idx_contacts_updated ON contacts(updated_at)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON command_logs(timestamp)');
