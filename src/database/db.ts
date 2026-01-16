@@ -44,19 +44,18 @@ db.run(`
 `);
 
 // ============================================
-// TABELA DE ÁUDIOS SALVOS
+// TABELA DE ÁUDIOS SALVOS (GLOBAIS)
 // ============================================
 db.run(`
   CREATE TABLE IF NOT EXISTS saved_audios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_jid TEXT NOT NULL,
-    audio_name TEXT NOT NULL,
+    owner_jid TEXT NOT NULL,
+    audio_name TEXT NOT NULL UNIQUE,
     file_path TEXT NOT NULL,
     mime_type TEXT NOT NULL,
     seconds INTEGER,
     ptt BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_jid, audio_name)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
@@ -65,7 +64,7 @@ db.run('CREATE INDEX IF NOT EXISTS idx_contacts_updated ON contacts(updated_at)'
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON command_logs(timestamp)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_user ON command_logs(user_jid)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_command ON command_logs(command)');
-db.run('CREATE INDEX IF NOT EXISTS idx_audios_user ON saved_audios(user_jid)');
+db.run('CREATE INDEX IF NOT EXISTS idx_audios_owner ON saved_audios(owner_jid)');
 db.run('CREATE INDEX IF NOT EXISTS idx_audios_name ON saved_audios(audio_name)');
 
 // ============================================
@@ -247,9 +246,9 @@ export const logsDb = {
 // FUNÇÕES PARA ÁUDIOS SALVOS
 // ============================================
 export const audiosDb = {
-  // Salvar áudio
+  // Salvar áudio (global)
   save: (data: {
-    userJid: string;
+    ownerJid: string;
     audioName: string;
     filePath: string;
     mimeType: string;
@@ -258,18 +257,19 @@ export const audiosDb = {
   }) => {
     const stmt = db.prepare(`
       INSERT INTO saved_audios 
-      (user_jid, audio_name, file_path, mime_type, seconds, ptt)
+      (owner_jid, audio_name, file_path, mime_type, seconds, ptt)
       VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(user_jid, audio_name) DO UPDATE SET 
+      ON CONFLICT(audio_name) DO UPDATE SET 
         file_path = excluded.file_path,
         mime_type = excluded.mime_type,
         seconds = excluded.seconds,
         ptt = excluded.ptt,
+        owner_jid = excluded.owner_jid,
         created_at = CURRENT_TIMESTAMP
     `);
     
     stmt.run(
-      data.userJid,
+      data.ownerJid,
       data.audioName.toLowerCase(),
       data.filePath,
       data.mimeType,
@@ -277,18 +277,18 @@ export const audiosDb = {
       data.ptt ? 1 : 0
     );
     
-    console.log(`[DB] Áudio salvo: "${data.audioName}" por ${data.userJid}`);
+    console.log(`[DB] Áudio salvo globalmente: "${data.audioName}" por ${data.ownerJid}`);
   },
 
-  // Buscar áudio por nome e usuário
-  get: (userJid: string, audioName: string) => {
+  // Buscar áudio por nome (global)
+  get: (audioName: string) => {
     const stmt = db.prepare(`
       SELECT * FROM saved_audios 
-      WHERE user_jid = ? AND audio_name = ?
+      WHERE audio_name = ?
     `);
-    return stmt.get(userJid, audioName.toLowerCase()) as {
+    return stmt.get(audioName.toLowerCase()) as {
       id: number;
-      user_jid: string;
+      owner_jid: string;
       audio_name: string;
       file_path: string;
       mime_type: string;
@@ -298,33 +298,38 @@ export const audiosDb = {
     } | undefined;
   },
 
-  // Listar todos os áudios de um usuário
-  getUserAudios: (userJid: string, limit: number = 50, offset: number = 0) => {
+  // Listar todos os áudios (global)
+  getAllAudios: (limit: number = 50, offset: number = 0) => {
     const stmt = db.prepare(`
-      SELECT audio_name, seconds, created_at 
+      SELECT audio_name, seconds, created_at, owner_jid 
       FROM saved_audios 
-      WHERE user_jid = ? 
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
     `);
-    return stmt.all(userJid, limit, offset) as Array<{
+    return stmt.all(limit, offset) as Array<{
       audio_name: string;
       seconds: number | null;
       created_at: string;
+      owner_jid: string;
     }>;
   },
 
-  // Contar áudios de um usuário
-  count: (userJid: string) => {
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM saved_audios WHERE user_jid = ?');
-    const result = stmt.get(userJid) as { count: number };
+  // Contar total de áudios (global)
+  count: () => {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM saved_audios');
+    const result = stmt.get() as { count: number };
     return result.count;
   },
 
-  // Deletar áudio
-  delete: (userJid: string, audioName: string) => {
-    const audio = audiosDb.get(userJid, audioName);
+  // Deletar áudio (global - verifica dono)
+  delete: (audioName: string, requesterId?: string) => {
+    const audio = audiosDb.get(audioName);
     if (audio) {
+      // Se requesterId for fornecido, verifica se é o dono
+      if (requesterId && audio.owner_jid !== requesterId) {
+        throw new Error('Apenas o dono pode deletar este áudio');
+      }
+      
       // Remove arquivo físico
       try {
         const fs = require('fs');
@@ -336,20 +341,25 @@ export const audiosDb = {
       }
     }
     
-    const stmt = db.prepare('DELETE FROM saved_audios WHERE user_jid = ? AND audio_name = ?');
-    stmt.run(userJid, audioName.toLowerCase());
-    console.log(`[DB] Áudio deletado: "${audioName}" de ${userJid}`);
+    const stmt = db.prepare('DELETE FROM saved_audios WHERE audio_name = ?');
+    stmt.run(audioName.toLowerCase());
+    console.log(`[DB] Áudio deletado globalmente: "${audioName}"`);
   },
 
-  // Renomear áudio
-  rename: (userJid: string, oldName: string, newName: string) => {
+  // Renomear áudio (global - verifica dono)
+  rename: (oldName: string, newName: string, requesterId?: string) => {
+    const audio = audiosDb.get(oldName);
+    if (audio && requesterId && audio.owner_jid !== requesterId) {
+      throw new Error('Apenas o dono pode renomear este áudio');
+    }
+    
     const stmt = db.prepare(`
       UPDATE saved_audios 
       SET audio_name = ? 
-      WHERE user_jid = ? AND audio_name = ?
+      WHERE audio_name = ?
     `);
-    stmt.run(newName.toLowerCase(), userJid, oldName.toLowerCase());
-    console.log(`[DB] Áudio renomeado: "${oldName}" -> "${newName}" de ${userJid}`);
+    stmt.run(newName.toLowerCase(), oldName.toLowerCase());
+    console.log(`[DB] Áudio renomeado globalmente: "${oldName}" -> "${newName}"`);
   }
 };
 

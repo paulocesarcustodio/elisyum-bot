@@ -99,6 +99,12 @@ export async function saveCommand(client: WASocket, botInfo: Bot, message: Messa
         throw new Error(utilityCommands.save.msgs.error_name_too_long)
     }
 
+    // Verifica se já existe um áudio com esse nome
+    const existingAudio = audiosDb.get(audioName)
+    if (existingAudio) {
+        throw new Error(buildText(utilityCommands.save.msgs.error_already_exists, audioName))
+    }
+
     // Baixa o áudio
     const audioBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
     
@@ -117,9 +123,9 @@ export async function saveCommand(client: WASocket, botInfo: Bot, message: Messa
     // Salva o arquivo
     fs.writeFileSync(filePath, audioBuffer)
     
-    // Salva no banco
+    // Salva no banco (global)
     audiosDb.save({
-        userJid: message.sender,
+        ownerJid: message.sender,
         audioName: audioName,
         filePath: filePath,
         mimeType: message.quotedMessage.media?.mimetype || 'audio/ogg; codecs=opus',
@@ -143,17 +149,17 @@ export async function audioCommand(client: WASocket, botInfo: Bot, message: Mess
     const searchQuery = message.text_command.trim().toLowerCase()
     
     // Tenta busca exata primeiro
-    let audio = audiosDb.get(message.sender, searchQuery)
+    let audio = audiosDb.get(searchQuery)
 
     // Se não encontrar, usa busca fuzzy
     if (!audio) {
-        const allUserAudios = audiosDb.getUserAudios(message.sender, 1000, 0)
+        const allAudios = audiosDb.getAllAudios(1000, 0)
         
-        if (allUserAudios.length === 0) {
+        if (allAudios.length === 0) {
             throw new Error(utilityCommands.audio.msgs.error_not_found)
         }
         
-        const fuse = new Fuse(allUserAudios, {
+        const fuse = new Fuse(allAudios, {
             keys: ['audio_name'],
             threshold: 0.4, // 0 = exact, 1 = match anything
             ignoreLocation: true,
@@ -168,7 +174,7 @@ export async function audioCommand(client: WASocket, botInfo: Bot, message: Mess
         
         // Pega o primeiro resultado (melhor match)
         const bestMatch = results[0].item
-        audio = audiosDb.get(message.sender, bestMatch.audio_name)
+        audio = audiosDb.get(bestMatch.audio_name)
         
         if (!audio) {
             throw new Error(utilityCommands.audio.msgs.error_not_found)
@@ -226,13 +232,13 @@ export async function audiosCommand(client: WASocket, botInfo: Bot, message: Mes
         throw new Error(utilityCommands.audios.msgs.error_invalid_page)
     }
 
-    const totalAudios = audiosDb.count(message.sender)
+    const totalAudios = audiosDb.count()
     
     if (totalAudios === 0) {
         throw new Error(utilityCommands.audios.msgs.error_no_audios)
     }
 
-    const audiosList = audiosDb.getUserAudios(message.sender, pageSize, offset)
+    const audiosList = audiosDb.getAllAudios(pageSize, offset)
     const totalPages = Math.ceil(totalAudios / pageSize)
 
     if (page > totalPages) {
@@ -268,18 +274,18 @@ export async function deleteAudioCommand(client: WASocket, botInfo: Bot, message
     const searchQuery = message.text_command.trim().toLowerCase()
     
     // Tenta busca exata primeiro
-    let audio = audiosDb.get(message.sender, searchQuery)
+    let audio = audiosDb.get(searchQuery)
     let audioName = searchQuery
 
     // Se não encontrar, usa busca fuzzy
     if (!audio) {
-        const allUserAudios = audiosDb.getUserAudios(message.sender, 1000, 0)
+        const allAudios = audiosDb.getAllAudios(1000, 0)
         
-        if (allUserAudios.length === 0) {
+        if (allAudios.length === 0) {
             throw new Error(utilityCommands.delete.msgs.error_not_found)
         }
         
-        const fuse = new Fuse(allUserAudios, {
+        const fuse = new Fuse(allAudios, {
             keys: ['audio_name'],
             threshold: 0.4,
             ignoreLocation: true,
@@ -294,20 +300,20 @@ export async function deleteAudioCommand(client: WASocket, botInfo: Bot, message
         
         const bestMatch = results[0].item
         audioName = bestMatch.audio_name
-        audio = audiosDb.get(message.sender, audioName)
+        audio = audiosDb.get(audioName)
         
         if (!audio) {
             throw new Error(utilityCommands.delete.msgs.error_not_found)
         }
     }
 
-    // Deleta o arquivo físico se existir
-    if (fs.existsSync(audio.file_path)) {
-        fs.unlinkSync(audio.file_path)
+    // Verifica se o usuário é o dono do áudio
+    if (audio.owner_jid !== message.sender) {
+        throw new Error(utilityCommands.delete.msgs.error_not_owner)
     }
 
-    // Deleta do banco
-    audiosDb.delete(message.sender, audioName)
+    // Deleta do banco (isso também deleta o arquivo físico)
+    audiosDb.delete(audioName, message.sender)
 
     const replyText = buildText(utilityCommands.delete.msgs.reply, audioName)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
@@ -335,18 +341,18 @@ export async function renameAudioCommand(client: WASocket, botInfo: Bot, message
     }
 
     // Tenta busca exata primeiro
-    let audio = audiosDb.get(message.sender, searchQuery)
+    let audio = audiosDb.get(searchQuery)
     let oldName = searchQuery
 
     // Se não encontrar, usa busca fuzzy
     if (!audio) {
-        const allUserAudios = audiosDb.getUserAudios(message.sender, 1000, 0)
+        const allAudios = audiosDb.getAllAudios(1000, 0)
         
-        if (allUserAudios.length === 0) {
+        if (allAudios.length === 0) {
             throw new Error(buildText(utilityCommands.rename.msgs.error_not_found, searchQuery))
         }
         
-        const fuse = new Fuse(allUserAudios, {
+        const fuse = new Fuse(allAudios, {
             keys: ['audio_name'],
             threshold: 0.4,
             ignoreLocation: true,
@@ -361,22 +367,27 @@ export async function renameAudioCommand(client: WASocket, botInfo: Bot, message
         
         const bestMatch = results[0].item
         oldName = bestMatch.audio_name
-        audio = audiosDb.get(message.sender, oldName)
+        audio = audiosDb.get(oldName)
         
         if (!audio) {
             throw new Error(buildText(utilityCommands.rename.msgs.error_not_found, searchQuery))
         }
     }
 
+    // Verifica se o usuário é o dono do áudio
+    if (audio.owner_jid !== message.sender) {
+        throw new Error(utilityCommands.rename.msgs.error_not_owner)
+    }
+
     // Verifica se já existe um áudio com o novo nome
-    const existingAudio = audiosDb.get(message.sender, newName)
+    const existingAudio = audiosDb.get(newName)
     
     if (existingAudio) {
         throw new Error(buildText(utilityCommands.rename.msgs.error_name_exists, newName))
     }
 
     // Renomeia
-    audiosDb.rename(message.sender, oldName, newName)
+    audiosDb.rename(oldName, newName, message.sender)
 
     const replyText = buildText(utilityCommands.rename.msgs.reply, oldName, newName)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})

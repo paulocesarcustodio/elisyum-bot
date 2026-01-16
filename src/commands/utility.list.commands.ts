@@ -71,11 +71,15 @@ const utilityCommands = {
         function: utilityFunctions.revelarCommand
     },
     save: {
-        guide: `Ex: Responda um *áudio* com *{$p}save nome-do-audio* - Salva o áudio com o nome especificado.\n\n`+
-        `*Obs*: Este comando funciona apenas com *ÁUDIOS*.\n`,
+        guide: `Ex: Responda um *áudio* com *{$p}save nome-do-audio* - Salva o áudio globalmente para todos usarem.
+
+`+
+        `*Obs*: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
+`,
         msgs: {
             error_no_name: "Você precisa especificar um nome para salvar o áudio.\nEx: {$p}save gabriel rindo",
             error_name_too_long: "O nome do áudio é muito longo (máximo 100 caracteres).",
+            error_already_exists: "Já existe um áudio com o nome *{$1}*. Escolha outro nome!",
             reply: "💾 *Áudio salvo com sucesso!*\n\n"+
             "Nome: *{$1}*\n\n"+
             "Use *{$p}audio {$1}* para reproduzir."
@@ -83,22 +87,22 @@ const utilityCommands = {
         function: utilityFunctions.saveCommand
     },
     audio: {
-        guide: `Ex: *{$p}audio nome-do-audio* - Reproduz o áudio salvo com esse nome.\n\n`+
+        guide: `Ex: *{$p}audio nome-do-audio* - Reproduz um áudio salvo.\n\n`+
         `Ex: Responda uma mensagem com *{$p}audio nome-do-audio* - Reproduz o áudio como resposta.\n`,
         msgs: {
-            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver seus áudios salvos.",
-            error_file_not_found: "O arquivo de áudio foi deletado do sistema. Use *{$p}audios* para ver seus áudios salvos."
+            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver todos os áudios disponíveis.",
+            error_file_not_found: "O arquivo de áudio foi deletado do sistema. Use *{$p}audios* para ver os áudios disponíveis."
         },
         function: utilityFunctions.audioCommand
     },
     audios: {
-        guide: `Ex: *{$p}audios* - Lista todos os seus áudios salvos (página 1).\n\n`+
-        `Ex: *{$p}audios 2* - Lista a página 2 dos seus áudios salvos.\n`,
+        guide: `Ex: *{$p}audios* - Lista todos os áudios disponíveis (página 1).\n\n`+
+        `Ex: *{$p}audios 2* - Lista a página 2 dos áudios.\n`,
         msgs: {
             error_invalid_page: "Número de página inválido.",
-            error_no_audios: "Você ainda não salvou nenhum áudio.\n\nUse *{$p}save* para salvar áudios!",
+            error_no_audios: "Ainda não há nenhum áudio salvo.\n\nUse *{$p}save* para salvar áudios!",
             error_page_out_of_range: "Esta página não existe. Total de páginas: {$1}",
-            reply_title: "🎵 *Seus áudios salvos*\n\n"+
+            reply_title: "🎵 *Áudios disponíveis*\n\n"+
             "Página {$1}/{$2} | Total: {$3}\n\n",
             reply_item: "{$1}. *{$2}* ({$3})\n",
             reply_next_page: "\n📄 Use *{$p}audios {$1}* para ver a próxima página."
@@ -106,22 +110,25 @@ const utilityCommands = {
         function: utilityFunctions.audiosCommand
     },
     delete: {
-        guide: `Ex: *{$p}delete nome-do-audio* - Deleta permanentemente o áudio salvo.\n\n`+
-        `*Atenção*: Esta ação não pode ser desfeita!`,
+        guide: `Ex: *{$p}delete nome-do-audio* - Deleta permanentemente um áudio que você criou.\n\n`+
+        `*Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!`,
         msgs: {
-            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver seus áudios salvos.",
+            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver os áudios disponíveis.",
+            error_not_owner: "Você não pode deletar este áudio! Apenas o criador pode deletá-lo.",
             reply: "🗑️ *Áudio deletado!*\n\nO áudio *{$1}* foi removido permanentemente."
         },
         function: utilityFunctions.deleteAudioCommand
     },
     rename: {
-        guide: `Ex: *{$p}rename nome-antigo | nome-novo* - Renomeia um áudio salvo.\n\n`+
-        `Use *|* para separar o nome antigo do novo.`,
+        guide: `Ex: *{$p}rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.\n\n`+
+        `Use *|* para separar o nome antigo do novo.\n`+
+        `*Obs*: Só o criador pode renomear!`,
         msgs: {
             error_invalid_format: "Formato inválido. Use: {$p}rename nome-antigo | nome-novo",
-            error_not_found: "Áudio *{$1}* não encontrado. Use *{$p}audios* para ver seus áudios.",
+            error_not_found: "Áudio *{$1}* não encontrado. Use *{$p}audios* para ver os áudios disponíveis.",
             error_name_exists: "Já existe um áudio com o nome *{$1}*.",
             error_name_too_long: "O novo nome é muito longo (máximo 100 caracteres).",
+            error_not_owner: "Você não pode renomear este áudio! Apenas o criador pode renomeá-lo.",
             reply: "✏️ *Áudio renomeado!*\n\n"+
             "De: *{$1}*\n"+
             "Para: *{$2}*"
