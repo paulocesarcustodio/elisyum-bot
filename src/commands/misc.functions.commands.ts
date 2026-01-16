@@ -5,7 +5,13 @@ import { Message } from "../interfaces/message.interface.js"
 import * as waUtil from '../utils/whatsapp.util.js'
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import botTexts from "../helpers/bot.texts.helper.js"
-import miscCommands from "./misc.list.commands.js"
+
+// Mensagens do comando vtnc (para evitar dependência circular)
+const vtncMsgs = {
+    error_mention: "Apenas um membro deve ser marcado por vez.",
+    error_message: "Houve um erro ao obter os dados da mensagem.",
+    reply: '@{$1} vai tomar no cu!\n\n{$2}'
+}
 
 export async function vtncCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group) {
     if (!message.isGroupMsg || !group) {
@@ -13,7 +19,7 @@ export async function vtncCommand(client: WASocket, botInfo: Bot, message: Messa
     } else if (!message.isQuoted && !message.mentioned.length) {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } else if (message.mentioned.length > 1) {
-        throw new Error(miscCommands.vtnc.msgs.error_mention)
+        throw new Error(vtncMsgs.error_mention)
     }
 
     let targetUserId: string | undefined
@@ -25,13 +31,13 @@ export async function vtncCommand(client: WASocket, botInfo: Bot, message: Messa
     }
 
     if (!targetUserId) {
-        throw new Error(miscCommands.vtnc.msgs.error_message)
+        throw new Error(vtncMsgs.error_message)
     }
 
     const messageToReply = (message.isQuoted && message.quotedMessage) ? message.quotedMessage.wa_message : message.wa_message
     const asciiArt = "……..…../´¯/)………… (\\¯`\\\n…………/….//……….. …\\\\….\\\n………../….//………… ….\\\\….\\\n…../´¯/…./´¯\\………../¯ `\\…\\¯`\\\n.././…/…./…./.|_……_| .\\…\\…\\…\\.\\..\n(.(….(….(…./.)..)..(..(. \\….)….)….)… )\n.\\…………….\\/…/….\\. ..\\/……………./\n..\\…………….. /……..\\……………..…/\n….\\…………..(…………)……………./"
     const replyText = buildText(
-        miscCommands.vtnc.msgs.reply,
+        vtncMsgs.reply,
         waUtil.removeWhatsappSuffix(targetUserId),
         asciiArt
     )

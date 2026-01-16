@@ -41,8 +41,6 @@ function invalidateBlockedContactsCache(){
 let groupController: GroupController | undefined
 let userController: UserController | undefined
 
-type UserAdminsReturn = Awaited<ReturnType<UserController["getAdmins"]>>
-
 function getGroupController(){
     if (!groupController){
         groupController = new GroupController()
@@ -59,29 +57,26 @@ function getUserController(){
     return userController
 }
 
-const botAdminsCache = new NodeCache({ stdTTL: 300, checkperiod: 120 })
-const BOT_ADMINS_CACHE_KEY = "bot-admins"
+const ownerCache = new NodeCache({ stdTTL: 120, checkperiod: 60 })
+const OWNER_CACHE_KEY = "bot-owner"
 
 type DownloadMediaOptions = Parameters<typeof downloadMediaMessage>[2]
 type DownloadMediaContext = NonNullable<Parameters<typeof downloadMediaMessage>[3]>
 
 /**
- * Returns bot administrators from cache to avoid hitting the database on every message.
+ * Returns bot owner from cache to avoid hitting the database on every message.
+ * TTL: 2 minutes
  */
-export async function getCachedBotAdmins() {
-    const cachedAdmins = botAdminsCache.get(BOT_ADMINS_CACHE_KEY)
+export async function getCachedOwner() {
+    const cachedOwner = ownerCache.get(OWNER_CACHE_KEY)
 
-    if (cachedAdmins) {
-        return cachedAdmins as UserAdminsReturn
+    if (cachedOwner !== undefined) {
+        return cachedOwner as Awaited<ReturnType<UserController["getOwner"]>>
     }
 
-    const admins = await getUserController().getAdmins()
-    botAdminsCache.set(BOT_ADMINS_CACHE_KEY, admins)
-    return admins
-}
-
-export function invalidateBotAdminsCache() {
-    botAdminsCache.del(BOT_ADMINS_CACHE_KEY)
+    const owner = await getUserController().getOwner()
+    ownerCache.set(OWNER_CACHE_KEY, owner)
+    return owner
 }
 
 export function createMediaDownloadContext(client: WASocket): DownloadMediaContext {
@@ -599,8 +594,8 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
     const normalizedHostId = normalizeWhatsappJid(hostId)
-    const botAdmins = await getCachedBotAdmins()
-    const normalizedBotAdmins = botAdmins.map(admin => ({ ...admin, id: normalizeWhatsappJid(admin.id) }))
+    const owner = await getCachedOwner()
+    const normalizedOwnerId = owner ? normalizeWhatsappJid(owner.id) : null
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
     const rawSender = m.key.fromMe ? normalizedHostId : m.key.participant || m.key.remoteJid
@@ -643,8 +638,8 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         isQuoted,
         isGroupMsg,
         isGroupAdmin,
-        isBotAdmin : normalizedBotAdmins.map(admin => admin.id).includes(sender),
-        isBotOwner: normalizedBotAdmins.find(admin => admin.owner == true)?.id == sender,
+        isBotAdmin : normalizedOwnerId ? sender === normalizedOwnerId : false,
+        isBotOwner: normalizedOwnerId ? sender === normalizedOwnerId : false,
         isBotMessage: m.key.fromMe ?? false,
         isBroadcast: m.key.remoteJid == "status@broadcast",
         isMedia: type != "conversation" && type != "extendedTextMessage",

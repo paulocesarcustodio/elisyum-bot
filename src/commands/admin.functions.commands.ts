@@ -111,109 +111,10 @@ export async function linkgrupoCommand(client: WASocket, botInfo: Bot, message: 
     }
 }
 
-export async function adminsCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const userController = new UserController()
-
-    if(!message.isBotOwner) {
-        throw new Error(botTexts.permission.owner_bot_only)
-    }
-
-    const adminsBot = await userController.getAdmins()
-    let replyText = buildText(adminCommands.admins.msgs.reply_title, adminsBot.length)
-
-    adminsBot.forEach((admin) => {
-        const adminNumberList  = adminsBot.indexOf(admin) + 1
-        const userType = admin.owner ? botTexts.user_types.owner : (admin.admin ? botTexts.user_types.admin  : botTexts.user_types.user)
-        replyText += buildText(adminCommands.admins.msgs.reply_item, adminNumberList, admin.name, waUtil.removeWhatsappSuffix(admin.id), userType)
-    })
-
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function addadminCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const userController = new UserController()
-
-    if(!message.isBotOwner) {
-        throw new Error(botTexts.permission.owner_bot_only)
-    }
-
-    const currentAdmins = await userController.getAdmins()
-    const currentAdminsId = currentAdmins.map(user => user.id)
-    let targetUserId : string
-
-    if (message.isQuoted && message.quotedMessage) {
-        targetUserId = message.quotedMessage?.sender
-    } else if (message.mentioned.length) {
-        targetUserId = message.mentioned[0]
-    } else if (message.args.length) {
-        targetUserId = waUtil.addWhatsappSuffix(message.text_command)
-    } else {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const userData = await userController.getUser(targetUserId)
-
-    if(!userData) {
-        throw new Error(adminCommands.addadmin.msgs.error_user_not_found)
-    } else if(currentAdminsId.includes(userData.id)) {
-        throw new Error(adminCommands.addadmin.msgs.error_already_admin)
-    }
-
-    await userController.promoteUser(userData.id)
-    const replyText = buildText(adminCommands.addadmin.msgs.reply, waUtil.removeWhatsappSuffix(userData.id), userData.name)
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function rmadminCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const userController = new UserController()
-
-    if(!message.isBotOwner) {
-        throw new Error(botTexts.permission.owner_bot_only)
-    }
-
-    const currentAdmins = await userController.getAdmins()
-    const ownerData = await userController.getOwner()
-    const currentAdminsId = currentAdmins.map(user => user.id)
-    let targetUserId : string
-
-    if (message.isQuoted && message.quotedMessage) {
-        targetUserId = message.quotedMessage?.sender
-    } else if (message.mentioned.length) {
-        targetUserId = message.mentioned[0]
-    } else if (message.args.length == 1 && message.args[0].length <= 3) {
-        targetUserId = currentAdmins[parseInt(message.text_command) - 1].id
-    } else if (message.args.length) {
-        targetUserId = waUtil.addWhatsappSuffix(message.text_command)
-    } else {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const userData = await userController.getUser(targetUserId)
-
-    if(!userData) {
-        throw new Error(adminCommands.rmadmin.msgs.error_user_not_found)
-    } else if(!currentAdminsId.includes(userData.id)) {
-        throw new Error(adminCommands.rmadmin.msgs.error_not_admin)
-    } else if(ownerData?.id == userData.id) {
-        throw new Error(adminCommands.rmadmin.msgs.error_demote_owner)
-    }
-
-    await userController.demoteUser(userData.id)
-    const replyText = buildText(adminCommands.addadmin.msgs.reply, waUtil.removeWhatsappSuffix(userData.id), userData.name)
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
 export async function comandospvCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const botController = new BotController()
     const replyText = botInfo.commands_pv ? adminCommands.comandospv.msgs.reply_off : adminCommands.comandospv.msgs.reply_on
     botController.setCommandsPv(!botInfo.commands_pv)
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function modoadminCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-    const replyText = botInfo.admin_mode ? adminCommands.modoadmin.msgs.reply_off : adminCommands.modoadmin.msgs.reply_on
-    botController.setAdminMode(!botInfo.admin_mode)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
 
@@ -277,7 +178,7 @@ export async function bcmdglobalCommand(client: WASocket, botInfo: Bot, message:
     }
     
     for(let command of commands){
-        if (commandExist(prefix, command, 'utility') || commandExist(prefix, command, 'misc') || commandExist(prefix, command, 'sticker') || commandExist(prefix, command, 'download')){
+        if (commandExist(prefix, command, 'utility')){
             if (botInfo.block_cmds.includes(waUtil.removePrefix(prefix, command))){
                 blockResponse += buildText(adminCommands.bcmdglobal.msgs.reply_item_already_blocked, command)
             } else {
@@ -447,7 +348,8 @@ export async function listablockCommand(client: WASocket, botInfo: Bot, message:
 
 export async function bloquearCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const userController = new UserController()
-    const adminsId = (await userController.getAdmins()).map(admin => admin.id)
+    // Buscar usuários owner ao invés de admins (getAdmins não existe mais)
+    const adminsId = (await userController.getUsers()).filter(u => u.owner).map(u => u.id)
     const blockedUsers: string[] = await waUtil.getBlockedContacts(client)
     let targetUserId : string | undefined
 
@@ -536,7 +438,7 @@ export async function usuarioCommand(client: WASocket, botInfo: Bot, message: Me
         throw new Error(adminCommands.usuario.msgs.error_user_not_found)
     }
 
-    const userType = userData.owner ? botTexts.user_types.owner : (userData.admin ? botTexts.user_types.admin  : botTexts.user_types.user)
+    const userType = userData.owner ? botTexts.user_types.owner : botTexts.user_types.user
     const replyText = buildText(adminCommands.usuario.msgs.reply, userData.name || '---', userType, waUtil.removeWhatsappSuffix(userData.id), userData.commands)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }

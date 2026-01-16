@@ -27,13 +27,8 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         return false
     }
 
-    //Se o PV do bot não estiver liberado e o usuário não for um admin, retorne.
+    //Se o PV do bot não estiver liberado e o usuário não for o dono, retorne.
     if (procs.isIgnoredByPvAllowed(botInfo, message)) {
-        return false
-    }
-
-    //Se o modo admin estiver ativado e o usuário não for um admin do bot, retorne.
-    if (procs.isIgnoredByAdminMode(botInfo, message)) {
         return false
     }
 
@@ -116,11 +111,6 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
 
     //Se o grupo estiver mutado e o participante não for um admin, retorne.
     if (procs.isIgnoredByGroupMuted(group, message)) {
-        return false
-    }
-
-    //Se o modo admin estiver ativado e o usuário não for um admin do bot, retorne.
-    if (procs.isIgnoredByAdminMode(botInfo, message)) {
         return false
     }
 

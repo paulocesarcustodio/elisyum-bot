@@ -255,3 +255,129 @@ export async function audiosCommand(client: WASocket, botInfo: Bot, message: Mes
 
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
+
+export async function deleteAudioCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const { audiosDb } = await import('../database/db.js')
+    const fs = await import('fs')
+    const Fuse = (await import('fuse.js')).default
+    
+    if (!message.args.length) {
+        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+    }
+
+    const searchQuery = message.text_command.trim().toLowerCase()
+    
+    // Tenta busca exata primeiro
+    let audio = audiosDb.get(message.sender, searchQuery)
+    let audioName = searchQuery
+
+    // Se não encontrar, usa busca fuzzy
+    if (!audio) {
+        const allUserAudios = audiosDb.getUserAudios(message.sender, 1000, 0)
+        
+        if (allUserAudios.length === 0) {
+            throw new Error(utilityCommands.delete.msgs.error_not_found)
+        }
+        
+        const fuse = new Fuse(allUserAudios, {
+            keys: ['audio_name'],
+            threshold: 0.4,
+            ignoreLocation: true,
+            minMatchCharLength: 2
+        })
+        
+        const results = fuse.search(searchQuery)
+        
+        if (results.length === 0) {
+            throw new Error(utilityCommands.delete.msgs.error_not_found)
+        }
+        
+        const bestMatch = results[0].item
+        audioName = bestMatch.audio_name
+        audio = audiosDb.get(message.sender, audioName)
+        
+        if (!audio) {
+            throw new Error(utilityCommands.delete.msgs.error_not_found)
+        }
+    }
+
+    // Deleta o arquivo físico se existir
+    if (fs.existsSync(audio.file_path)) {
+        fs.unlinkSync(audio.file_path)
+    }
+
+    // Deleta do banco
+    audiosDb.delete(message.sender, audioName)
+
+    const replyText = buildText(utilityCommands.delete.msgs.reply, audioName)
+    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
+}
+
+export async function renameAudioCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const { audiosDb } = await import('../database/db.js')
+    const Fuse = (await import('fuse.js')).default
+    
+    if (!message.args.length || !message.text_command.includes('|')) {
+        throw new Error(utilityCommands.rename.msgs.error_invalid_format)
+    }
+
+    const parts = message.text_command.split('|').map(p => p.trim().toLowerCase())
+    
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        throw new Error(utilityCommands.rename.msgs.error_invalid_format)
+    }
+
+    const searchQuery = parts[0]
+    const newName = parts[1]
+
+    if (newName.length > 100) {
+        throw new Error(utilityCommands.rename.msgs.error_name_too_long)
+    }
+
+    // Tenta busca exata primeiro
+    let audio = audiosDb.get(message.sender, searchQuery)
+    let oldName = searchQuery
+
+    // Se não encontrar, usa busca fuzzy
+    if (!audio) {
+        const allUserAudios = audiosDb.getUserAudios(message.sender, 1000, 0)
+        
+        if (allUserAudios.length === 0) {
+            throw new Error(buildText(utilityCommands.rename.msgs.error_not_found, searchQuery))
+        }
+        
+        const fuse = new Fuse(allUserAudios, {
+            keys: ['audio_name'],
+            threshold: 0.4,
+            ignoreLocation: true,
+            minMatchCharLength: 2
+        })
+        
+        const results = fuse.search(searchQuery)
+        
+        if (results.length === 0) {
+            throw new Error(buildText(utilityCommands.rename.msgs.error_not_found, searchQuery))
+        }
+        
+        const bestMatch = results[0].item
+        oldName = bestMatch.audio_name
+        audio = audiosDb.get(message.sender, oldName)
+        
+        if (!audio) {
+            throw new Error(buildText(utilityCommands.rename.msgs.error_not_found, searchQuery))
+        }
+    }
+
+    // Verifica se já existe um áudio com o novo nome
+    const existingAudio = audiosDb.get(message.sender, newName)
+    
+    if (existingAudio) {
+        throw new Error(buildText(utilityCommands.rename.msgs.error_name_exists, newName))
+    }
+
+    // Renomeia
+    audiosDb.rename(message.sender, oldName, newName)
+
+    const replyText = buildText(utilityCommands.rename.msgs.reply, oldName, newName)
+    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
+}

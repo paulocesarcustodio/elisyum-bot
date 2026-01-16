@@ -68,9 +68,10 @@ const botTexts = {
         group: 'Este comando só pode ser usado em *grupos*.',
         bot_group_admin: 'Esse comando só pode ser realizado se o bot for *administrador do grupo*.',
         ban_admin : 'O bot não tem permissão para *banir um administrador*.',
-        admin_group_only : 'Apenas *administradores do grupo* podem usar este comando.',
-        admin_bot_only: 'Apenas *administradores do bot* podem usar este comando.',
-        owner_bot_only: 'Apenas o *dono do bot* pode usar este comando.',
+        group_admin: 'Apenas *administradores do grupo* podem usar este comando.',
+        owner_only: 'Apenas o *dono do bot* pode usar este comando.',
+        owner: 'Apenas o *dono do bot* pode usar este comando.',
+        group_moderator: 'Apenas *administradores do grupo* podem usar este comando.',
         owner_group_only: 'Apenas o *dono do grupo* pode usar este comando.',
     }
 }

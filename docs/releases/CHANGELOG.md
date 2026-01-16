@@ -1,6 +1,120 @@
 # Notas de atualização
 Colocarei neste arquivos as mudanças significativas em cada versão começando na versão 3.0.0
 
+## Unreleased
+
+### 🎨 MUDANÇAS - Consolidação de Menus v3.1
+**Simplificação da estrutura de menus com visibilidade baseada em roles**
+
+#### 🔄 Categorias Consolidadas
+- **Redução de 7 para 4 categorias**:
+  - ~~STICKER~~ → Integrado em **UTILIDADE**
+  - ~~DOWNLOAD~~ → Integrado em **UTILIDADE**
+  - ~~VARIADO~~ → Integrado em **UTILIDADE**
+  - Categorias finais: **INFO**, **UTILIDADE**, **GRUPO**, **ADMIN**
+
+#### 📥 Comandos de Download Simplificados
+- **Comandos removidos** (redundantes com `!d`):
+  - ~~`!yt`~~ - Vídeos do YouTube → Use `!d` com link do YouTube
+  - ~~`!fb`~~ - Vídeos do Facebook → Use `!d` com link do Facebook
+  - ~~`!ig`~~ - Instagram → Use `!d` com link do Instagram
+  - ~~`!x`~~ - Twitter/X → Use `!d` com link do Twitter/X
+  - ~~`!tk`~~ - TikTok → Use `!d` com link do TikTok
+
+- **Comandos mantidos**:
+  - `!d` - Download automático universal (detecta plataforma automaticamente)
+  - `!play` - Áudio do YouTube (mais usado para músicas por nome)
+  - `!img` - Busca de imagens (agora retorna apenas 2 imagens ao invés de 5)
+
+#### 🖼️ Correção do Comando !ssf (Sticker Sem Fundo)
+- **Problema identificado**: Serviço externo imageonline.co com erro de certificado SSL
+- **Solução implementada**: Migração para biblioteca local `@imgly/background-removal`
+- **Benefícios**:
+  - ✅ Funciona 100% offline (sem dependência de APIs externas)
+  - ✅ Sem necessidade de API keys
+  - ✅ Processamento mais rápido
+  - ✅ Maior privacidade (imagens não são enviadas para servidores externos)
+  - ✅ Mais confiável (não depende de disponibilidade de serviços terceiros)
+
+#### 🎯 Nova Estrutura de Menus
+- **Menu 0 - INFO** (apenas dono):
+  - `!info`, `!reportar`, `!meusdados`
+  
+- **Menu 1 - UTILIDADE** (todos os usuários):
+  - **Downloads**: `!d` (universal), `!play` (YouTube áudio), `!img` (2 imagens)
+  - **Stickers**: `!s`, `!simg`, `!ssf`
+  - **Ferramentas**: `!revelar`, `!save`, `!audio`, `!audios`
+  - **Variados**: `!vtnc`
+  
+- **Menu 2 - GRUPO** (admins do grupo + dono):
+  - Comandos de moderação e recursos do grupo
+  
+- **Menu 3 - ADMIN** (apenas dono):
+  - Comandos administrativos do bot
+
+#### 👁️ Visibilidade Baseada em Roles
+- **Membros comuns**: Veem apenas menu 1 (UTILIDADE)
+- **Admins do grupo**: Veem menus 1 (UTILIDADE) + 2 (GRUPO)
+- **Dono do bot**: Vê todos os menus (0, 1, 2, 3)
+
+#### 🔧 Mudanças Técnicas
+- Integração do `PermissionService` no comando `!menu`
+- Validação de permissões ao acessar cada categoria
+- Menu principal dinâmico baseado no role do usuário
+- Arquivos consolidados:
+  - `sticker.list.commands.ts` → `utility.list.commands.ts`
+  - `download.list.commands.ts` → `utility.list.commands.ts`
+  - `misc.list.commands.ts` → `utility.list.commands.ts`
+
+#### 📊 Benefícios
+- ✅ **UX Melhorado**: Usuários veem apenas menus relevantes ao seu nível de acesso
+- ✅ **Código Simplificado**: Redução de arquivos e lógica de menu duplicada
+- ✅ **Manutenção**: Centralização de comandos relacionados
+- ✅ **Segurança**: Validação de permissões integrada
+
+---
+
+### ⚠️ BREAKING CHANGES - Sistema de Permissões v3.0
+**IMPORTANTE**: Esta é uma atualização que altera significativamente o sistema de permissões do bot. Leia atentamente antes de atualizar.
+
+#### 🔧 Mudanças Estruturais
+- **Removido conceito de "admin do bot"**: O bot agora reconhece apenas o **dono** (owner) para comandos administrativos
+- **Sistema simplificado de 3 roles**:
+  - `owner`: Dono do bot (acesso total aos comandos administrativos)
+  - `group_moderator`: Administradores do grupo WhatsApp (comandos de grupo)
+  - `member`: Membros comuns (comandos públicos)
+
+#### 🗑️ Comandos Removidos
+Os seguintes comandos foram **permanentemente removidos**:
+- `!addadmin` - Adicionar admin do bot
+- `!rmadmin` - Remover admin do bot  
+- `!admins` - Listar admins do bot
+- `!modoadmin` - Ativar/desativar modo admin
+
+#### 🔄 Comportamento Alterado
+- **Comandos no PV**: Agora seguem as mesmas permissões de membros comuns quando `commands_pv` está ativado
+- **Cache de owner**: Reduzido de 5 minutos para 2 minutos (TTL)
+- **Validação centralizada**: Todas as verificações de permissão agora ocorrem no command invoker
+
+#### 📊 Migração Automática (v3)
+Ao iniciar o bot após a atualização:
+- Campo `admin` será removido de todos os usuários
+- Campo `admin_mode` será removido da configuração do bot
+- Apenas o owner cadastrado mantém privilégios administrativos
+- **Ação necessária**: Use `!admin` novamente se nenhum owner estiver cadastrado
+
+#### 🎯 Impacto
+- ✅ **Performance**: Remoção de 39+ verificações redundantes de permissão
+- ✅ **Simplicidade**: Sistema mais claro com apenas 3 níveis de acesso
+- ✅ **Segurança**: Validação centralizada evita bypass de permissões
+- ⚠️ **Compatibilidade**: Scripts/integrações que usavam comandos removidos precisam ser atualizados
+
+#### 📚 Documentação
+- Comandos de grupo agora mostram claramente a necessidade de permissão de admin do grupo
+- Sistema de roles hierárquico (owner inclui todas as permissões de group_moderator e member)
+
+---
+
 ## 3.4.8 - 10/01/2026
 
 ### NOVIDADES

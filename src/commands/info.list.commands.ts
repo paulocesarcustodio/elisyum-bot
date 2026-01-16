@@ -59,11 +59,8 @@ const infoCommands = {
             "*Online desde*: {$2}\n"+
             "*Versão*: {$3}\n"+
             "*GitHub*: https://github.com/paulocesarcustodio/elisyum-bot\n"+
-            "*Comandos executados*: *{$4}*\n"+
-            "*Contato do administradores*:\n{$5}\n",
+            "*Comandos executados*: *{$4}*\n",
             reply_title_resources: '🤖 *Recursos do bot*\n\n',
-            reply_item_adminmode_on: "*Modo ADMIN*: ✅\n",
-            reply_item_adminmode_off: "*Modo ADMIN*: ❌\n",
             reply_item_autosticker_on: "*Auto-Sticker PV*: ✅\n",
             reply_item_autosticker_off: "*Auto-Sticker PV*: ❌\n",
             reply_item_commandspv_on: "*Comandos PV*: ✅\n",

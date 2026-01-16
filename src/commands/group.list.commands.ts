@@ -41,6 +41,7 @@ const groupCommands = {
             reply_item_filter_off: "*Filtro de palavras*: ❌\n",
             reply_item_blacklist: "*Lista Negra*: *{$1}*\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.grupoCommand
     },
     fotogrupo: {
@@ -48,6 +49,7 @@ const groupCommands = {
         msgs: {
             reply: "✅ A foto do GRUPO foi alterada com sucesso.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.fotogrupoCommand
     },
     aviso:{
@@ -64,6 +66,7 @@ const groupCommands = {
             error_warning_bot: 'Não é possível dar um aviso ao bot.',
             error_warning_admin: 'Não é possível dar um aviso a um administrador do grupo.'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.avisoCommand
     },
     silenciar:{
@@ -79,6 +82,7 @@ const groupCommands = {
             error_silence_bot: 'O bot não pode ser silenciado.',
             error_silence_admin: 'Não é possível silenciar um administrador do grupo.'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.silenciarCommand
     },
     rmaviso:{
@@ -91,6 +95,7 @@ const groupCommands = {
             error_no_warning: 'Esse membro não tem nenhum aviso para ser removido',
             error_not_registered: 'Membro do grupo ainda não foi registrado pelo bot.',
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmavisoCommand
     },
     zeraravisos:{
@@ -99,6 +104,7 @@ const groupCommands = {
             reply: '‼️ Zerar avisos\n\n'+
             "Todos os avisos dos membros foram zerados.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.zeraravisosCommand
     },
     addfiltros: {
@@ -109,6 +115,7 @@ const groupCommands = {
             reply_item_success: 'A palavra *{$1}* foi adicionada ao filtro.\n',
             reply_item_error: 'A palavra *{$1}* já existe no filtro.\n',
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addfiltrosCommand
     },
     rmfiltros: {
@@ -118,6 +125,7 @@ const groupCommands = {
             reply_item_success: 'A palavra *{$1}* foi removida do filtro.\n',
             reply_item_error: 'A palavra *{$1}* não existe no filtro.\n',
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmfiltrosCommand
     },
     addlista: {
@@ -130,6 +138,7 @@ const groupCommands = {
             error_add_admin: "O *administrador do grupo* não pode ser adicionado a lista negra.",
             error_already_listed: "Este usuário já está na lista negra.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addlistaCommand
     },
     rmlista: {
@@ -141,6 +150,7 @@ const groupCommands = {
             reply: "✅ O número desse usuário foi removido da lista negra.",
             error_not_listed: "Este usuário não está na lista negra.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmlistaCommand
     },
     listanegra: {
@@ -153,6 +163,7 @@ const groupCommands = {
             '- *Nome*: {$2}\n'+
             '- *Contato*: +{$3}\n\n'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.listanegraCommand
     },
     add: {
@@ -164,6 +175,7 @@ const groupCommands = {
             error_input: "Foi encontrado texto no número inserido, digite corretamente o número de quem você deseja adicionar ao grupo.",
             error_invalid_number: "Houve um erro em adicionar o número +{$1}, verifique se o número existe ou tente tirar o 9.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addCommand
     },
     ban: {
@@ -175,6 +187,7 @@ const groupCommands = {
             reply_item_ban_admin: "+{$1} não pode ser banido, o bot não pode banir um administrador.\n",
             reply_item_not_found: "+{$1} não pode ser banido, provavelmente ele já saiu do grupo.\n",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.banCommand
     },
     promover: {
@@ -186,6 +199,7 @@ const groupCommands = {
             reply_item_success: "@{$1} foi promovido para *ADMINISTRADOR*.\n",
             reply_item_error: "@{$1} já é um *ADMINISTRADOR*.\n",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.promoverCommand
     },
     rebaixar: {
@@ -198,6 +212,7 @@ const groupCommands = {
             reply_item_error_is_member: "@{$1} já é um *MEMBRO*.\n",
             reply_item_error: "@{$1} não pode ser rebaixado.\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rebaixarCommand
     },
     mt: {
@@ -208,6 +223,7 @@ const groupCommands = {
             reply_with_message: "❕ Marquei todos os {$1} *membros/admins*.\n\n"+
             "*Mensagem*: {$2}\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.mtCommand
     },
     mm: {
@@ -219,6 +235,7 @@ const groupCommands = {
             "*Mensagem*: {$2}\n",
             error_no_members: "Não existem membros comuns para serem marcados.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.mmCommand
     },
     adms: {
@@ -229,6 +246,7 @@ const groupCommands = {
             reply_with_message: "❕ Marquei todos os {$1} *admins*.\n\n"+
             "*Mensagem*: {$2}\n",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.admsCommand
     },
     dono: {
@@ -237,6 +255,7 @@ const groupCommands = {
             reply: "🤖 O dono do grupo é: +{$1}",
             error: "Não foi possível exibir o dono do grupo, o dono teve o número banido ou cancelado."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.donoCommand
     },
     mutar: {
@@ -245,6 +264,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *MUTAR GRUPO* foi ativado com sucesso",
             reply_off: "✅ O recurso de *MUTAR GRUPO* foi desativado com sucesso"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.mutarCommand
     },
     link: {
@@ -254,6 +274,7 @@ const groupCommands = {
             "*Nome do grupo*: {$1}\n"+
             "*Link do grupo*: {$2}"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.linkCommand
     },
     rlink: {
@@ -262,6 +283,7 @@ const groupCommands = {
             error: "Houve um erro na redefinição de link",
             reply: "✅ Link do grupo foi redefinido com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rlinkCommand
     },
     restrito: {
@@ -270,6 +292,7 @@ const groupCommands = {
             reply_on: "✅ O grupo foi restrito apenas para *ADMINISTRADORES* poderem conversar.",
             reply_off: '✅ O grupo foi liberado para todos os *MEMBROS* poderem conversar.'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.restritoCommand
     },
     autoresp: {
@@ -280,6 +303,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *RESPOSTA AUTOMÁTICA* foi ativado com sucesso.",
             reply_off: "✅ O recurso de *RESPOSTA AUTOMÁTICA* foi desativado com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.autorespCommand
     },
     addresp: {
@@ -289,6 +313,7 @@ const groupCommands = {
             'Resposta configurada: {$2}',
             error_already_added: 'Já existe uma resposta automática configurada para a palavra *{$1}*, use o comando *!rmresp* {$1} para remove-la primeiro.'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addrespCommand
     },
     rmresp: {
@@ -300,6 +325,7 @@ const groupCommands = {
             reply_item_success: 'A resposta para *{$1}* foi removida com sucesso.\n',
             reply_item_error: 'Não existe resposta para *{$1}*\n',
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmrespCommand
     },
     respostas: {
@@ -310,6 +336,7 @@ const groupCommands = {
             '*Resposta*: {$2}\n\n',
             error_empty: `Não existem respostas automáticas configuradas atualmente, use *{$p}addresp* para adicionar uma resposta primeiro.`
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.respostasCommand
     },
     antilink: {
@@ -318,6 +345,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *ANTI-LINK* foi ativado com sucesso.",
             reply_off: "✅ O recurso de *ANTI-LINK* foi desativado com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.antilinkCommand
     },
     addexlink: {
@@ -327,6 +355,7 @@ const groupCommands = {
             reply_item_added: "O link *{$1}* foi adicionado com sucesso as exceções.\n",
             reply_item_already_added: "O link *{$1}* já está nas exceções.\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addexlinkCommand
     },
     rmexlink: {
@@ -336,6 +365,7 @@ const groupCommands = {
             reply_item_removed: "O link *{$1}* foi removido com sucesso das exceções.\n",
             reply_item_not_exist: "O link *{$1}* não está nas exceções.\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmexlinkCommand
     },
     autosticker: {
@@ -344,6 +374,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *AUTO-STICKER* foi ativado com sucesso.",
             reply_off: "✅ O recurso de *AUTO-STICKER* foi desativado com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.autostickerCommand
     },
     bemvindo: {
@@ -353,6 +384,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *BOAS VINDAS* foi ativado com sucesso.",
             reply_off: "✅ O recurso de *BOAS VINDAS* foi desativado com sucesso.",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.bemvindoCommand
     },
     antifake: {
@@ -362,6 +394,7 @@ const groupCommands = {
             reply_on: "✅ O recurso de *ANTI-FAKE* foi ativado com sucesso.",
             reply_off: "✅ O recurso de *ANTI-FAKE* foi desativado com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.antifakeCommand
     },
     addexfake: {
@@ -373,6 +406,7 @@ const groupCommands = {
             reply_prefix_already_added: "O prefixo *{$1}* já está nas exceções.\n",
             reply_number_already_added: "O número *{$1}* já está nas exceções.\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.addexfakeCommand
     },
     rmexfake: {
@@ -385,6 +419,7 @@ const groupCommands = {
             reply_number_not_exist: "O número *{$1}* não está nas exceções.\n",
             reply_not_removable: 'O prefixo *55* (Brasil) não pode ser removido.\n'
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.rmexfakeCommand
     },
     antiflood: {
@@ -396,11 +431,13 @@ const groupCommands = {
             reply_on: "✅ O recurso de *ANTI-FLOOD* foi ativado para *{$1}* mensagens a cada *{$2}* segundos.",
             reply_off: "✅ O recurso de *ANTI-FLOOD* foi desativado com sucesso."
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.antifloodCommand
     },
     apg: {
         guide: `Ex: Responder com *{$p}apg* - Apaga a mensagem que foi respondida com esse comando.\n\n`+
         `*Obs*: O bot precisa ser administrador.\n`,
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.apgCommand
     },
     topativos: {
@@ -412,6 +449,7 @@ const groupCommands = {
             reply_title: "🏆 *Top {$1} - Membros ativos*\n\n",
             reply_item: "{$1} *{$2}° Lugar* @{$3} - {$4} msgs\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.topativosCommand
     },
     membro: {
@@ -434,6 +472,7 @@ const groupCommands = {
             "- 🎧 *Aúdios*: {$11}\n"+
             "- 🧩 *Outros*: {$12}\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.membroCommand
     },
     inativos: {
@@ -447,6 +486,7 @@ const groupCommands = {
             'Marcando todos que tem menos de *{$2}* mensagens:\n\n',
             reply_item: "@{$1} - {$2} msgs\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.inativosCommand
     },
     bcmd: {
@@ -463,6 +503,7 @@ const groupCommands = {
             reply_item_error: "Comando *{$1}* não pode ser bloqueado.\n",
             reply_item_not_exist: "Comando *{$1}* não existe.\n",
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.bcmdCommand
     },
     dcmd: {
@@ -478,6 +519,7 @@ const groupCommands = {
             reply_item_unblocked: "Comando *{$1}* foi desbloqueado.\n",
             reply_item_not_blocked: "Comando *{$1}* já esta desbloqueado ou nunca foi bloqueado.\n"
         },
+        permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.dcmdCommand
     }
 }

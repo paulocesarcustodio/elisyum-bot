@@ -9,7 +9,6 @@ export interface Bot {
     autosticker: boolean,
     block_cmds: string[],
     commands_pv: boolean,
-    admin_mode: boolean,
     command_rate:{
         status: boolean,
         max_cmds_minute: number,

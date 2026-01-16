@@ -13,7 +13,6 @@ export class UserService {
         commands: 0,
         receivedWelcome: false,
         owner: false,
-        admin: false,
         command_rate : {
             limited: false,
             expire_limited: 0,
@@ -55,23 +54,11 @@ export class UserService {
         return users
     }
 
-    public async setAdmin(userId : string, admin: boolean, ...alternateIds: (string | null | undefined)[]){
-        const user = await this.ensureUserRecord(userId, alternateIds)
-        if (!user) return 0
-
-        return db.updateAsync({id : user.id}, {$set: {admin}})
-    }
-
-    public async getAdmins(){
-        const admins = await db.findAsync({admin : true}) as User[]
-        return admins
-    }
-
     public async setOwner(userId : string, ...alternateIds: (string | null | undefined)[]){
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return 0
 
-        return db.updateAsync({id : user.id}, {$set: {owner : true, admin: true}})
+        return db.updateAsync({id : user.id}, {$set: {owner : true}})
     }
 
     public async getOwner(){

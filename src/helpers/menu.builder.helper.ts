@@ -1,54 +1,43 @@
 import { Bot } from "../interfaces/bot.interface.js"
 
-// MENU PRINCIPAL
-export const mainMenu  = (botInfo : Bot)=> { 
+// MENU PRINCIPAL - MEMBRO COMUM (só vê UTILIDADE)
+export const mainMenuMember = (botInfo : Bot)=> { 
+    let {name, prefix} = botInfo
+    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
+*|*
+*|*━━━ ✦ 🔎 *MENU PRINCIPAL* ✦
+*|*► *${prefix}menu* 1   ⚒️ Utilidades
+*|*
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
+}
+
+// MENU PRINCIPAL - ADMINISTRADOR DO GRUPO (vê UTILIDADE + GRUPO)
+export const mainMenuGroupAdmin = (botInfo : Bot)=> { 
+    let {name, prefix} = botInfo
+    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
+*|*
+*|*━━━ ✦ 🔎 *MENU PRINCIPAL* ✦
+*|*► *${prefix}menu* 1   ⚒️ Utilidades
+*|*► *${prefix}menu* 2   👨‍👩‍👧‍👦 Grupo
+*|*
+_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
+}
+
+// MENU PRINCIPAL - DONO DO BOT (vê INFO + UTILIDADE + GRUPO + ADMIN)
+export const mainMenuOwner = (botInfo : Bot)=> { 
     let {name, prefix} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
 *|*
 *|*━━━ ✦ 🔎 *MENU PRINCIPAL* ✦
 *|*► *${prefix}menu* 0   ❓ Informação
-*|*► *${prefix}menu* 1   🖼️ Figurinhas
-*|*► *${prefix}menu* 2   ⚒️ Utilidades
-*|*► *${prefix}menu* 3   📥 Downloads
-*|*► *${prefix}menu* 4   🧩 Variado
+*|*► *${prefix}menu* 1   ⚒️ Utilidades
+*|*► *${prefix}menu* 2   👨‍👩‍👧‍👦 Grupo
+*|*► *${prefix}menu* 3   ⚙️ Administração
 *|*
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
-// MENU PRINCIPAL (GRUPO)
-export const mainMenuGroup  = (botInfo : Bot)=> { 
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
-*|*
-*|*━━━ ✦ 🔎 *MENU PRINCIPAL* ✦
-*|*► *${prefix}menu* 0   ❓ Informação
-*|*► *${prefix}menu* 1   🖼️ Figurinhas
-*|*► *${prefix}menu* 2   ⚒️ Utilidades
-*|*► *${prefix}menu* 3   📥 Downloads
-*|*► *${prefix}menu* 4   🧩 Variado
-*|*► *${prefix}menu* 5   👨‍👩‍👧‍👦 Grupo
-*|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - STICKER
-export const stickerMenu = (botInfo : Bot)=>{
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
-*|* 
-*|*━━━━ Guia ❔: *${prefix}comando* guia
-*|* 
-*|*━━━━ ✦ 🖼️ *FIGURINHAS* ✦
-*|*► *${prefix}s* - Imagem/vídeo para sticker
-*|*► *${prefix}s* 1 - Imagem para sticker (circular)
-*|*► *${prefix}s* 2 - Imagem para sticker (sem corte)
-*|*► *${prefix}simg* - Sticker para imagem
-*|*► *${prefix}ssf* - Imagem para sticker (sem fundo)
-*|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - INFO
+// MENU - INFO (apenas dono do bot)
 export const infoMenu = (botInfo : Bot)=>{
     let {name, prefix} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
@@ -63,58 +52,40 @@ export const infoMenu = (botInfo : Bot)=>{
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
-// MENU - DOWNLOAD
-export const downloadMenu = (botInfo : Bot)=>{
+// MENU - UTILIDADE (UNIFICADO: Downloads + Stickers + Utilidades + Variado)
+export const utilityMenuUnified = (botInfo : Bot)=>{
     let {name, prefix} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
 *|*
 *|*━━━━ Guia ❔: *${prefix}comando* guia
 *|*
-*|*━━━━ ✦ 📥 *DOWNLOADS* ✦
+*|*━━━━ ✦ ⚒️ *UTILIDADES* ✦
+*|*
+*|*━━ ✦ 📥 *DOWNLOADS* ✦
 *|*► *${prefix}d* link - Download automático de mídias
 *|*► *${prefix}play* nome - Áudio do Youtube
-*|*► *${prefix}yt* nome - Vídeo do Youtube
-*|*► *${prefix}fb* link - Vídeo do Facebook
-*|*► *${prefix}ig* link - Videos/imagens do Instagram
-*|*► *${prefix}x* link - Videos/imagens do X
-*|*► *${prefix}tk* link - Vídeo do Tiktok
-*|*► *${prefix}img* tema - Imagens do Google
+*|*► *${prefix}img* tema - Busca 2 imagens do Google
 *|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - UTILIDADE (USUÁRIOS COMUNS)
-export const utilityMenu = (botInfo : Bot)=>{
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
+*|*━━ ✦ 🖼️ *FIGURINHAS* ✦
+*|*► *${prefix}s* - Imagem/vídeo para sticker
+*|*► *${prefix}s* 1 - Imagem para sticker (circular)
+*|*► *${prefix}s* 2 - Imagem para sticker (sem corte)
+*|*► *${prefix}simg* - Sticker para imagem
+*|*► *${prefix}ssf* - Imagem para sticker (sem fundo)
 *|*
-*|*━━━━ Guia ❔: *${prefix}comando* guia
-*|*
-*|*━━━━ ✦ ⚒️ *UTILITÁRIOS* ✦
-*|*► *${prefix}save* - Salvar status
-*|*► *${prefix}audio* - Extrai áudio de um video
-*|*► *${prefix}audios* - Lista de áudios disponíveis
-*|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - UTILIDADE (DONO DO BOT)
-export const utilityMenuOwner = (botInfo : Bot)=>{
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
-*|*
-*|*━━━━ Guia ❔: *${prefix}comando* guia
-*|*
-*|*━━━━ ✦ ⚒️ *UTILITÁRIOS* ✦
+*|*━━ ✦ 🛠️ *FERRAMENTAS* ✦
 *|*► *${prefix}revelar* - Revelar mensagem visualizar única
 *|*► *${prefix}save* - Salvar status
 *|*► *${prefix}audio* - Extrai áudio de um video
 *|*► *${prefix}audios* - Lista de áudios disponíveis
 *|*
+*|*━━ ✦ 🧩 *VARIADOS* ✦
+*|*► *${prefix}vtnc* - Vai tomar no c*
+*|*
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
-// MENU - GRUPO
+// MENU - GRUPO (para membros comuns - apenas visualização)
 export const groupMenu = (botInfo : Bot) =>{
     let {name, prefix} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
@@ -131,7 +102,7 @@ export const groupMenu = (botInfo : Bot) =>{
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
-// MENU - GRUPO (ADMINISTRADOR)
+// MENU - GRUPO (ADMINISTRADOR - com comandos de moderação)
 export const groupAdminMenu = (botInfo : Bot)=>{
     let {name, prefix} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
@@ -215,90 +186,7 @@ export const groupAdminMenu = (botInfo : Bot)=>{
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }
 
-// MENU - VARIADO
-export const miscMenu = (botInfo : Bot) =>{
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
-*|*
-*|*━━━━ Guia ❔: *${prefix}comando* guia
-*|*
-*|*━━ ✦ 🕹️ *JOGOS* ✦
-*|*► *${prefix}ppt* opção - Joga pedra, papel e tesoura
-*|*► *${prefix}caracoroa* - Joga cara ou coroa
-*|*► *${prefix}roletarussa* - Joga roleta russa
-*|*
-*|*━━ ✦ 🎲 *SORTEIO* ✦
-*|*► *${prefix}sorteio* numero - Sorteia um número até esse valor.
-*|*
-*|*━━ ✦ 🧩 *ENTRETENIMENTO* ✦
-*|*► *${prefix}mascote* - Onipotente e onipresente WhatsApp Jr
-*|*► *${prefix}frase* - Frase dúvidosa do WhatsApp Jr
-*|*► *${prefix}chance* texto - Chance de algo acontecer
-*|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - VARIADO (GRUPO)
-export const miscGroupMenu = (botInfo : Bot) =>{
-    let {name, prefix} = botInfo
-    return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
-*|*
-*|*━━━━ Guia ❔: *${prefix}comando* guia
-*|*
-*|*━━━━ ✦ 🧩 *VARIADO* ✦
-*|*► *${prefix}vtnc* - Vai tomar no c*
-*|*
-*|*━━━━ ✦ ⚙️ *ADMINISTRAÇÃO* ✦
-*|*
-*|*━━ ✦ 🛠️ *GERAL* ✦
-*|*► *${prefix}info* - Informação do bot
-*|*► *${prefix}ping* - Informação do sistema
-*|*► *${prefix}bloquear* @usuario  - Bloqueia o usuário
-*|*► *${prefix}desbloquear* @usuario  - Desbloqueia o usuário
-*|*► *${prefix}listablock*  - Lista de usuários bloqueados
-*|*► *${prefix}bcgrupos* texto - Mensagem para todos os grupos
-*|*► *${prefix}desligar* - Desliga o bot
-*|*
-*|*━━ ✦ 🎨 *CUSTOMIZAÇÃO* ✦
-*|*► *${prefix}nomebot* nome - Altera nome do bot
-*|*► *${prefix}prefixo* simbolo - Altera o prefixo dos comandos
-*|*► *${prefix}fotobot* - Altera foto do bot
-*|*► *${prefix}recado* texto - Altera o texto do recado/status
-*|*
-*|*━━ ✦ 👨‍👩‍👧‍👦 *GRUPOS* ✦
-*|*► *${prefix}grupos* - Dados dos grupos atuais
-*|*► *${prefix}entrargrupo* link - Entra no grupo
-*|*
-*|*━━ ✦ 👤 *USUÁRIOS* ✦
-*|*► *${prefix}usuario* @usuario - Dados do usuário
-*|*
-*|*━━ ✦ ⭐ *ADMINS* ✦
-*|*► *${prefix}admins* - Administradores do bot
-*|*► *${prefix}addadmin* - Promove a admin do bot
-*|*► *${prefix}rmadmin* - Rebaixa a usuário do bot
-*|*
-*|*━━━━ ✦ 🧰  *RECURSOS* ✦
-*|*
-*|*━ ✦ 🏞️  *AUTO-STICKER PRIVADO* ✦
-*|*► *${prefix}autostickerpv* - Ativa/desativa a criação automática de stickers no privado
-*|*
-*|*━ ✦ 🔒 *BLOQUEIO DE COMANDOS* ✦
-*|*► *${prefix}bcmdglobal* !cmd1 !cmd2 - Bloqueia os comandos globalmente
-*|*► *${prefix}dcmdglobal* !cmd1 !cmd2 - Desbloqueia os comandos globalmente
-*|*
-*|*━ ✦ ⭐ *MODO ADMIN* ✦
-*|*► *${prefix}modoadmin* - Ativa/desativa o modo para apenas admins do bot usarem comandos
-*|*
-*|*━ ✦ ⏳ *TAXA DE COMANDOS* ✦
-*|*► *${prefix}taxacomandos* numero - Ativa/desativa a taxa de comandos por minuto
-*|*
-*|*━ ✦ 📩 *MENSAGENS PRIVADAS* ✦
-*|*► *${prefix}comandospv* - Ativa/desativa os comandos em mensagens privadas
-*|*
-_*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
-}
-
-// MENU - ADMIN
+// MENU - ADMIN (apenas dono do bot)
 export const adminMenu = (botInfo : Bot)=>{
     let {prefix, name} = botInfo
     return `*|*━━━ ✦ *🤖 ${name?.trim()}* ✦
@@ -328,11 +216,6 @@ export const adminMenu = (botInfo : Bot)=>{
 *|*
 *|*━━ ✦ 👤 *USUÁRIOS* ✦
 *|*► *${prefix}usuario* @usuario - Dados do usuário
-*|*
-*|*━━ ✦ ⭐ *ADMINS* ✦
-*|*► *${prefix}admins* - Administradores do bot
-*|*► *${prefix}addadmin* - Promove a admin do bot
-*|*► *${prefix}rmadmin* - Rebaixa a usuário do bot
 *|*
 *|*━━━━ ✦ 🧰  *RECURSOS* ✦
 *|*

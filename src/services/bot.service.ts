@@ -5,7 +5,7 @@ import moment from "moment-timezone"
 import { removePrefix, normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { deepMerge } from "../utils/general.util.js"
 
-const CURRENT_DB_MIGRATION_VERSION = 2
+const CURRENT_DB_MIGRATION_VERSION = 3
 
 export class BotService {
     private pathJSON = path.resolve("storage/bot.json")
@@ -20,7 +20,6 @@ export class BotService {
         db_migration_version: CURRENT_DB_MIGRATION_VERSION,
         autosticker: false,
         commands_pv: true,
-        admin_mode: false,
         block_cmds: [],
         command_rate:{
             status: false,
@@ -113,12 +112,6 @@ export class BotService {
     public setAutosticker(status: boolean){
         let bot = this.getBot()
         bot.autosticker = status
-        this.updateBot(bot)
-    }
-
-    public setAdminMode(status: boolean){
-        let bot = this.getBot()
-        bot.admin_mode = status
         this.updateBot(bot)
     }
 

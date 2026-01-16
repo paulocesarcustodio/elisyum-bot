@@ -22,8 +22,22 @@ const resolveYtDlpBinary = () => {
     return path.join(projectRoot, 'bin', binaryName)
 }
 
+const resolveBunBinary = () => {
+    const { execSync } = require('child_process')
+    try {
+        // Tenta encontrar bun no PATH
+        const bunPath = execSync('which bun', { encoding: 'utf-8' }).trim()
+        if (bunPath) return bunPath
+    } catch (error) {
+        // Fallback: usa 'bun' e deixa o sistema resolver
+        console.warn('[resolveBunBinary] ⚠️ Não foi possível encontrar bun no PATH, usando "bun" como fallback')
+    }
+    return 'bun'
+}
+
 // Inicializa ytdlp-nodejs com o binário customizado
 const ytDlpPath = resolveYtDlpBinary()
+const bunPath = resolveBunBinary()
 const ytdlp = new YtDlp({ binaryPath: ytDlpPath })
 
 export async function xMedia (url: string){
@@ -309,7 +323,8 @@ export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (perce
             '--buffer-size', '128K',
             '--http-chunk-size', '50M',
             '--retries', '10',
-            '--fragment-retries', '10'
+            '--fragment-retries', '10',
+            '--js-runtimes', `bun:${bunPath}`
         ])
 
         // Monitorar fragmentos HLS

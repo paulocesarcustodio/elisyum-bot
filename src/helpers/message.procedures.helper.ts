@@ -29,7 +29,7 @@ export async function isUserBlocked(client: WASocket, message: Message){
 }
 
 export async function isOwnerRegister(client: WASocket, botInfo: Bot, message: Message){
-    const admins = await userController.getAdmins()
+    const admins = await userController.getUsers().then(users => users.filter(u => u.owner))
 
     if (!admins.length && message.command == `${botInfo.prefix}admin`){
         await userController.registerOwner(message.sender, message.senderAlt)
@@ -57,15 +57,11 @@ export async function incrementGroupCommandsCount(group: Group){
 }
 
 export function isIgnoredByPvAllowed(botInfo: Bot, message: Message){
-    return (!message.isBotAdmin && !botInfo.commands_pv)
+    return (!message.isBotOwner && !botInfo.commands_pv)
 }
 
 export function isIgnoredByGroupMuted(group: Group, message: Message){
     return (group.muted && !message.isGroupAdmin)
-}
-
-export function isIgnoredByAdminMode(bot: Bot, message: Message){
-    return (bot.admin_mode && !message.isBotAdmin)
 }
 
 export async function isBotLimitedByGroupRestricted(group: Group, botInfo: Bot){
@@ -125,10 +121,10 @@ export async function deleteMessageIfMutedMember(
 export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot, message: Message){
     if (botInfo.command_rate.status){
         const currentTimestamp = Math.round(moment.now()/1000)
-        const { isBotAdmin } = message
+        const { isBotOwner } = message
         const user = await userController.getUser(message.sender, message.senderAlt)
 
-        if (isBotAdmin) return false
+        if (isBotOwner) return false
     
         if (user){
             let isUserLimited : boolean
@@ -170,7 +166,7 @@ export async function isUserLimitedByCommandRate(client: WASocket, botInfo: Bot,
 export async function isCommandBlockedGlobally(client: WASocket, botInfo: Bot, message: Message ){
     const commandBlocked = botInfo.block_cmds.includes(waUtil.removePrefix(botInfo.prefix, message.command))
 
-    if (commandBlocked && !message.isBotAdmin){
+    if (commandBlocked && !message.isBotOwner){
         const replyText = buildText(botTexts.globally_blocked_command, message.command)
         await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
         return true

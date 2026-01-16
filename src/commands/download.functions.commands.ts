@@ -8,7 +8,29 @@ import * as downloadUtil from '../utils/download.util.js'
 import * as convertUtil from '../utils/convert.util.js'
 import { imageSearchGoogle } from '../utils/image.util.js'
 import format from 'format-duration'
-import downloadCommands from "./download.list.commands.js"
+
+// Mensagens dos comandos de download (para evitar dependência circular)
+const downloadMsgs = {
+    d: {
+        error_not_found: 'Não foi possível baixar a mídia'
+    },
+    play: {
+        wait: "[AGUARDE] 🎧 Sua música está sendo baixada e processada.\n\n"+
+        "*Título*: {$1}\n"+
+        "*Duração*: {$2}",
+        error_limit: "O vídeo deve ter no máximo *9 minutos*",
+        error_live: "Esse vídeo não pode ser convertido em áudio, lives não são aceitas.",
+        error_not_found: "Nenhum áudio foi encontrado",
+        error_no_youtube_link: "❌ A mensagem respondida não contém nenhum link.\n\n💡 Use *{$1}play* respondendo mensagens com links do YouTube ou digite o título da música.",
+        error_only_youtube: "❌ O comando *{$1}play* só funciona com links do YouTube ao responder mensagens.\n\n💡 Para outras plataformas, use *{$1}d*."
+    },
+    img: {
+        error_limit: "O número máximo de imagens é 5",
+        error_not_found: "Nenhuma imagem foi encontrada",
+        error_download: "Erro ao baixar as imagens",
+        error: "Erro ao buscar imagens"
+    }
+}
 
 export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     const startTime = performance.now()
@@ -24,12 +46,12 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         const urls = extractUrls(quotedText)
         
         if (urls.length === 0) {
-            throw new Error(buildText(downloadCommands.play.msgs.error_no_youtube_link, botInfo.prefix))
+            throw new Error(buildText(downloadMsgs.play.error_no_youtube_link, botInfo.prefix))
         }
         
         const platform = detectPlatform(urls[0])
         if (platform !== 'youtube') {
-            throw new Error(buildText(downloadCommands.play.msgs.error_only_youtube, botInfo.prefix))
+            throw new Error(buildText(downloadMsgs.play.error_only_youtube, botInfo.prefix))
         }
     }
 
@@ -38,11 +60,11 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
     console.log(`[playCommand] ⏱️ Metadados: ${((performance.now() - metadataStart) / 1000).toFixed(2)}s`)
 
     if (!videoInfo){
-        throw new Error(downloadCommands.play.msgs.error_not_found)
+        throw new Error(downloadMsgs.play.error_not_found)
     } else if (videoInfo.is_live){
-        throw new Error(downloadCommands.play.msgs.error_live)
+        throw new Error(downloadMsgs.play.error_live)
     } else if (videoInfo.duration > 540){
-        throw new Error(downloadCommands.play.msgs.error_limit)
+        throw new Error(downloadMsgs.play.error_limit)
     }
 
     // Mensagem inicial com barra de progresso (sempre texto para garantir atualizações)
@@ -186,11 +208,11 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     const videoInfo = await downloadUtil.youtubeMedia(textToProcess)
 
     if (!videoInfo){
-        throw new Error(downloadCommands.yt.msgs.error_not_found)
+        throw new Error(downloadMsgs.d.error_not_found)
     } else if (videoInfo.is_live){
-        throw new Error(downloadCommands.yt.msgs.error_live)
+        throw new Error('❌ Não é possível baixar vídeos ao vivo.')
     } else if (videoInfo.duration > 540){
-        throw new Error(downloadCommands.yt.msgs.error_limit)
+        throw new Error('❌ O vídeo é muito longo (máximo 9 minutos).')
     }
 
     // Mensagem inicial com barra de progresso (sempre texto para garantir atualizações)
@@ -298,7 +320,7 @@ export async function fbCommand(client: WASocket, botInfo: Bot, message: Message
     const fbInfo = await downloadUtil.facebookMedia(textToProcess)
 
     if (fbInfo.duration > 540){
-        throw new Error(downloadCommands.fb.msgs.error_limit)
+        throw new Error('❌ O vídeo é muito grande para ser baixado.')
     }
 
     // Mensagem inicial com barra de progresso
@@ -453,7 +475,7 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
     const xInfo = await downloadUtil.xMedia(textToProcess)
 
     if (!xInfo){
-        throw new Error(downloadCommands.x.msgs.error_not_found)
+        throw new Error(downloadMsgs.d.error_not_found)
     }
 
     // Mensagem inicial com barra de progresso
@@ -537,7 +559,7 @@ export async function tkCommand(client: WASocket, botInfo: Bot, message: Message
     const tiktok = await downloadUtil.tiktokMedia(textToProcess)
 
     if (!tiktok) {
-        throw new Error(downloadCommands.tk.msgs.error_not_found)
+        throw new Error(downloadMsgs.d.error_not_found)
     }
 
     // Mensagem inicial com barra de progresso
@@ -655,8 +677,8 @@ export async function imgCommand(client: WASocket, botInfo: Bot, message: Messag
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } 
 
-    const MAX_SENT = 5
-    const MAX_RESULTS = 50
+    const MAX_SENT = 2  // Reduzido de 5 para 2 imagens
+    const MAX_RESULTS = 20  // Reduzido de 50 para 20 para otimizar
     let imagesSent = 0
 
     let images = await imageSearchGoogle(message.text_command)
@@ -679,7 +701,7 @@ export async function imgCommand(client: WASocket, botInfo: Bot, message: Messag
     }
 
     if (!imagesSent) {
-        throw new Error (downloadCommands.img.msgs.error) 
+        throw new Error (downloadMsgs.img.error) 
     }
 }
 

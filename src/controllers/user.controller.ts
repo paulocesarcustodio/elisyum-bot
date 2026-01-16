@@ -21,28 +21,8 @@ export class UserController{
         return this.userService.setName(userId, name, ...alternateIds)
     }
 
-    public async promoteUser(userId: string){
-        const updatedDocs = await this.userService.setAdmin(userId, true)
-
-        if (updatedDocs) {
-            await this.invalidateAdminsCache()
-        }
-    }
-
-    public async demoteUser(userId: string){
-        const updatedDocs = await this.userService.setAdmin(userId, false)
-
-        if (updatedDocs) {
-            await this.invalidateAdminsCache()
-        }
-    }
-
     public async registerOwner(userId: string, ...alternateIds: (string | null | undefined)[]){
-        const updatedDocs = await this.userService.setOwner(userId, ...alternateIds)
-
-        if (updatedDocs) {
-            await this.invalidateAdminsCache()
-        }
+        return this.userService.setOwner(userId, ...alternateIds)
     }
 
     public getUsers(){
@@ -55,10 +35,6 @@ export class UserController{
 
     public getOwner(){
         return this.userService.getOwner()
-    }
-
-    public getAdmins(){
-        return this.userService.getAdmins()
     }
 
     public setReceivedWelcome(userId: string, status = true, ...alternateIds: (string | null | undefined)[]){
@@ -79,11 +55,6 @@ export class UserController{
 
     public setLimitedUser(userId: string, isLimited: boolean, botInfo: Bot, currentTimestamp: number, ...alternateIds: (string | null | undefined)[]){
         return this.userService.setLimitedUser(userId, isLimited, botInfo, currentTimestamp, ...alternateIds)
-    }
-
-    private async invalidateAdminsCache(){
-        const { invalidateBotAdminsCache } = await import("../utils/whatsapp.util.js")
-        invalidateBotAdminsCache()
     }
 
 }

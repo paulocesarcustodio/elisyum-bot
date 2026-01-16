@@ -7,9 +7,28 @@ import * as imageUtil from '../utils/image.util.js'
 import * as stickerUtil from '../utils/sticker.util.js'
 import * as quoteUtil from '../utils/quote.util.js'
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
-import stickerCommands from "./sticker.list.commands.js"
 import { UserController } from "../controllers/user.controller.js"
 import { getContactFromStore } from "../helpers/contacts.store.helper.js"
+
+// Mensagens dos comandos de sticker (para evitar dependência circular)
+const stickerMsgs = {
+    s: {
+        error_limit: 'O video/gif deve ter no máximo 8 segundos.',
+        error_message: "Houve um erro ao obter os dados da mensagem.",
+        error_no_text: 'A mensagem citada não possui texto.',
+        error_too_long: 'A mensagem é muito longa. Máximo de 500 caracteres.',
+        author_text: 'Solicitado por: {$1}'
+    },
+    simg: {
+        error_sticker: `Este comando pode ser usado apenas respondendo stickers.`
+    },
+    ssf: {
+        wait: `[AGUARDE] 📸 O fundo da imagem está sendo removido e o sticker será enviado em breve.`,
+        error_image: `Este comando é válido apenas para imagens.`,
+        error_message: "Houve um erro ao obter os dados da mensagem.",
+        author_text: 'Solicitado por: {$1}'
+    }
+}
 
 export async function sCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     let stickerType : "resize" | "contain" | "circle" =  'resize'
@@ -27,7 +46,7 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
     }
 
     if (!messageData.type || !messageData.message) {
-        throw new Error(stickerCommands.s.msgs.error_message)
+        throw new Error(stickerMsgs.s.error_message)
     }
 
     // Se for mensagem de texto citada, criar balão do WhatsApp
@@ -35,11 +54,11 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         const quotedText = message.quotedMessage?.body || message.quotedMessage?.caption
         
         if (!quotedText) {
-            throw new Error(stickerCommands.s.msgs.error_no_text)
+            throw new Error(stickerMsgs.s.error_no_text)
         }
 
         if (quotedText.length > 500) {
-            throw new Error(stickerCommands.s.msgs.error_too_long)
+            throw new Error(stickerMsgs.s.error_too_long)
         }
 
         // Obter foto de perfil
@@ -163,7 +182,7 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
             time: time
         })
 
-        const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
+        const authorText = buildText(stickerMsgs.s.author_text, message.pushname)
         const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
         await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
         return
@@ -173,11 +192,11 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
     if (messageData.type != "imageMessage" && messageData.type != "videoMessage") {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } else if (messageData.type == "videoMessage" && messageData.seconds && messageData.seconds  > 9) {
-        throw new Error(stickerCommands.s.msgs.error_limit)
+        throw new Error(stickerMsgs.s.error_limit)
     }
     
     const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
-    const authorText = buildText(stickerCommands.s.msgs.author_text, message.pushname)
+    const authorText = buildText(stickerMsgs.s.author_text, message.pushname)
     const stickerBuffer = await stickerUtil.createSticker(mediaBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: stickerType})
     await waUtil.sendSticker(client, message.chat_id, stickerBuffer, { expiration: message.expiration })
 }
@@ -186,7 +205,7 @@ export async function simgCommand(client: WASocket, botInfo: Bot, message: Messa
     if (!message.isQuoted || !message.quotedMessage) {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } else if (message.quotedMessage.type != "stickerMessage") {
-        throw new Error(stickerCommands.simg.msgs.error_sticker)
+        throw new Error(stickerMsgs.simg.error_sticker)
     }
 
     let messageQuotedData = message.quotedMessage.wa_message
@@ -207,15 +226,15 @@ export async function ssfCommand(client: WASocket, botInfo: Bot, message: Messag
     }
 
     if (!messageData.type || !messageData.message) {
-        throw new Error(stickerCommands.ssf.msgs.error_message)
+        throw new Error(stickerMsgs.ssf.error_message)
     } else if (messageData.type != "imageMessage") {
-        throw new Error(stickerCommands.ssf.msgs.error_image)
+        throw new Error(stickerMsgs.ssf.error_image)
     }
 
-    await waUtil.replyText(client, message.chat_id, stickerCommands.ssf.msgs.wait, message.wa_message, {expiration: message.expiration})
+    await waUtil.replyText(client, message.chat_id, stickerMsgs.ssf.wait, message.wa_message, {expiration: message.expiration})
     const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
     const imageBuffer = await imageUtil.removeBackground(mediaBuffer)
-    const authorText = buildText(stickerCommands.ssf.msgs.author_text, message.pushname)
+    const authorText = buildText(stickerMsgs.ssf.author_text, message.pushname)
     const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
     await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
 }

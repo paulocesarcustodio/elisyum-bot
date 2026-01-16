@@ -339,6 +339,17 @@ export const audiosDb = {
     const stmt = db.prepare('DELETE FROM saved_audios WHERE user_jid = ? AND audio_name = ?');
     stmt.run(userJid, audioName.toLowerCase());
     console.log(`[DB] Áudio deletado: "${audioName}" de ${userJid}`);
+  },
+
+  // Renomear áudio
+  rename: (userJid: string, oldName: string, newName: string) => {
+    const stmt = db.prepare(`
+      UPDATE saved_audios 
+      SET audio_name = ? 
+      WHERE user_jid = ? AND audio_name = ?
+    `);
+    stmt.run(newName.toLowerCase(), userJid, oldName.toLowerCase());
+    console.log(`[DB] Áudio renomeado: "${oldName}" -> "${newName}" de ${userJid}`);
   }
 };
 

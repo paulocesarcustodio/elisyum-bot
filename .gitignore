@@ -15,6 +15,7 @@ temp
 storage/*.db
 storage/*.db-shm
 storage/*.db-wal
+storage/bot.json
 # Codigo JS
 dist
 #Sessao

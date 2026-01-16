@@ -4,7 +4,6 @@ export interface User {
     commands: number,
     receivedWelcome: boolean,
     owner : boolean,
-    admin: boolean,
     command_rate: UserCommandRate
 }
 
