@@ -11,11 +11,19 @@ let adminDocsCache: string | null = null
 
 function loadDocs(isAdmin: boolean): string {
     try {
-        if (isAdmin && adminDocsCache) return adminDocsCache
-        if (!isAdmin && userDocsCache) return userDocsCache
+        if (isAdmin && adminDocsCache) {
+            console.log('📦 [ASK] Usando cache de admin')
+            return adminDocsCache
+        }
+        if (!isAdmin && userDocsCache) {
+            console.log('📦 [ASK] Usando cache de usuário')
+            return userDocsCache
+        }
         
-        const filename = isAdmin ? 'comandos-admin.txt' : 'comandos-usuario.txt'
+        const filename = isAdmin ? 'ai-friendly-admin.txt' : 'ai-friendly-usuario.txt'
         const filePath = join(process.cwd(), 'docs', 'commands', filename)
+        
+        console.log(`📁 [ASK] Carregando do disco: ${filePath}`)
         
         const content = readFileSync(filePath, 'utf-8')
         
@@ -49,13 +57,22 @@ export async function askGemini(question: string, isAdmin: boolean): Promise<str
         // Carregar documentação apropriada
         const docs = loadDocs(isAdmin)
         
+        console.log(`📚 [ASK] Carregado ${docs.length} caracteres de documentação (admin: ${isAdmin})`)
+        
+        // Debug: mostrar trecho da documentação
+        const downloadSection = docs.substring(docs.indexOf('### DOWNLOAD'), docs.indexOf('### DOWNLOAD') + 500)
+        console.log('📄 [ASK] Trecho da seção DOWNLOAD:\n' + downloadSection)
+        
         // Criar prompt com contexto
-        const prompt = `CONTEXTO - Comandos disponíveis:
-${docs}
+        const prompt = `${docs}
 
-PERGUNTA DO USUÁRIO: ${question}
+───────────────────────────────────────────
 
-Responda de forma concisa e clara sobre o comando solicitado.`
+PERGUNTA: ${question}
+
+Ajude o usuário encontrando o comando certo para o que ele precisa.`
+
+        console.log('📤 [ASK] Enviando para Gemini...')
         
         const result = await model.generateContent(prompt)
         const response = result.response

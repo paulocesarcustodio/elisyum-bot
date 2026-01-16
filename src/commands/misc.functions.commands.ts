@@ -65,6 +65,8 @@ export async function askCommand(client: WASocket, botInfo: Bot, message: Messag
         throw new Error(buildText(askMsgs.error_no_question, botInfo.prefix))
     }
     
+    console.log('\n📝 [ASK] Pergunta do usuário:', question)
+    
     // Enviar mensagem de espera
     await waUtil.replyText(
         client,
@@ -80,6 +82,8 @@ export async function askCommand(client: WASocket, botInfo: Bot, message: Messag
         
         // Consultar Gemini com RAG
         const response = await askGemini(question, isAdmin || false)
+        
+        console.log('🤖 [ASK] Resposta da IA:\n' + response + '\n')
         
         // Enviar resposta
         await waUtil.replyText(

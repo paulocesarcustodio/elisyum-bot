@@ -1,0 +1,322 @@
+import infoCommands from '../src/commands/info.list.commands.js'
+import utilityCommands from '../src/commands/utility.list.commands.js'
+import groupCommands from '../src/commands/group.list.commands.js'
+import adminCommands from '../src/commands/admin.list.commands.js'
+import { Commands } from '../src/interfaces/command.interface.js'
+import fs from 'node:fs'
+import path from 'node:path'
+
+// Mapeamento de comandos para documentação em linguagem natural
+const commandDocs: Record<string, { title: string; content: string; keywords: string }> = {
+    // DOWNLOAD
+    d: {
+        title: "COMO BAIXAR VÍDEOS, ÁUDIOS E IMAGENS",
+        content: `Se você quer baixar vídeo, áudio ou imagem de redes sociais, use o comando *!d*
+
+Funciona com:
+• YouTube - vídeos, shorts, músicas
+• Instagram - reels, posts, stories
+• TikTok - vídeos
+• Facebook - vídeos
+• Twitter/X - vídeos e GIFs
+
+Como usar:
+• *!d* seguido do link - exemplo: !d https://youtube.com/watch?v=...
+• Responder uma mensagem que tenha link com *!d*
+• *!d* seguido do título para buscar no YouTube - exemplo: !d nome da música
+
+O bot identifica automaticamente a plataforma e baixa o melhor formato disponível.`,
+        keywords: "baixar vídeo, download vídeo, pegar vídeo, salvar vídeo, fazer download, youtube, instagram, tiktok, facebook, twitter, mídia, reel, story, shorts"
+    },
+    
+    play: {
+        title: "COMO BAIXAR MÚSICA/ÁUDIO DO YOUTUBE",
+        content: `Para baixar apenas o áudio de vídeos do YouTube (música), use *!play*
+
+Como usar:
+• *!play* seguido do nome da música - exemplo: !play imagine dragons
+• *!play* com link do YouTube - exemplo: !play https://youtube.com/watch?v=...
+• Responder mensagem com link do YouTube e digitar *!play*
+
+O bot vai buscar a música no YouTube, baixar e enviar como áudio. O vídeo pode ter no máximo 9 minutos.
+
+Diferença do !d: o !play só funciona com YouTube e envia como áudio. O !d baixa vídeo de várias plataformas.`,
+        keywords: "música, musica, audio, áudio, som, mp3, baixar música, download música, play, youtube música, canção"
+    },
+    
+    img: {
+        title: "COMO BUSCAR IMAGENS",
+        content: `Para buscar imagens sobre qualquer tema, use *!img*
+
+Como usar:
+• *!img* seguido do tema - exemplo: !img gato fofo
+
+O bot vai buscar e enviar 2 imagens relacionadas ao tema que você pediu.`,
+        keywords: "imagem, foto, picture, buscar imagem, pesquisar imagem, procurar imagem"
+    },
+    
+    // STICKER
+    s: {
+        title: "COMO CRIAR FIGURINHAS (STICKERS)",
+        content: `Para transformar imagens, vídeos ou textos em figurinha, use *!s*
+
+Formas de usar:
+• Enviar ou responder uma IMAGEM/VÍDEO com *!s* - cria figurinha normal
+• Responder uma MENSAGEM DE TEXTO com *!s* - cria figurinha estilo WhatsApp (texto em fundo branco)
+• Usar *!s 1* com imagem - cria figurinha CIRCULAR (recorta círculo)
+• Usar *!s 2* com imagem - cria figurinha mantendo PROPORÇÃO original
+
+Exemplos:
+• Mandar uma foto e escrever !s
+• Responder mensagem "oi sumido" com !s para criar figurinha de texto
+• Mandar imagem e escrever !s 1 para figurinha redonda
+
+Vídeos viram GIF animado (máximo 8 segundos).`,
+        keywords: "figurinha, sticker, criar figurinha, fazer figurinha, transformar em figurinha, gif, gif animado, sticker redondo, sticker circular, figurinha de texto"
+    },
+    
+    simg: {
+        title: "COMO TRANSFORMAR FIGURINHA EM IMAGEM",
+        content: `Para converter uma figurinha em imagem normal, use *!simg*
+
+Como usar:
+• Responder uma figurinha com *!simg*
+
+ATENÇÃO: Só funciona com figurinhas NÃO ANIMADAS (estáticas).`,
+        keywords: "figurinha para imagem, sticker para foto, converter figurinha, transformar figurinha em foto"
+    },
+    
+    // ÁUDIO
+    save: {
+        title: "COMO SALVAR ÁUDIO/MEME DE VOZ",
+        content: `Para salvar um áudio e poder reproduzir depois com comando, use *!save*
+
+Como usar:
+• Responder um ÁUDIO com *!save nome-do-audio*
+
+Exemplo: responder áudio do "eita" com !save eita
+
+O áudio fica salvo GLOBALMENTE - todos do grupo podem usar!
+Depois use *!audio eita* para reproduzir.`,
+        keywords: "salvar áudio, salvar audio, gravar áudio, guardar áudio, meme de áudio, meme de voz, salvar som"
+    },
+    
+    audio: {
+        title: "COMO REPRODUZIR ÁUDIO SALVO",
+        content: `Para reproduzir um áudio que foi salvo, use *!audio*
+
+Como usar:
+• *!audio nome-do-audio* - exemplo: !audio eita
+• Responder uma mensagem com *!audio nome-do-audio* - reproduz como resposta
+
+Para ver todos os áudios disponíveis, use *!audios*`,
+        keywords: "tocar áudio, reproduzir áudio, meme de áudio, som salvo, áudio salvo, voice, voz"
+    },
+    
+    audios: {
+        title: "COMO VER LISTA DE ÁUDIOS SALVOS",
+        content: `Para ver todos os áudios disponíveis, use *!audios*
+
+Como usar:
+• *!audios* - mostra primeira página
+• *!audios 2* - mostra página 2
+
+A lista mostra todos os áudios salvos que podem ser usados com !audio`,
+        keywords: "lista de áudios, ver áudios, áudios disponíveis, listar áudios, memes de áudio"
+    },
+    
+    delete: {
+        title: "COMO DELETAR ÁUDIO SALVO",
+        content: `Para deletar permanentemente um áudio que você criou, use *!delete*
+
+Como usar:
+• *!delete nome-do-audio* - exemplo: !delete eita
+
+ATENÇÃO: Só o criador do áudio pode deletar! Esta ação não pode ser desfeita!`,
+        keywords: "deletar áudio, apagar áudio, remover áudio, excluir áudio"
+    },
+    
+    rename: {
+        title: "COMO RENOMEAR ÁUDIO SALVO",
+        content: `Para mudar o nome de um áudio que você criou, use *!rename*
+
+Como usar:
+• *!rename nome-antigo | nome-novo*
+
+Exemplo: !rename eita | eita-preula
+
+Use o símbolo *|* para separar o nome antigo do novo.
+ATENÇÃO: Só o criador pode renomear!`,
+        keywords: "renomear áudio, mudar nome áudio, trocar nome áudio"
+    },
+    
+    // UTILIDADE
+    revelar: {
+        title: "COMO REVELAR FOTO/VÍDEO DE VISUALIZAÇÃO ÚNICA",
+        content: `Para ver foto ou vídeo de visualização única (view once) sem limite, use *!revelar*
+
+Como usar:
+• Responder a mensagem de visualização única com *!revelar*
+
+O bot vai revelar o conteúdo e enviar para você ver quantas vezes quiser.`,
+        keywords: "revelar view once, ver visualização única, foto visualização única, view once"
+    },
+    
+    // INFORMAÇÃO
+    menu: {
+        title: "COMO VER O MENU DE COMANDOS",
+        content: `Para ver todos os comandos disponíveis, use *!menu*
+
+Como usar:
+• Digite *!menu*
+
+Mostra a lista completa de comandos que você pode usar.`,
+        keywords: "menu, comandos, ajuda, help, lista de comandos"
+    },
+    
+    ask: {
+        title: "COMO PERGUNTAR SOBRE COMANDOS",
+        content: `Para tirar dúvidas sobre comandos do bot usando IA, use *!ask*
+
+Como usar:
+• *!ask* seguido da sua pergunta
+
+Exemplos:
+• !ask como baixar vídeo?
+• !ask como criar figurinha?
+• !ask qual comando salva áudio?
+
+O bot usa inteligência artificial para te ajudar!`,
+        keywords: "perguntar, ajuda, dúvida, como usar, explicar comando, ia, inteligência artificial"
+    },
+    
+    info: {
+        title: "COMO VER INFORMAÇÕES DO BOT",
+        content: `Para ver informações completas e configurações do bot, use *!info*
+
+Mostra versão, estatísticas e configurações atuais.`,
+        keywords: "informações, info, sobre o bot, versão, configurações"
+    },
+    
+    meusdados: {
+        title: "COMO VER SEUS DADOS E ESTATÍSTICAS",
+        content: `Para ver suas estatísticas e dados no bot, use *!meusdados*
+
+Mostra quantos comandos você executou, mensagens enviadas, tipo de usuário, etc.`,
+        keywords: "meus dados, minhas estatísticas, meu perfil, estatísticas"
+    }
+}
+
+function generateAIFriendlyDocs() {
+    // Documentação para usuários
+    let userContent = `GUIA COMPLETO DE COMANDOS DO BOT ELISYUM
+Este documento foi criado para ajudar você a encontrar o comando certo para o que você precisa.
+
+═══════════════════════════════════════════════════════════════════
+
+`
+
+    // Documentação para admins (vai incluir comandos de grupo e administração)
+    let adminContent = userContent
+
+    // Adicionar comandos de usuário
+    const userCommandNames = ['d', 'play', 'img', 's', 'simg', 'save', 'audio', 'audios', 'delete', 'rename', 'revelar', 'menu', 'ask', 'info', 'meusdados']
+    
+    for (const cmdName of userCommandNames) {
+        if (commandDocs[cmdName]) {
+            const doc = commandDocs[cmdName]
+            userContent += `${doc.title}
+${'─'.repeat(70)}
+
+${doc.content}
+
+🔍 Palavras-chave: ${doc.keywords}
+
+═══════════════════════════════════════════════════════════════════
+
+`
+        }
+    }
+    
+    // Admin tem acesso aos comandos de usuário + comandos de grupo/admin
+    adminContent = userContent
+    
+    // Adicionar seção de comandos de grupo
+    adminContent += `
+
+🔐 COMANDOS DE ADMINISTRAÇÃO DE GRUPOS
+Os comandos abaixo são exclusivos para administradores de grupos.
+
+═══════════════════════════════════════════════════════════════════
+
+GERENCIAR MEMBROS DO GRUPO
+
+Para adicionar pessoas: *!add* número (ou responder mensagem)
+Para remover/banir: *!ban* @mencionar ou responder mensagem
+Para promover a admin: *!promover* @mencionar ou responder mensagem  
+Para remover admin: *!rebaixar* @mencionar ou responder mensagem
+
+🔍 Palavras-chave: adicionar membro, remover membro, kick, ban, banir, expulsar, promover admin, rebaixar admin, tirar admin, moderador
+
+═══════════════════════════════════════════════════════════════════
+
+CONFIGURAR GRUPO
+
+Para mudar foto do grupo: Enviar imagem com *!fotogrupo*
+Para fechar grupo (só admins falam): *!restrito* (ativa/desativa)
+Para ver link do grupo: *!link*
+Para resetar link: *!rlink*
+
+Para ativar/desativar bem-vindo: *!bemvindo*
+Para ativar/desativar anti-link: *!antilink*
+Para ativar/desativar anti-fake: *!antifake*
+Para ativar/desativar anti-flood: *!antiflood*
+Para ativar/desativar auto-sticker: *!autosticker*
+
+🔍 Palavras-chave: configurar grupo, fechar grupo, abrir grupo, restringir grupo, bem vindo, bemvindo, antilink, antifake, antiflood, foto grupo, link grupo
+
+═══════════════════════════════════════════════════════════════════
+
+MARCAR E MENCIONAR
+
+Para marcar TODOS (membros + admins): *!mt* mensagem
+Para marcar só MEMBROS: *!mm* mensagem
+Para marcar só ADMINS: *!adms* mensagem
+
+🔍 Palavras-chave: marcar todos, mencionar todos, everyone, marcar membros, marcar admins, mencionar admins
+
+═══════════════════════════════════════════════════════════════════
+
+OUTROS COMANDOS DE GRUPO
+
+Para ver dados do grupo: *!grupo*
+Para ver quem é dono: *!dono*
+Para apagar mensagem: *!apg* (respondendo mensagem)
+Para ver membros ativos: *!topativos*
+Para ver inativos: *!inativos*
+Para ver dados de membro: *!membro* @mencionar
+
+Para bloquear comandos: *!bcmd* comando1,comando2
+Para desbloquear: *!dcmd* comando1,comando2
+
+🔍 Palavras-chave: info grupo, informações grupo, dados grupo, dono grupo, apagar mensagem, deletar mensagem, membros ativos, ranking, inativos, bloquear comando
+
+`
+
+    // Criar diretório
+    const docsDir = path.join(process.cwd(), 'docs', 'commands')
+    if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true })
+    }
+    
+    // Escrever arquivos
+    fs.writeFileSync(path.join(docsDir, 'ai-friendly-usuario.txt'), userContent, 'utf-8')
+    fs.writeFileSync(path.join(docsDir, 'ai-friendly-admin.txt'), adminContent, 'utf-8')
+    
+    console.log('✅ Documentação AI-friendly gerada com sucesso!')
+    console.log(`📄 Arquivo para usuários: ai-friendly-usuario.txt`)
+    console.log(`📄 Arquivo para admins: ai-friendly-admin.txt`)
+    console.log(`📁 Salvos em: ${docsDir}`)
+}
+
+generateAIFriendlyDocs()
