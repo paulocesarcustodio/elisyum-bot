@@ -10,7 +10,7 @@
     "start:simple": "bun dist/app.js",
     "clean": "rimraf dist/",
     "copy-media": "copyfiles -u 2 src/media/* dist/media",
-    "prestart": "bun install --frozen-lockfile",
+    "prestart": "bun install",
     "dev": "bun run build && bun start.js",
     "migrate": "cross-env migrate=y bun run dev",
     "build": "bun run clean && bun run tsc && bun run copy-media",
