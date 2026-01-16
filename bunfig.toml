@@ -6,6 +6,11 @@ optional = true
 dev = true
 exact = false
 
+[install.scripts]
+# Sempre executar install scripts (necessário para sharp, canvas, etc)
+disable = false
+allowList = ["*"]
+
 [install.cache]
 # Habilita cache de instalação
 disable = false
