@@ -27,17 +27,40 @@ const resolveBunBinary = () => {
     try {
         // Tenta encontrar bun no PATH
         const bunPath = execSync('which bun', { encoding: 'utf-8' }).trim()
-        if (bunPath) return bunPath
+        if (bunPath) {
+            console.log(`[resolveBunBinary] ✅ Bun encontrado em: ${bunPath}`)
+            return bunPath
+        }
     } catch (error) {
-        // Fallback: usa 'bun' e deixa o sistema resolver
-        console.warn('[resolveBunBinary] ⚠️ Não foi possível encontrar bun no PATH, usando "bun" como fallback')
+        console.warn('[resolveBunBinary] ⚠️ Erro ao executar which bun:', error)
     }
+    
+    // Fallback: tenta caminhos comuns
+    const commonPaths = [
+        '/root/.bun/bin/bun',
+        '/usr/local/bin/bun',
+        '/usr/bin/bun',
+        process.env.HOME + '/.bun/bin/bun'
+    ]
+    
+    const fs = require('fs')
+    for (const path of commonPaths) {
+        try {
+            if (fs.existsSync(path)) {
+                console.log(`[resolveBunBinary] ✅ Bun encontrado em fallback: ${path}`)
+                return path
+            }
+        } catch { }
+    }
+    
+    console.warn('[resolveBunBinary] ⚠️ Bun não encontrado, usando "bun" como último fallback')
     return 'bun'
 }
 
 // Inicializa ytdlp-nodejs com o binário customizado
 const ytDlpPath = resolveYtDlpBinary()
 const bunPath = resolveBunBinary()
+console.log(`[download.util] 🔧 Configuração inicial: yt-dlp=${ytDlpPath}, bun=${bunPath}`)
 const ytdlp = new YtDlp({ binaryPath: ytDlpPath })
 
 export async function xMedia (url: string){
