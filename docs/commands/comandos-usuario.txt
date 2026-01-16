@@ -7,37 +7,44 @@ COMANDOS DO BOT ELISYUM
 
 COMANDO: !dbstats
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}dbstats* - Exibe estatísticas do banco de dados (contatos e comandos).
+USO:
+  • *!dbstats* - Exibe estatísticas do banco de dados (contatos e comandos).
 PERMISSÃO: Usuário
 
 COMANDO: !logs
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}logs* [quantidade] - Exibe os últimos comandos executados.
+USO:
+  • *!logs* [quantidade] - Exibe os últimos comandos executados.
 PERMISSÃO: Usuário
 
 COMANDO: !contatos
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}contatos* - Lista os contatos salvos no cache do banco de dados.
+USO:
+  • *!contatos* - Lista os contatos salvos no cache do banco de dados.
 PERMISSÃO: Usuário
 
 COMANDO: !menu
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}menu* - Exibe o menu de comandos gerais.
+USO:
+  • *!menu* - Exibe o menu de comandos gerais.
 PERMISSÃO: Usuário
 
 COMANDO: !reportar
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}reportar* mensagem - Reporta uma mensagem para a administração do Bot.
+USO:
+  • *!reportar* mensagem - Reporta uma mensagem para a administração do Bot.
 PERMISSÃO: Usuário
 
 COMANDO: !meusdados
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}meusdados* - Exibe seus dados gerais como comandos, mensagens, tipo de usuário, etc.
+USO:
+  • *!meusdados* - Exibe seus dados gerais como comandos, mensagens, tipo de usuário, etc.
 PERMISSÃO: Usuário
 
 COMANDO: !info
 CATEGORIA: INFORMAÇÃO
-DESCRIÇÃO: Ex: *{$p}info* - Exibe as informações completas do bot, inclusive as configurações atuais.
+USO:
+  • *!info* - Exibe as informações completas do bot, inclusive as configurações atuais.
 PERMISSÃO: Usuário
 
 
@@ -46,17 +53,22 @@ PERMISSÃO: Usuário
 
 COMANDO: !d
 CATEGORIA: DOWNLOAD
-DESCRIÇÃO: Também funciona respondendo mensagens com links ou buscando por título no YouTube.
+USO:
+  • *!d* link - Download automático de mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.
+DETALHES: Também funciona respondendo mensagens com links ou buscando por título no YouTube.
 PERMISSÃO: Usuário
 
 COMANDO: !play
 CATEGORIA: DOWNLOAD
-DESCRIÇÃO: Também funciona respondendo mensagens com links do YouTube.
+USO:
+  • *!play* musica - Faz download de uma música do Youtube e envia como audio.
+DETALHES: Também funciona respondendo mensagens com links do YouTube.
 PERMISSÃO: Usuário
 
 COMANDO: !ask
 CATEGORIA: DOWNLOAD
-DESCRIÇÃO: Ex: *{$p}ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
+USO:
+  • *!ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
 PERMISSÃO: Usuário
 
 
@@ -65,37 +77,50 @@ PERMISSÃO: Usuário
 
 COMANDO: !img
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Ex: *{$p}img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
+USO:
+  • *!img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
 PERMISSÃO: Usuário
 
 COMANDO: !revelar
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Ex: Responda uma mensagem de *visualização única* com *{$p}revelar* - Revela a imagem/vídeo de visualização única.
+USO:
+  • Responda uma mensagem de *visualização única* com *!revelar* - Revela a imagem/vídeo de visualização única.
+DETALHES: OBS: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).
 PERMISSÃO: Usuário
 
 COMANDO: !save
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Ex: Responda um *áudio* com *{$p}save nome-do-audio* - Salva o áudio globalmente para todos usarem.
+USO:
+  • Responda um *áudio* com *!save nome-do-audio* - Salva o áudio globalmente para todos usarem.
+DETALHES: OBS: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
 PERMISSÃO: Usuário
 
 COMANDO: !audio
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Ex: *{$p}audio nome-do-audio* - Reproduz um áudio salvo.
+USO:
+  • *!audio nome-do-audio* - Reproduz um áudio salvo.
+  • Responda uma mensagem com *!audio nome-do-audio* - Reproduz o áudio como resposta.
 PERMISSÃO: Usuário
 
 COMANDO: !audios
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Ex: *{$p}audios* - Lista todos os áudios disponíveis (página 1).
+USO:
+  • *!audios* - Lista todos os áudios disponíveis (página 1).
+  • *!audios 2* - Lista a página 2 dos áudios.
 PERMISSÃO: Usuário
 
 COMANDO: !delete
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: *Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
+USO:
+  • *!delete nome-do-audio* - Deleta permanentemente um áudio que você criou.
+DETALHES: *Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
 PERMISSÃO: Usuário
 
 COMANDO: !rename
 CATEGORIA: UTILIDADE
-DESCRIÇÃO: Use *|* para separar o nome antigo do novo.
+USO:
+  • *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
+DETALHES: Use *|* para separar o nome antigo do novo. OBS: Só o criador pode renomear!
 PERMISSÃO: Usuário
 
 
@@ -104,12 +129,18 @@ PERMISSÃO: Usuário
 
 COMANDO: !s
 CATEGORIA: STICKER
-DESCRIÇÃO: Ex: Envie/responda uma *IMAGEM/VIDEO* com *{$p}s* - Transforma em sticker.
+USO:
+  • Envie/responda uma *IMAGEM/VIDEO* com *!s* - Transforma em sticker.
+  • Responda uma *MENSAGEM DE TEXTO* com *!s* - Transforma em sticker estilo WhatsApp.
+  • Envie/responda uma *IMAGEM* com *!s 1* - Transforma em sticker circular.
+  • Envie/responda uma *IMAGEM* com *!s 2* - Transforma em sticker sem perder a proporção.
 PERMISSÃO: Usuário
 
 COMANDO: !simg
 CATEGORIA: STICKER
-DESCRIÇÃO: Ex: Responda um sticker com *{$p}simg* - Transforma o sticker em imagem.
+USO:
+  • Responda um sticker com *!simg* - Transforma o sticker em imagem.
+DETALHES: OBS: Este comando funciona apenas com *STICKERS NÃO ANIMADOS*.
 PERMISSÃO: Usuário
 
 
@@ -118,7 +149,9 @@ PERMISSÃO: Usuário
 
 COMANDO: !vtnc
 CATEGORIA: VARIADO
-DESCRIÇÃO: Ex: *{$p}vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
+USO:
+  • *!vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
+  • Responder com *!vtnc* - Manda o ASCII desejado para o membro respondido.
 PERMISSÃO: Usuário
 
 

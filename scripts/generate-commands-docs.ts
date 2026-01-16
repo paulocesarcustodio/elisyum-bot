@@ -9,18 +9,47 @@ import path from 'node:path'
 interface CommandDoc {
     command: string
     category: string
+    usage: string
     description: string
     permission: string
 }
 
-function extractDescription(guide: string): string {
+function extractUsageAndDescription(guide: string): { usage: string; description: string } {
     const lines = guide.split('\n').filter(l => l.trim())
-    const descriptions = lines
-        .filter(line => !line.startsWith('Ex:') && !line.startsWith('*Obs*:'))
-        .map(line => line.replace(/\*\{?\$?p?\}?\*/g, '').trim())
-        .filter(line => line.length > 0)
     
-    return descriptions.join(' ') || lines[0]?.replace(/Ex:\s*\*\{?\$?p?\}?\*\s*\w+\s*-?\s*/i, '').trim() || 'Sem descrição'
+    const examples: string[] = []
+    const observations: string[] = []
+    const otherLines: string[] = []
+    
+    for (const line of lines) {
+        const cleanLine = line.trim()
+        if (cleanLine.startsWith('Ex:')) {
+            // Remover "Ex:" e limpar placeholders para formato legível
+            const exampleText = cleanLine
+                .replace(/^Ex:\s*/i, '')
+                .replace(/\*\{(\$p|\$\d+)\}\*/g, '!')
+                .replace(/\{(\$p|\$\d+)\}/g, '!')
+                .trim()
+            if (exampleText) examples.push(exampleText)
+        } else if (cleanLine.startsWith('*Obs*:')) {
+            observations.push(cleanLine.replace(/^\*Obs\*:\s*/i, 'OBS: '))
+        } else if (cleanLine.length > 0) {
+            const cleaned = cleanLine
+                .replace(/\*\{(\$p|\$\d+)\}\*/g, '!')
+                .replace(/\{(\$p|\$\d+)\}/g, '!')
+                .trim()
+            if (cleaned) otherLines.push(cleaned)
+        }
+    }
+    
+    // Montar uso com todos os exemplos em formato de lista
+    const usage = examples.length > 0 ? examples.join('\n  • ') : 'Sem exemplos de uso'
+    
+    // Montar descrição com contexto adicional e observações
+    const descParts = [...otherLines, ...observations]
+    const description = descParts.join(' ') || 'Comando do bot'
+    
+    return { usage, description }
 }
 
 function getPermissionLabel(permissions?: { roles?: string[] }): string {
@@ -41,10 +70,12 @@ function generateDocs() {
     
     // Processar comandos de INFO
     for (const [cmd, data] of Object.entries(infoCommands as Commands)) {
+        const { usage, description } = extractUsageAndDescription(data.guide)
         allCommands.push({
             command: cmd,
             category: 'INFORMAÇÃO',
-            description: extractDescription(data.guide),
+            usage,
+            description,
             permission: getPermissionLabel(data.permissions)
         })
     }
@@ -62,30 +93,36 @@ function generateDocs() {
             category = 'VARIADO'
         }
         
+        const { usage, description } = extractUsageAndDescription(data.guide)
         allCommands.push({
             command: cmd,
             category,
-            description: extractDescription(data.guide),
+            usage,
+            description,
             permission: getPermissionLabel(data.permissions)
         })
     }
     
     // Processar comandos de GRUPO
     for (const [cmd, data] of Object.entries(groupCommands as Commands)) {
+        const { usage, description } = extractUsageAndDescription(data.guide)
         allCommands.push({
             command: cmd,
             category: 'GRUPO',
-            description: extractDescription(data.guide),
+            usage,
+            description,
             permission: getPermissionLabel(data.permissions)
         })
     }
     
     // Processar comandos de ADMIN
     for (const [cmd, data] of Object.entries(adminCommands as Commands)) {
+        const { usage, description } = extractUsageAndDescription(data.guide)
         allCommands.push({
             command: cmd,
             category: 'ADMINISTRAÇÃO',
-            description: extractDescription(data.guide),
+            usage,
+            description,
             permission: getPermissionLabel(data.permissions)
         })
     }
@@ -114,7 +151,10 @@ function generateDocs() {
             cmds.forEach(cmd => {
                 content += `COMANDO: !${cmd.command}\n`
                 content += `CATEGORIA: ${cmd.category}\n`
-                content += `DESCRIÇÃO: ${cmd.description}\n`
+                content += `USO:\n  • ${cmd.usage}\n`
+                if (cmd.description && cmd.description !== 'Comando do bot') {
+                    content += `DETALHES: ${cmd.description}\n`
+                }
                 content += `PERMISSÃO: ${cmd.permission}\n`
                 content += '\n'
             })
