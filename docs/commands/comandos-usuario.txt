@@ -1,0 +1,126 @@
+COMANDOS DO BOT ELISYUM
+================================================================================
+
+
+### INFORMAÇÃO
+--------------------------------------------------------------------------------
+
+COMANDO: !dbstats
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}dbstats* - Exibe estatísticas do banco de dados (contatos e comandos).
+PERMISSÃO: Usuário
+
+COMANDO: !logs
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}logs* [quantidade] - Exibe os últimos comandos executados.
+PERMISSÃO: Usuário
+
+COMANDO: !contatos
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}contatos* - Lista os contatos salvos no cache do banco de dados.
+PERMISSÃO: Usuário
+
+COMANDO: !menu
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}menu* - Exibe o menu de comandos gerais.
+PERMISSÃO: Usuário
+
+COMANDO: !reportar
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}reportar* mensagem - Reporta uma mensagem para a administração do Bot.
+PERMISSÃO: Usuário
+
+COMANDO: !meusdados
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}meusdados* - Exibe seus dados gerais como comandos, mensagens, tipo de usuário, etc.
+PERMISSÃO: Usuário
+
+COMANDO: !info
+CATEGORIA: INFORMAÇÃO
+DESCRIÇÃO: Ex: *{$p}info* - Exibe as informações completas do bot, inclusive as configurações atuais.
+PERMISSÃO: Usuário
+
+
+### DOWNLOAD
+--------------------------------------------------------------------------------
+
+COMANDO: !d
+CATEGORIA: DOWNLOAD
+DESCRIÇÃO: Também funciona respondendo mensagens com links ou buscando por título no YouTube.
+PERMISSÃO: Usuário
+
+COMANDO: !play
+CATEGORIA: DOWNLOAD
+DESCRIÇÃO: Também funciona respondendo mensagens com links do YouTube.
+PERMISSÃO: Usuário
+
+COMANDO: !ask
+CATEGORIA: DOWNLOAD
+DESCRIÇÃO: Ex: *{$p}ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
+PERMISSÃO: Usuário
+
+
+### UTILIDADE
+--------------------------------------------------------------------------------
+
+COMANDO: !img
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Ex: *{$p}img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
+PERMISSÃO: Usuário
+
+COMANDO: !revelar
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Ex: Responda uma mensagem de *visualização única* com *{$p}revelar* - Revela a imagem/vídeo de visualização única.
+PERMISSÃO: Usuário
+
+COMANDO: !save
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Ex: Responda um *áudio* com *{$p}save nome-do-audio* - Salva o áudio globalmente para todos usarem.
+PERMISSÃO: Usuário
+
+COMANDO: !audio
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Ex: *{$p}audio nome-do-audio* - Reproduz um áudio salvo.
+PERMISSÃO: Usuário
+
+COMANDO: !audios
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Ex: *{$p}audios* - Lista todos os áudios disponíveis (página 1).
+PERMISSÃO: Usuário
+
+COMANDO: !delete
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: *Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
+PERMISSÃO: Usuário
+
+COMANDO: !rename
+CATEGORIA: UTILIDADE
+DESCRIÇÃO: Use *|* para separar o nome antigo do novo.
+PERMISSÃO: Usuário
+
+
+### STICKER
+--------------------------------------------------------------------------------
+
+COMANDO: !s
+CATEGORIA: STICKER
+DESCRIÇÃO: Ex: Envie/responda uma *IMAGEM/VIDEO* com *{$p}s* - Transforma em sticker.
+PERMISSÃO: Usuário
+
+COMANDO: !simg
+CATEGORIA: STICKER
+DESCRIÇÃO: Ex: Responda um sticker com *{$p}simg* - Transforma o sticker em imagem.
+PERMISSÃO: Usuário
+
+
+### VARIADO
+--------------------------------------------------------------------------------
+
+COMANDO: !vtnc
+CATEGORIA: VARIADO
+DESCRIÇÃO: Ex: *{$p}vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
+PERMISSÃO: Usuário
+
+
+================================================================================
+Total de comandos: 20

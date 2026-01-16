@@ -1,0 +1,339 @@
+COMANDOS DO BOT ELISYUM
+================================================================================
+
+
+### GRUPO
+--------------------------------------------------------------------------------
+
+COMANDO: !grupo
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}grupo* - Exibe os dados atuais do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !fotogrupo
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Envie/responda uma *imagem* com *{$p}fotogrupo* - Altera a foto do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !aviso
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Responda alguém com *{$p}aviso* - Adiciona um aviso ao membro respondido.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !silenciar
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Responda alguém com *{$p}silenciar* - Alterna o silêncio do membro respondido.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmaviso
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Responda alguém com *{$p}rmaviso* - Remove um aviso do membro respondido.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !zeraravisos
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}zeraravisos* - Remove todos os avisos dos membros do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !addfiltros
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}addfiltros* batata uva - Adiciona as palavras *batata* e *uva* no filtro de palavras.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmfiltros
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rmfiltros* batata uva - Remove as palavras *batata* e *uva* do filtro de palavras.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !addlista
+CATEGORIA: GRUPO
+DESCRIÇÃO: .
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmlista
+CATEGORIA: GRUPO
+DESCRIÇÃO: Você também pode remover da lista negra da seguinte forma:
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !listanegra
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}listanegra* - Exibe a lista negra do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !add
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}add* +55219xxxx-xxxx - Digite o numero com o código do país para adicionar a pessoa.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !ban
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}ban* @membro - Para banir um membro marcando ele.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !promover
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}promover* @membro - Promove o membro mencionado a *administrador*.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rebaixar
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rebaixar* @admin - Rebaixa o administrador mencionado a *membro*.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !mt
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}mt* - Marca todos os *membros/admin* do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !mm
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}mm* - Marca todos os *MEMBROS* do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !adms
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Responder com *{$p}adms* - Marca todos os *ADMINISTRADORES* em uma postagem.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !dono
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}dono* - Exibe quem é dono do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !mutar
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}mutar* - Liga/desliga a execução de comandos dos membros.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !link
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}link* - Exibe o link do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rlink
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rlink* - Redefine o link do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !restrito
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}restrito* - Abre/fecha o grupo apenas para administradores conversarem.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !autoresp
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}autoresp* - Liga/desliga a resposta automática no grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !addresp
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}addresp* !batata Vejo que você digitou !batata - Adiciona uma resposta automática para a palavra *!batata*.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmresp
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rmresp* !batata - Remove a resposta automática para a palavra *!batata*.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !respostas
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}respostas* - Exibe todas as respostas automáticas configuradas.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !antilink
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}antilink* - Liga/desliga o Anti-LINK no grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !addexlink
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}addexlink* google.com youtube.com - Adiciona links serem exceções do Anti-LINK.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmexlink
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rmexlink* google.com youtube.com - Remove links das exceções do Anti-LINK.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !autosticker
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}autosticker* - Liga/desliga a criação automatica de stickers sem precisar de comandos.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !bemvindo
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}bemvindo*  - Liga/desliga a mensagem de bem-vindo para novos membros.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !antifake
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}antifake* - Liga/desliga o Anti-FAKE no grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !addexfake
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}addexfake 1, 64, +1 282 254 224* - Adiciona prefixos e/ou números para serem exceções do Anti-FAKE.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !rmexfake
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}rmexfake 1, 64, +1 282 254 224* - Remove prefixos e/ou números das exceções do Anti-FAKE.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !antiflood
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}antiflood*  - Liga/desliga o Anti-FLOOD no grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !apg
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: Responder com *{$p}apg* - Apaga a mensagem que foi respondida com esse comando.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !topativos
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}topativos* - Marca os 10 membros com mais mensagens do grupo.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !membro
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}membro* @membro - Mostra os dados do membro mencionado.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !inativos
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}inativos* 5 - Marca todos os membros com menos de 5 mensagens.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !bcmd
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}bcmd* {$p}s {$p}sgif {$p}play - Bloqueia no grupo os comandos {$p}s, {$p}sgif e {$p}play (você pode escolher os comandos a sua necessidade).
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+COMANDO: !dcmd
+CATEGORIA: GRUPO
+DESCRIÇÃO: Ex: *{$p}dcmd* {$p}s {$p}sgif {$p}play - Desbloqueia no grupo os comandos {$p}s, {$p}sgif e {$p}play.
+PERMISSÃO: Admin do Grupo ou Dono do Bot
+
+
+### ADMINISTRAÇÃO
+--------------------------------------------------------------------------------
+
+COMANDO: !admin
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}admin* - Exibe o menu de administração do bot.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !grupos
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}grupos* - Mostra os grupos atuais que o bot está e suas informações.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !sair
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: Digite *{$p}sair 1* - Faz o bot sair do grupo selecionado.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !sairgrupos
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}sairgrupos* - Sai de todos os grupos.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !linkgrupo
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}linkgrupo* 1 - Exibe o link do grupo selecionado.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !comandospv
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}comandospv* - Liga/desliga os comandos em MENSAGENS PRIVADAS.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !taxacomandos
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}taxacomandos* 5 - Ativa a taxa limite de comandos para 5 comandos a cada minuto por usuário, com 60 segundos de bloqueio.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !autostickerpv
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}autostickerpv* - Liga/desliga a criação automatica de stickers sem precisar de comandos no privado.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !bcmdglobal
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}bcmdglobal* {$p}s {$p}sgif {$p}play - Bloqueia  os comandos {$p}s, {$p}sgif e {$p}play (você pode escolher os comandos a sua necessidade).
+PERMISSÃO: Dono do Bot
+
+COMANDO: !dcmdglobal
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}dcmdglobal* {$p}s {$p}sgif {$p}play - Desbloqueia  os comandos {$p}s, {$p}sgif e {$p}play.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !entrargrupo
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}entrargrupo* link - Entra em um grupo por link de convite.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !bcgrupos
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}bcgrupos* mensagem - Envia uma mensagem para todos os *GRUPOS*.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !fotobot
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: Envie/responda uma *imagem* com *{$p}fotobot* - Altera a foto do BOT.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !nomebot
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}nomebot* Teste123 - Muda o nome do *BOT* para *Teste123* e atualiza os menus com o novo nome.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !prefixo
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Suporta os seguintes prefixos: *!*  *#*  *.*  *
+PERMISSÃO: Dono do Bot
+
+COMANDO: !listablock
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}listablock* - Exibe a lista de usuários bloqueados pelo bot.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !bloquear
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}bloquear* @membro - Para o bot bloquear o membro mencionado.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !desbloquear
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Você também pode desbloquear usuários das seguintes formas:
+PERMISSÃO: Dono do Bot
+
+COMANDO: !recado
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}recado* texto - Muda o texto do recado/status do bot.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !usuario
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}usuario* @usuario - Mostra os dados gerais do usuário mencionado.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !desligar
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}desligar* - Desliga o bot.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !ping
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}ping* - Exibe as informações do sistema do BOT e o tempo de resposta dele.
+PERMISSÃO: Dono do Bot
+
+COMANDO: !testkasino
+CATEGORIA: ADMINISTRAÇÃO
+DESCRIÇÃO: Ex: *{$p}testkasino* - Testa o envio do vídeo Kasino no Sabadaço para todos os grupos.
+PERMISSÃO: Dono do Bot
+
+
+================================================================================
+Total de comandos: 65

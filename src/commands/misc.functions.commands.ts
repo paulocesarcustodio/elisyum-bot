@@ -51,3 +51,46 @@ export async function vtncCommand(client: WASocket, botInfo: Bot, message: Messa
         { expiration: message.expiration }
     )
 }
+
+export async function askCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group) {
+    // Importação dinâmica para evitar problemas de dependência
+    const { askGemini } = await import('../utils/ai.util.js')
+    const utilityCommands = await import('./utility.list.commands.js')
+    const askMsgs = utilityCommands.default.ask.msgs
+    
+    // Extrair pergunta
+    const question = message.args.join(' ').trim()
+    
+    if (!question) {
+        throw new Error(buildText(askMsgs.error_no_question, botInfo.prefix))
+    }
+    
+    // Enviar mensagem de espera
+    await waUtil.replyText(
+        client,
+        message.chat_id,
+        askMsgs.wait,
+        message.wa_message,
+        { expiration: message.expiration }
+    )
+    
+    try {
+        // Verificar se usuário é admin (dono do bot ou admin do grupo)
+        const isAdmin = message.isBotOwner || (group !== undefined && message.isGroupAdmin)
+        
+        // Consultar Gemini com RAG
+        const response = await askGemini(question, isAdmin || false)
+        
+        // Enviar resposta
+        await waUtil.replyText(
+            client,
+            message.chat_id,
+            response,
+            message.wa_message,
+            { expiration: message.expiration }
+        )
+    } catch (error: any) {
+        const errorMsg = error.message || askMsgs.error_api
+        throw new Error(errorMsg)
+    }
+}

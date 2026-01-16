@@ -81,6 +81,7 @@ export const utilityMenuUnified = (botInfo : Bot)=>{
 *|*
 *|*━━ ✦ 🧩 *VARIADOS* ✦
 *|*► *${prefix}vtnc* - Vai tomar no c*
+*|*► *${prefix}ask* pergunta - Pergunte sobre comandos
 *|*
 _*M ᴏ ᴅ ᴅ ᴇ ᴅ B ʏ J ᴏ ɴ ɪ ʏ & P ᴀ ᴜ ʟ ᴏ*_ `
 }

@@ -146,6 +146,15 @@ const utilityCommands = {
             reply: '@{$1} vai tomar no cu!\n\n{$2}'
         },
         function: miscFunctions.vtncCommand
+    },
+    ask: {
+        guide: `Ex: *{$p}ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.\n`,
+        msgs: {
+            error_no_question: "Você precisa fazer uma pergunta.\nEx: {$p}ask qual comando salva áudio?",
+            error_api: "Erro ao consultar o assistente. Tente novamente.",
+            wait: "🤖 Consultando assistente..."
+        },
+        function: miscFunctions.askCommand
     }
 }
 

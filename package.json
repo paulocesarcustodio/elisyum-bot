@@ -55,6 +55,7 @@
   },
   "dependencies": {
     "@deepgram/sdk": "^3.11.3",
+    "@google/generative-ai": "^0.24.1",
     "@hapi/boom": "^10.0.1",
     "@mrnima/instagram-downloader": "^1.0.0",
     "@napi-rs/image": "^1.12.0",

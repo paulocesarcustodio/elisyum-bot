@@ -100,6 +100,9 @@ ADMIN_NUMBERS="5519XXXXXXXXX"
 # Deepgram API (para transcrição de áudio)
 DEEPGRAM_API_KEY=""
 
+# Google AI API (para assistente de comandos com !ask)
+GOOGLE_AI_API_KEY=""
+
 # Debug
 DEBUG=false
 `;
