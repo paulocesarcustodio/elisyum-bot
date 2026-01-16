@@ -216,8 +216,11 @@ Este documento foi criado para ajudar você a encontrar o comando certo para o q
 
 `
 
-    // Documentação para admins (vai incluir comandos de grupo e administração)
-    let adminContent = userContent
+    // Documentação para admins de grupo (comandos de usuário + comandos de grupo)
+    let groupAdminContent = userContent
+    
+    // Documentação para dono do bot (tudo + comandos de administração do bot)
+    let botOwnerContent = userContent
 
     // Adicionar comandos de usuário
     const userCommandNames = ['d', 'play', 'img', 's', 'simg', 'save', 'audio', 'audios', 'delete', 'rename', 'revelar', 'menu', 'ask', 'info', 'meusdados']
@@ -238,11 +241,11 @@ ${doc.content}
         }
     }
     
-    // Admin tem acesso aos comandos de usuário + comandos de grupo/admin
-    adminContent = userContent
+    // Admins de grupo têm acesso aos comandos de usuário + comandos de grupo
+    groupAdminContent = userContent
     
     // Adicionar seção de comandos de grupo
-    adminContent += `
+    groupAdminContent += `
 
 🔐 COMANDOS DE ADMINISTRAÇÃO DE GRUPOS
 Os comandos abaixo são exclusivos para administradores de grupos.
@@ -319,19 +322,45 @@ Para desbloquear: *!dcmd* comando1,comando2
 
 `
 
+    // Dono do bot tem tudo: comandos de usuário + grupo + administração do bot
+    botOwnerContent = groupAdminContent + `
+
+👑 COMANDOS EXCLUSIVOS DO DONO DO BOT
+Os comandos abaixo só podem ser usados pelo dono do bot.
+
+═══════════════════════════════════════════════════════════════════
+
+ADMINISTRAÇÃO DO BOT
+
+Para bloquear contatos globalmente: *!block* @mencionar
+Para desbloquear: *!unblock* @mencionar
+Para ver bloqueados: *!blockedlist*
+
+Para sair de um grupo: *!sairgrupo* (no grupo)
+Para entrar em grupo: *!entrargrupo* link
+
+Para atualizar o bot: *!update*
+Para reiniciar: *!reboot*
+
+🔍 Palavras-chave: bloquear contato, desbloquear, lista de bloqueados, sair grupo, entrar grupo, atualizar bot, reiniciar bot, administração bot
+
+`
+
     // Criar diretório
     const docsDir = path.join(process.cwd(), 'docs', 'commands')
     if (!fs.existsSync(docsDir)) {
         fs.mkdirSync(docsDir, { recursive: true })
     }
     
-    // Escrever arquivos
+    // Escrever 3 arquivos
     fs.writeFileSync(path.join(docsDir, 'ai-friendly-usuario.txt'), userContent, 'utf-8')
-    fs.writeFileSync(path.join(docsDir, 'ai-friendly-admin.txt'), adminContent, 'utf-8')
+    fs.writeFileSync(path.join(docsDir, 'ai-friendly-groupadmin.txt'), groupAdminContent, 'utf-8')
+    fs.writeFileSync(path.join(docsDir, 'ai-friendly-owner.txt'), botOwnerContent, 'utf-8')
     
     console.log('✅ Documentação AI-friendly gerada com sucesso!')
-    console.log(`📄 Arquivo para usuários: ai-friendly-usuario.txt`)
-    console.log(`📄 Arquivo para admins: ai-friendly-admin.txt`)
+    console.log(`📄 Arquivo para usuários: ai-friendly-usuario.txt (${userCommandNames.length} comandos)`)
+    console.log(`📄 Arquivo para admins de grupo: ai-friendly-groupadmin.txt (usuário + comandos de grupo)`)
+    console.log(`📄 Arquivo para dono do bot: ai-friendly-owner.txt (tudo + administração do bot)`)
     console.log(`📁 Salvos em: ${docsDir}`)
 }
 

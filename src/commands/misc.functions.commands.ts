@@ -77,11 +77,12 @@ export async function askCommand(client: WASocket, botInfo: Bot, message: Messag
     )
     
     try {
-        // Verificar se usuário é admin (dono do bot ou admin do grupo)
-        const isAdmin = message.isBotOwner || (group !== undefined && message.isGroupAdmin)
+        // Determinar nível de permissão (3 níveis)
+        const isBotOwner = message.isBotOwner
+        const isGroupAdmin = group !== undefined && message.isGroupAdmin
         
-        // Consultar Gemini com RAG
-        const response = await askGemini(question, isAdmin || false)
+        // Consultar Gemini com RAG (passa os dois flags)
+        const response = await askGemini(question, isBotOwner, isGroupAdmin)
         
         console.log('🤖 [ASK] Resposta da IA:\n' + response + '\n')
         

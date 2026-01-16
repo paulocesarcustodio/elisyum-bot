@@ -7,39 +7,49 @@ import botTexts from '../helpers/bot.texts.helper.js'
 
 // Cache para os documentos (carregar apenas uma vez)
 let userDocsCache: string | null = null
-let adminDocsCache: string | null = null
+let groupAdminDocsCache: string | null = null
+let botOwnerDocsCache: string | null = null
 
-function loadDocs(isAdmin: boolean): string {
+function loadDocs(isBotOwner: boolean, isGroupAdmin: boolean): string {
     try {
-        if (isAdmin && adminDocsCache) {
-            console.log('📦 [ASK] Usando cache de admin')
-            return adminDocsCache
-        }
-        if (!isAdmin && userDocsCache) {
-            console.log('📦 [ASK] Usando cache de usuário')
-            return userDocsCache
-        }
-        
-        const filename = isAdmin ? 'ai-friendly-admin.txt' : 'ai-friendly-usuario.txt'
-        const filePath = join(process.cwd(), 'docs', 'commands', filename)
-        
-        console.log(`📁 [ASK] Carregando do disco: ${filePath}`)
-        
-        const content = readFileSync(filePath, 'utf-8')
-        
-        if (isAdmin) {
-            adminDocsCache = content
+        // Determinar qual cache e arquivo usar baseado nas permissões
+        if (isBotOwner) {
+            if (botOwnerDocsCache) {
+                console.log('📦 [ASK] Usando cache de dono do bot')
+                return botOwnerDocsCache
+            }
+            const filePath = join(process.cwd(), 'docs', 'commands', 'ai-friendly-owner.txt')
+            console.log(`📁 [ASK] Carregando do disco: ${filePath}`)
+            const content = readFileSync(filePath, 'utf-8')
+            botOwnerDocsCache = content
+            return content
+        } else if (isGroupAdmin) {
+            if (groupAdminDocsCache) {
+                console.log('📦 [ASK] Usando cache de admin de grupo')
+                return groupAdminDocsCache
+            }
+            const filePath = join(process.cwd(), 'docs', 'commands', 'ai-friendly-groupadmin.txt')
+            console.log(`📁 [ASK] Carregando do disco: ${filePath}`)
+            const content = readFileSync(filePath, 'utf-8')
+            groupAdminDocsCache = content
+            return content
         } else {
+            if (userDocsCache) {
+                console.log('📦 [ASK] Usando cache de usuário')
+                return userDocsCache
+            }
+            const filePath = join(process.cwd(), 'docs', 'commands', 'ai-friendly-usuario.txt')
+            console.log(`📁 [ASK] Carregando do disco: ${filePath}`)
+            const content = readFileSync(filePath, 'utf-8')
             userDocsCache = content
+            return content
         }
-        
-        return content
     } catch (error) {
-        throw new Error('Documentação de comandos não encontrada. Execute: bun run scripts/generate-commands-docs.ts')
+        throw new Error('Documentação de comandos não encontrada. Execute: bun run scripts/generate-ai-friendly-docs.ts')
     }
 }
 
-export async function askGemini(question: string, isAdmin: boolean): Promise<string> {
+export async function askGemini(question: string, isBotOwner: boolean, isGroupAdmin: boolean): Promise<string> {
     const apiKey = process.env.GOOGLE_AI_API_KEY
     
     if (!apiKey) {
@@ -54,14 +64,16 @@ export async function askGemini(question: string, isAdmin: boolean): Promise<str
             systemInstruction: aiConfig.systemInstruction
         })
         
-        // Carregar documentação apropriada
-        const docs = loadDocs(isAdmin)
+        // Carregar documentação apropriada baseada em permissões
+        const docs = loadDocs(isBotOwner, isGroupAdmin)
         
-        console.log(`📚 [ASK] Carregado ${docs.length} caracteres de documentação (admin: ${isAdmin})`)
+        const userType = isBotOwner ? 'dono do bot' : (isGroupAdmin ? 'admin de grupo' : 'usuário')
+        console.log(`📚 [ASK] Carregado ${docs.length} caracteres de documentação (tipo: ${userType})`)
         
         // Debug: mostrar trecho da documentação
-        const downloadSection = docs.substring(docs.indexOf('### DOWNLOAD'), docs.indexOf('### DOWNLOAD') + 500)
-        console.log('📄 [ASK] Trecho da seção DOWNLOAD:\n' + downloadSection)
+        const downloadSection = docs.substring(docs.indexOf('### DOWNLOAD') >= 0 ? docs.indexOf('### DOWNLOAD') : 0, 
+                                              docs.indexOf('### DOWNLOAD') >= 0 ? docs.indexOf('### DOWNLOAD') + 500 : 500)
+        console.log('📄 [ASK] Trecho da documentação:\n' + downloadSection)
         
         // Criar prompt com contexto
         const prompt = `${docs}
@@ -93,7 +105,8 @@ Ajude o usuário encontrando o comando certo para o que ele precisa.`
 // Limpar cache (útil para testes)
 export function clearDocsCache() {
     userDocsCache = null
-    adminDocsCache = null
+    groupAdminDocsCache = null
+    botOwnerDocsCache = null
 }
 
 // Funções antigas mantidas para compatibilidade
