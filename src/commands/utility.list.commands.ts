@@ -57,18 +57,6 @@ const utilityCommands = {
         },
         function: stickerFunctions.simgCommand
     },
-    ssf: {
-        guide: `Ex: Envie/responda uma *imagem* com *{$p}ssf* - Retira o fundo da imagem e transforma em sticker.\n\n`+
-        `*Obs*: Este comando funciona apenas com *IMAGENS*.\n`,
-        msgs: {
-            wait: `[AGUARDE] 📸 O fundo da imagem está sendo removido e o sticker será enviado em breve.`,
-            error_image: `Este comando é válido apenas para imagens.`,
-            error_message: "Houve um erro ao obter os dados da mensagem.",
-            author_text: 'Solicitado por: {$1}'
-        },
-        function: stickerFunctions.ssfCommand
-    },
-    
     // === FERRAMENTAS ===
     revelar: {
         guide: `Ex: Responda uma mensagem de *visualização única* com *{$p}revelar* - Revela a imagem/vídeo de visualização única.\n\n`+

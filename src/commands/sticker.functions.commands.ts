@@ -219,22 +219,4 @@ export async function simgCommand(client: WASocket, botInfo: Bot, message: Messa
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', imageBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'image/png'})
 }
 
-export async function ssfCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    let messageData = {
-        type : (message.isQuoted) ? message.quotedMessage?.type : message.type,
-        message: (message.isQuoted) ? message.quotedMessage?.wa_message : message.wa_message
-    }
 
-    if (!messageData.type || !messageData.message) {
-        throw new Error(stickerMsgs.ssf.error_message)
-    } else if (messageData.type != "imageMessage") {
-        throw new Error(stickerMsgs.ssf.error_image)
-    }
-
-    await waUtil.replyText(client, message.chat_id, stickerMsgs.ssf.wait, message.wa_message, {expiration: message.expiration})
-    const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
-    const imageBuffer = await imageUtil.removeBackground(mediaBuffer)
-    const authorText = buildText(stickerMsgs.ssf.author_text, message.pushname)
-    const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
-    await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
-}

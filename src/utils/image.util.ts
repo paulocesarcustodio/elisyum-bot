@@ -51,11 +51,6 @@ export async function emojiMix(emoji1: string, emoji2: string){
     }
 }
 
-export async function removeBackground(imageBuffer: Buffer): Promise<Buffer>{
-    // Comando !ssf temporariamente desabilitado até encontrar biblioteca compatível com Bun
-    throw new Error('❌ Comando temporariamente desabilitado. Aguarde próxima atualização.')
-}
-
 export async function animeRecognition(imageBuffer : Buffer){ 
     try {
         const URL_BASE = 'https://api.trace.moe/search?anilistInfo'

@@ -71,7 +71,7 @@ export const utilityMenuUnified = (botInfo : Bot)=>{
 *|*► *${prefix}s* 1 - Imagem para sticker (circular)
 *|*► *${prefix}s* 2 - Imagem para sticker (sem corte)
 *|*► *${prefix}simg* - Sticker para imagem
-*|*► *${prefix}ssf* - Imagem para sticker (sem fundo)
+
 *|*
 *|*━━ ✦ 🛠️ *FERRAMENTAS* ✦
 *|*► *${prefix}revelar* - Revelar mensagem visualizar única
