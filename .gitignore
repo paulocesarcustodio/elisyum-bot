@@ -22,3 +22,4 @@ session
 # Bun
 node_modules.bun
 bun.lockb
+bun.lock
