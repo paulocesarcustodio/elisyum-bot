@@ -56,11 +56,10 @@ export async function removeBackground(imageBuffer: Buffer){
     try {
         console.log('🔄 Iniciando remoção de fundo local...')
         
-        // Converter para PNG válido se necessário usando sharp
-        const sharp = (await import('sharp')).default
-        const processedBuffer = await sharp(imageBuffer)
-            .png()
-            .toBuffer()
+        // Converter para PNG válido se necessário usando @napi-rs/image
+        const { Transformer } = await import('@napi-rs/image')
+        const transformer = new Transformer(imageBuffer)
+        const processedBuffer = await transformer.png()
         
         // Usar biblioteca local @imgly/background-removal
         const blob = new Blob([new Uint8Array(processedBuffer)], { type: 'image/png' })

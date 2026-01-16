@@ -59,6 +59,7 @@
     "@imgly/background-removal": "^1.7.0",
     "@imgly/background-removal-node": "^1.4.5",
     "@mrnima/instagram-downloader": "^1.0.0",
+    "@napi-rs/image": "^1.12.0",
     "@seald-io/nedb": "^4.1.1",
     "@tobyg74/tiktok-api-dl": "^1.3.2",
     "@victorsouzaleal/brasileirao": "^1.1.2",
@@ -99,8 +100,7 @@
   "optionalDependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "audio-decode": "^2.1.3",
-    "link-preview-js": "^3.0.5",
-    "sharp": "^0.33.5"
+    "link-preview-js": "^3.0.5"
   },
   "resolutions": {
     "libsignal": "github:whiskeysockets/libsignal-node#e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
