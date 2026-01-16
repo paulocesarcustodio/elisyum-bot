@@ -73,6 +73,56 @@ try {
   console.log('[DB] ⚠️ Erro na migração:', err);
 }
 
+// MIGRAÇÃO: Garantir que audio_name tem constraint UNIQUE
+try {
+  // Verifica se a constraint UNIQUE existe
+  const indexes = db.prepare("PRAGMA index_list(saved_audios)").all() as Array<{ name: string; unique: number }>;
+  const hasUniqueConstraint = indexes.some(idx => idx.unique === 1 && idx.name.includes('audio_name'));
+  
+  if (!hasUniqueConstraint) {
+    console.log('[DB] 🔧 Migrando tabela saved_audios: adicionando constraint UNIQUE em audio_name...');
+    
+    // SQLite não permite adicionar constraints, então precisamos recriar a tabela
+    db.run('BEGIN TRANSACTION');
+    
+    // Criar tabela temporária com a estrutura correta
+    db.run(`
+      CREATE TABLE saved_audios_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_jid TEXT NOT NULL,
+        audio_name TEXT NOT NULL UNIQUE,
+        file_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        seconds INTEGER,
+        ptt BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Copiar dados da tabela antiga (removendo duplicatas, mantendo o mais recente)
+    db.run(`
+      INSERT INTO saved_audios_new 
+      SELECT id, owner_jid, audio_name, file_path, mime_type, seconds, ptt, created_at
+      FROM saved_audios
+      WHERE id IN (
+        SELECT MAX(id) 
+        FROM saved_audios 
+        GROUP BY audio_name
+      )
+    `);
+    
+    // Remover tabela antiga e renomear a nova
+    db.run('DROP TABLE saved_audios');
+    db.run('ALTER TABLE saved_audios_new RENAME TO saved_audios');
+    
+    db.run('COMMIT');
+    console.log('[DB] ✅ Migração da constraint UNIQUE concluída');
+  }
+} catch (err) {
+  db.run('ROLLBACK');
+  console.log('[DB] ⚠️ Erro na migração da constraint UNIQUE:', err);
+}
+
 // Índices para performance
 db.run('CREATE INDEX IF NOT EXISTS idx_contacts_updated ON contacts(updated_at)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON command_logs(timestamp)');
@@ -269,29 +319,37 @@ export const audiosDb = {
     seconds?: number;
     ptt?: boolean;
   }) => {
-    const stmt = db.prepare(`
-      INSERT INTO saved_audios 
-      (owner_jid, audio_name, file_path, mime_type, seconds, ptt)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(audio_name) DO UPDATE SET 
-        file_path = excluded.file_path,
-        mime_type = excluded.mime_type,
-        seconds = excluded.seconds,
-        ptt = excluded.ptt,
-        owner_jid = excluded.owner_jid,
-        created_at = CURRENT_TIMESTAMP
-    `);
-    
-    stmt.run(
-      data.ownerJid,
-      data.audioName.toLowerCase(),
-      data.filePath,
-      data.mimeType,
-      data.seconds || null,
-      data.ptt ? 1 : 0
-    );
-    
-    console.log(`[DB] Áudio salvo globalmente: "${data.audioName}" por ${data.ownerJid}`);
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO saved_audios 
+        (owner_jid, audio_name, file_path, mime_type, seconds, ptt)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(audio_name) DO UPDATE SET 
+          file_path = excluded.file_path,
+          mime_type = excluded.mime_type,
+          seconds = excluded.seconds,
+          ptt = excluded.ptt,
+          owner_jid = excluded.owner_jid,
+          created_at = CURRENT_TIMESTAMP
+      `);
+      
+      stmt.run(
+        data.ownerJid,
+        data.audioName.toLowerCase(),
+        data.filePath,
+        data.mimeType,
+        data.seconds || null,
+        data.ptt ? 1 : 0
+      );
+      
+      console.log(`[DB] Áudio salvo globalmente: "${data.audioName}" por ${data.ownerJid}`);
+    } catch (error: any) {
+      console.error('[DB] Erro ao salvar áudio:', error);
+      if (error.message?.includes('ON CONFLICT') || error.message?.includes('UNIQUE constraint')) {
+        throw new Error('Erro no banco de dados: constraint UNIQUE ausente. Execute a migração do banco.');
+      }
+      throw error;
+    }
   },
 
   // Buscar áudio por nome (global)
