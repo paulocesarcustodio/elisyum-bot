@@ -13,6 +13,9 @@ import adminCommands from "../commands/admin.list.commands.js";
 import { getCommandCategory, getCommandGuide } from "../utils/commands.util.js";
 import { logsDb } from "../database/db.js";
 import { PermissionService } from "../services/permission.service.js";
+import { findSimilarCommand } from "./command.fuzzy.helper.js";
+import { askGemini } from "../utils/ai.util.js";
+import { UserController } from "../controllers/user.controller.js";
 
 // Mapa de aliases de comandos (sincronizado com commands.util.ts)
 const COMMAND_ALIASES: Record<string, string> = {
@@ -24,11 +27,25 @@ const COMMAND_ALIASES: Record<string, string> = {
 
 export async function commandInvoker(client: WASocket, botInfo: Bot, message: Message, group: Group|null){
     const isGuide = (!message.args.length) ? false : message.args[0] === 'guia'
-    const categoryCommand = getCommandCategory(botInfo.prefix, message.command)
+    let categoryCommand = getCommandCategory(botInfo.prefix, message.command)
     let commandName = waUtil.removePrefix(botInfo.prefix, message.command)
     
     // Resolve alias
     commandName = COMMAND_ALIASES[commandName] || commandName
+    
+    // Se comando não existe, tentar correção fuzzy
+    if (categoryCommand === null) {
+        const similarCommand = findSimilarCommand(commandName)
+        
+        if (similarCommand) {
+            // Silent fix - corrige automaticamente
+            console.log(`[FUZZY] 🔧 Auto-corrigindo: "${commandName}" → "${similarCommand.name}"`)
+            commandName = similarCommand.name
+            categoryCommand = similarCommand.category
+            // Atualiza o comando na mensagem para refletir a correção
+            message.command = botInfo.prefix + commandName
+        }
+    }
 
     try{
         if (isGuide) {
@@ -117,7 +134,52 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
             success: false, 
             error: err.message 
         })
-        await waUtil.replyText(client, message.chat_id, messageErrorCommand(message.command, err.message), message.wa_message, {expiration: message.expiration})
+        
+        let errorMessage = messageErrorCommand(message.command, err.message)
+        
+        // Obter nível de ajuda do usuário
+        const userController = new UserController()
+        const helpLevel = await userController.getHelpLevel(message.sender)
+        
+        // Verificar se usuário errou o mesmo comando 2+ vezes nos últimos 10 minutos
+        try {
+            const recentLogs = logsDb.getUserLogs(message.sender, 50)
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+            
+            const recentErrors = recentLogs.filter((log: any) => 
+                log.command === commandName &&
+                log.success === 0 &&
+                new Date(log.timestamp) > tenMinutesAgo
+            )
+            
+            // Se usuário configurou 'with-ai' OU errou 2+ vezes, invocar assistente
+            if (helpLevel === 'with-ai' || recentErrors.length >= 2) {
+                if (recentErrors.length >= 2) {
+                    console.log(`[ADAPTIVE] 🤖 Usuário ${message.pushname} errou ${commandName} ${recentErrors.length}x. Invocando assistente...`)
+                } else {
+                    console.log(`[HELP-LEVEL] 🤖 Usuário configurou 'with-ai'. Invocando assistente...`)
+                }
+                
+                // Invocar assistente automaticamente
+                try {
+                    const aiHelp = await askGemini(
+                        `Como usar o comando ${commandName}? O usuário está com dificuldades.`,
+                        message.isBotOwner,
+                        message.isGroupAdmin || false
+                    )
+                    
+                    errorMessage += `\n\n🤖 *Assistente AI*\n\n${aiHelp}`
+                } catch (aiError) {
+                    console.error('[ADAPTIVE] Erro ao consultar assistente:', aiError)
+                    // Continua sem a ajuda da IA
+                }
+            }
+        } catch (adaptiveError) {
+            console.error('[ADAPTIVE] Erro ao verificar histórico:', adaptiveError)
+            // Continua com mensagem de erro padrão
+        }
+        
+        await waUtil.replyText(client, message.chat_id, errorMessage, message.wa_message, {expiration: message.expiration})
     }
 
 }

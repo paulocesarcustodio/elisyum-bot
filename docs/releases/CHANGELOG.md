@@ -1,6 +1,24 @@
 # Notas de atualização
 Colocarei neste arquivos as mudanças significativas em cada versão começando na versão 3.0.0
 
+## 3.5.0 - 18/01/2026
+
+### ✨ NOVIDADES
+- 🔧 **Correção automática de comandos**: O bot agora detecta e corrige erros de digitação automaticamente (ex: !plai → !play)
+- 🤖 **Assistente AI melhorado**: Respostas mais rápidas com sistema de cache inteligente
+- ⚙️ **Comando !config ajuda**: Configure o nível de ajuda que você recebe ao errar comandos
+  - `simple` - Apenas mensagem de erro
+  - `detailed` - Erro + guia do comando (padrão)
+  - `with-ai` - Erro + guia + assistente AI
+- 🎵 **Download de músicas mais rápido**: Conversão para MP3 até 50% mais rápida
+
+### 🎯 MELHORIAS
+- Prefixo fixado permanentemente como `!`
+- Respostas da IA mais precisas e diretas
+- !ask agora edita a mensagem ao invés de enviar múltiplas
+- Sistema de cache para perguntas frequentes da IA
+- Ajuda adaptativa: após 2 erros no mesmo comando, o assistente é ativado automaticamente
+
 ## Unreleased
 
 ### 🎨 MUDANÇAS - Consolidação de Menus v3.1

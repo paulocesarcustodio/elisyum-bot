@@ -4,7 +4,8 @@ export interface User {
     commands: number,
     receivedWelcome: boolean,
     owner : boolean,
-    command_rate: UserCommandRate
+    command_rate: UserCommandRate,
+    helpLevel?: 'simple' | 'detailed' | 'with-ai'
 }
 
 export interface UserCommandRate {

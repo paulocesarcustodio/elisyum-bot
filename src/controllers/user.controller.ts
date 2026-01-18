@@ -57,4 +57,12 @@ export class UserController{
         return this.userService.setLimitedUser(userId, isLimited, botInfo, currentTimestamp, ...alternateIds)
     }
 
+    public setHelpLevel(userId: string, level: 'simple' | 'detailed' | 'with-ai', ...alternateIds: (string | null | undefined)[]){
+        return this.userService.setHelpLevel(userId, level, ...alternateIds)
+    }
+
+    public getHelpLevel(userId: string, ...alternateIds: (string | null | undefined)[]){
+        return this.userService.getHelpLevel(userId, ...alternateIds)
+    }
+
 }

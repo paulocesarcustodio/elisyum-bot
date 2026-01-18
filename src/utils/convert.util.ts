@@ -39,7 +39,22 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
         
         await new Promise <void> ((resolve, reject)=>{
             const command = ffmpeg(inputVideoPath)
-            .outputOptions(['-vn', '-codec:a libmp3lame', '-q:a 3'])
+            // Otimizações de performance:
+            // -threads 0: usa todos os cores disponíveis
+            // -preset ultrafast: prioriza velocidade sobre tamanho
+            // -b:a 128k: bitrate fixo de 128kbps (boa qualidade, conversão rápida)
+            // -map_metadata -1: remove metadata desnecessária
+            // -ac 2: força stereo (evita processamento extra)
+            .outputOptions([
+                '-vn',                    // Remove vídeo
+                '-codec:a libmp3lame',   // Codec MP3
+                '-b:a 128k',             // Bitrate fixo 128kbps (mais rápido que -q:a)
+                '-ac 2',                 // Força stereo
+                '-ar 44100',             // Sample rate 44.1kHz
+                '-threads 0',            // Usa todos os cores disponíveis
+                '-map_metadata -1',      // Remove metadata
+                '-movflags +faststart'   // Otimiza para streaming
+            ])
             
             // Monitora progresso se callback foi fornecido
             if (onProgress && duration > 0) {

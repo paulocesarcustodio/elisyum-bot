@@ -5,6 +5,7 @@ import { Message, MimeTypes } from "../interfaces/message.interface.js"
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import * as waUtil from '../utils/whatsapp.util.js'
 import utilityCommands from "./utility.list.commands.js"
+import { UserController } from "../controllers/user.controller.js"
 
 export async function revelarCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     // Restrição silenciosa: apenas o dono pode usar
@@ -391,4 +392,57 @@ export async function renameAudioCommand(client: WASocket, botInfo: Bot, message
 
     const replyText = buildText(utilityCommands.rename.msgs.reply, oldName, newName)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
+}
+
+export async function configCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const userController = new UserController()
+    
+    if (!message.args.length) {
+        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+    }
+    
+    const subCommand = message.args[0].toLowerCase()
+    
+    if (subCommand === 'ajuda') {
+        // !config ajuda [simple|detailed|with-ai]
+        if (message.args.length < 2) {
+            // Mostra nível atual
+            const currentLevel = await userController.getHelpLevel(message.sender)
+            const levelText = currentLevel === 'simple' ? 'Simples' : 
+                            currentLevel === 'detailed' ? 'Detalhado' : 
+                            'Com Assistente IA'
+            
+            const helpText = `⚙️ *Configuração de Ajuda*\n\n` +
+                           `*Nível atual*: ${levelText}\n\n` +
+                           `*Opções disponíveis:*\n` +
+                           `• *simple* - Apenas mensagem de erro\n` +
+                           `• *detailed* - Erro + guia do comando (padrão)\n` +
+                           `• *with-ai* - Erro + guia + assistente IA\n\n` +
+                           `*Uso:* ${botInfo.prefix}config ajuda [opção]`
+            
+            await waUtil.replyText(client, message.chat_id, helpText, message.wa_message, {expiration: message.expiration})
+            return
+        }
+        
+        const level = message.args[1].toLowerCase()
+        
+        if (level !== 'simple' && level !== 'detailed' && level !== 'with-ai') {
+            throw new Error(`❌ Opção inválida!\n\nUse:\n• simple\n• detailed\n• with-ai`)
+        }
+        
+        await userController.setHelpLevel(message.sender, level)
+        
+        const levelNames = {
+            'simple': 'Simples',
+            'detailed': 'Detalhado',
+            'with-ai': 'Com Assistente IA'
+        }
+        
+        const confirmText = `✅ *Nível de ajuda atualizado!*\n\n` +
+                          `Agora você receberá ajuda no modo: *${levelNames[level]}*`
+        
+        await waUtil.replyText(client, message.chat_id, confirmText, message.wa_message, {expiration: message.expiration})
+    } else {
+        throw new Error(`❌ Sub-comando desconhecido: ${subCommand}\n\nUse: ${botInfo.prefix}config ajuda`)
+    }
 }

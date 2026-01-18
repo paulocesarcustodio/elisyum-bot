@@ -3,7 +3,7 @@ import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
 import * as waUtil from '../utils/whatsapp.util.js'
-import { contactsDb, logsDb } from "../database/db.js"
+import { contactsDb, logsDb, askCacheDb } from "../database/db.js"
 
 export async function dbStatsCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group) {
     try {
@@ -86,6 +86,53 @@ export async function contactsListCommand(client: WASocket, botInfo: Bot, messag
 
         if (contactsDb.count() > 20) {
             text += `_... e mais ${contactsDb.count() - 20} contatos_`
+        }
+
+        await waUtil.replyText(client, message.chat_id, text, message.wa_message, { expiration: message.expiration })
+    } catch (err: any) {
+        await waUtil.replyText(client, message.chat_id, `❌ Erro: ${err.message}`, message.wa_message, { expiration: message.expiration })
+    }
+}
+
+export async function errosCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group) {
+    try {
+        const topCommands = logsDb.getTopCommands(20)
+        
+        // Filtrar apenas comandos com erros e ordenar por taxa de erro
+        const commandsWithErrors = topCommands
+            .filter((cmd: any) => cmd.error_count > 0)
+            .map((cmd: any) => ({
+                ...cmd,
+                errorRate: (cmd.error_count / cmd.count) * 100
+            }))
+            .sort((a, b) => b.errorRate - a.errorRate)
+            .slice(0, 10)
+
+        if (commandsWithErrors.length === 0) {
+            await waUtil.replyText(client, message.chat_id, '✅ Nenhum erro registrado!', message.wa_message, { expiration: message.expiration })
+            return
+        }
+
+        let text = `⚠️ *Top 10 Comandos com Erros*\n\n`
+        
+        commandsWithErrors.forEach((cmd: any, i: number) => {
+            const errorRateStr = cmd.errorRate.toFixed(1)
+            text += `${i + 1}. \`${cmd.command}\`\n`
+            text += `   📊 Total: ${cmd.count} | ❌ Erros: ${cmd.error_count} (${errorRateStr}%)\n\n`
+        })
+
+        // Estatísticas do cache ASK
+        const cacheStats = askCacheDb.stats()
+        text += `\n🤖 *Cache do Assistente AI*\n`
+        text += `📦 Total de perguntas: ${cacheStats.total}\n\n`
+        
+        if (cacheStats.topQuestions.length > 0) {
+            text += `🔥 *Top 5 Perguntas*\n`
+            cacheStats.topQuestions.slice(0, 5).forEach((q: any, i: number) => {
+                const questionPreview = q.question.substring(0, 40)
+                text += `${i + 1}. "${questionPreview}..." (${q.hit_count}x)\n`
+                text += `   👤 Tipo: ${q.user_type}\n\n`
+            })
         }
 
         await waUtil.replyText(client, message.chat_id, text, message.wa_message, { expiration: message.expiration })

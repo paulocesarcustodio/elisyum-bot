@@ -3,6 +3,7 @@ import cron from 'node-cron'
 import * as downloadUtil from '../utils/download.util.js'
 import * as convertUtil from '../utils/convert.util.js'
 import { GroupController } from "../controllers/group.controller.js"
+import { performCacheMaintenance } from '../helpers/ask.cache.helper.js'
 
 export class SchedulerService {
     private client: WASocket
@@ -26,7 +27,15 @@ export class SchedulerService {
             timezone: 'America/Sao_Paulo'
         })
 
+        // Limpeza diária do cache de perguntas às 3:00 da manhã
+        cron.schedule('0 3 * * *', async () => {
+            performCacheMaintenance()
+        }, {
+            timezone: 'America/Sao_Paulo'
+        })
+
         console.log('[Scheduler] ✅ Agendamento do vídeo Kasino configurado para sábados às 12:00')
+        console.log('[Scheduler] ✅ Agendamento de limpeza do cache ASK configurado para diariamente às 03:00')
     }
 
     /**

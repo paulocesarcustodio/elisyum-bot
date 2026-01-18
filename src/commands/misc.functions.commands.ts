@@ -67,14 +67,19 @@ export async function askCommand(client: WASocket, botInfo: Bot, message: Messag
     
     console.log('\n📝 [ASK] Pergunta do usuário:', question)
     
-    // Enviar mensagem de espera
-    await waUtil.replyText(
+    // Enviar mensagem de espera que será editada depois
+    const waitMsg = await waUtil.replyText(
         client,
         message.chat_id,
-        askMsgs.wait,
+        '⏳ Consultando assistente...',
         message.wa_message,
         { expiration: message.expiration }
     )
+    
+    // Garantir que temos a mensagem antes de continuar
+    if (!waitMsg || !waitMsg.key) {
+        throw new Error('Erro ao enviar mensagem de espera')
+    }
     
     try {
         // Determinar nível de permissão (3 níveis)
@@ -86,16 +91,17 @@ export async function askCommand(client: WASocket, botInfo: Bot, message: Messag
         
         console.log('🤖 [ASK] Resposta da IA:\n' + response + '\n')
         
-        // Enviar resposta
-        await waUtil.replyText(
-            client,
-            message.chat_id,
-            response,
-            message.wa_message,
-            { expiration: message.expiration }
-        )
+        // Editar a mensagem de espera com a resposta final
+        await waUtil.editText(client, message.chat_id, waitMsg.key, response)
     } catch (error: any) {
+        // Em caso de erro, editar a mensagem com o erro
         const errorMsg = error.message || askMsgs.error_api
+        try {
+            await waUtil.editText(client, message.chat_id, waitMsg.key, '❌ ' + errorMsg)
+        } catch (editError) {
+            // Se não conseguir editar, lançar erro original
+            throw new Error(errorMsg)
+        }
         throw new Error(errorMsg)
     }
 }

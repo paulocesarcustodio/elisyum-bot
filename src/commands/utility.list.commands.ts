@@ -155,6 +155,16 @@ const utilityCommands = {
             wait: "🤖 Consultando assistente..."
         },
         function: miscFunctions.askCommand
+    },
+    config: {
+        guide: `Ex: *{$p}config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.\n\n`+
+        `*Opções de ajuda:*\n`+
+        `• *simple* - Apenas mensagem de erro\n`+
+        `• *detailed* - Erro + guia do comando (padrão)\n`+
+        `• *with-ai* - Erro + guia + assistente IA\n\n`+
+        `Ex: *{$p}config ajuda* - Ver configuração atual`,
+        msgs: {},
+        function: utilityFunctions.configCommand
     }
 }
 

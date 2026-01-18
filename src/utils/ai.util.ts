@@ -4,6 +4,7 @@ import { join } from 'path'
 import { aiConfig } from '../config/ai.config.js'
 import { showConsoleLibraryError } from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
+import { getCachedAnswer, setCachedAnswer } from '../helpers/ask.cache.helper.js'
 
 // Cache para os documentos (carregar apenas uma vez)
 let userDocsCache: string | null = null
@@ -50,10 +51,23 @@ function loadDocs(isBotOwner: boolean, isGroupAdmin: boolean): string {
 }
 
 export async function askGemini(question: string, isBotOwner: boolean, isGroupAdmin: boolean): Promise<string> {
+    // Verificar cache primeiro
+    try {
+        const cachedAnswer = await getCachedAnswer(question, isBotOwner, isGroupAdmin)
+        if (cachedAnswer) {
+            return cachedAnswer
+        }
+    } catch (error) {
+        console.error('[ASK-CACHE] Erro ao buscar cache:', error)
+        // Continua para tentar com Gemini API
+    }
+    
     const apiKey = process.env.GOOGLE_AI_API_KEY
     
     if (!apiKey) {
-        throw new Error('GOOGLE_AI_API_KEY não configurada. Configure no arquivo .env')
+        // Fallback quando não há API key
+        console.warn('[ASK] ⚠️ GOOGLE_AI_API_KEY não configurada. Usando fallback.')
+        return getFallbackMessage()
     }
     
     try {
@@ -90,16 +104,53 @@ Ajude o usuário encontrando o comando certo para o que ele precisa.`
         const response = result.response
         const text = response.text()
         
-        return text.trim()
-    } catch (error: any) {
-        console.error('Erro ao consultar Gemini:', error)
+        const answer = text.trim()
         
-        if (error?.message?.includes('API_KEY')) {
-            throw new Error('Erro na API Key do Google AI. Verifique sua configuração.')
+        // Salvar no cache
+        try {
+            setCachedAnswer(question, answer, isBotOwner, isGroupAdmin)
+        } catch (error) {
+            console.error('[ASK-CACHE] Erro ao salvar cache:', error)
+            // Não falha se erro no cache
         }
         
-        throw new Error('Erro ao consultar o assistente. Tente novamente em alguns instantes.')
+        return answer
+    } catch (error: any) {
+        console.error('❌ [ASK] Erro ao consultar Gemini:', error)
+        
+        if (error?.message?.includes('API_KEY') || error?.message?.includes('API key')) {
+            console.warn('[ASK] ⚠️ Erro na API Key. Usando fallback.')
+            return getFallbackMessage()
+        }
+        
+        if (error?.message?.includes('quota') || error?.message?.includes('limit')) {
+            console.warn('[ASK] ⚠️ Quota/limite da API excedido. Usando fallback.')
+            return getFallbackMessage()
+        }
+        
+        if (error?.message?.includes('network') || error?.message?.includes('timeout')) {
+            console.warn('[ASK] ⚠️ Erro de rede/timeout. Usando fallback.')
+            return getFallbackMessage()
+        }
+        
+        // Fallback genérico para outros erros
+        console.warn('[ASK] ⚠️ Erro desconhecido na API. Usando fallback.')
+        return getFallbackMessage()
     }
+}
+
+/**
+ * Mensagem de fallback quando Gemini API não está disponível
+ */
+function getFallbackMessage(): string {
+    return `🤖 *Assistente temporariamente indisponível*
+
+No momento não consigo processar sua pergunta, mas você pode:
+
+📋 *!menu* - Ver lista completa de comandos
+❔ *!comando guia* - Ver como usar um comando específico
+
+Por exemplo: *!play guia* mostra como usar o comando de música.`
 }
 
 // Limpar cache (útil para testes)

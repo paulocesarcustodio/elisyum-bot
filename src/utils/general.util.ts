@@ -33,7 +33,15 @@ export async function askQuestion(question: string) {
     return answer
 }
 
-export function messageErrorCommandUsage(prefix: string, message: Message){
+export function messageErrorCommandUsage(prefix: string, message: Message, helpLevel?: 'simple' | 'detailed' | 'with-ai'){
+  const level = helpLevel || 'detailed'
+  
+  if (level === 'simple') {
+    // Apenas mensagem de erro simples
+    return `Parece que você usou o comando *${message.command}* incorretamente.`
+  }
+  
+  // 'detailed' e 'with-ai' mostram o guia (a IA será adicionada dinamicamente no catch)
   return buildText(botTexts.error_command_usage, message.command, getCommandGuide(prefix, message.command))
 }
 

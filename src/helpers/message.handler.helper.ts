@@ -7,6 +7,8 @@ import * as waUtil from "../utils/whatsapp.util.js";
 import { buildText } from "../utils/general.util.js";
 import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
+import { findSimilarCommand } from "./command.fuzzy.helper.js";
+import { askGemini } from "../utils/ai.util.js";
 
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
     const isCommand = commandExist(botInfo.prefix, message.command)
@@ -60,8 +62,38 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         callCommand = false
         // Aviso documentado: informa ao usuário quando um comando com prefixo não foi encontrado no privado.
         if (hasUnknownPrefixedCommand) {
-            const unknownCommandText = buildText(botTexts.unknown_command, message.command)
-            await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+            console.log(`[UNKNOWN-PV] ⚠️ Comando não encontrado: "${message.command}"`)
+            
+            // Tentar fuzzy match
+            const commandName = waUtil.removePrefix(botInfo.prefix, message.command)
+            const similarCommand = findSimilarCommand(commandName)
+            
+            // Se encontrou comando similar, executar silenciosamente
+            if (similarCommand) {
+                console.log(`[FUZZY-PV] 🔧 Auto-corrigindo "${message.command}" → "${botInfo.prefix}${similarCommand.name}"`)
+                message.command = botInfo.prefix + similarCommand.name
+                callCommand = true
+            } else {
+                // Não encontrou similar, invocar assistente
+                console.log(`[UNKNOWN-PV] 🤖 Nenhum comando similar encontrado. Consultando assistente...`)
+                let unknownCommandText = buildText(botTexts.unknown_command, message.command)
+                
+                try {
+                    const aiHelp = await askGemini(
+                        `O usuário digitou "${message.command}". Existe comando similar? Se sim, sugira usando !comando. Se não, oriente o usuário a usar !menu para ver comandos disponíveis.`,
+                        message.isBotOwner,
+                        false // Em PV não há group admin
+                    )
+                    unknownCommandText += `\n\n${aiHelp}\n\n💡 _Use !menu para ver todos os comandos ou !ask [pergunta] para fazer uma pergunta._`
+                    console.log(`[UNKNOWN-PV] ✅ Resposta do assistente obtida`)
+                } catch (error: any) {
+                    console.error('[UNKNOWN-PV] ❌ Erro ao consultar assistente:', error.message)
+                    unknownCommandText += `\n\n💡 _Use !menu para ver todos os comandos disponíveis ou !ask [pergunta] para tirar dúvidas._`
+                }
+                
+                await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+                console.log(`[UNKNOWN-PV] 📤 Mensagem de comando desconhecido enviada`)
+            }
         }
     }
 
@@ -151,13 +183,55 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     } else {
         const autoReplied = await procs.autoReply(client, botInfo, group, message)
 
-        callCommand = false
-        const shouldSkipUnknownFeedback = message.isGroupAdmin || message.isBotMessage
+        // Tentar fuzzy match antes de marcar como callCommand = false
+        if (hasUnknownPrefixedCommand) {
+            console.log(`[UNKNOWN-GROUP] ⚠️ Comando não encontrado: "${message.command}"`)
+            
+            const commandName = waUtil.removePrefix(botInfo.prefix, message.command)
+            const similarCommand = findSimilarCommand(commandName)
+            
+            if (similarCommand) {
+                // Encontrou comando similar, executar silenciosamente
+                console.log(`[FUZZY-GROUP] 🔧 Auto-corrigindo "${message.command}" → "${botInfo.prefix}${similarCommand.name}"`)
+                message.command = botInfo.prefix + similarCommand.name
+                callCommand = true
+                
+                // Incrementa contadores já que vamos executar o comando
+                await procs.incrementUserCommandsCount(message)
+                procs.incrementBotCommandsCount()
+                await procs.incrementGroupCommandsCount(group)
+            } else {
+                // Não encontrou similar
+                console.log(`[UNKNOWN-GROUP] 🤖 Nenhum comando similar encontrado`)
+                callCommand = false
 
-        // Aviso documentado: orienta comandos desconhecidos em grupos sem conflitar com autoReply.
-        if (hasUnknownPrefixedCommand && !shouldSkipUnknownFeedback && !autoReplied) {
-            const unknownCommandText = buildText(botTexts.unknown_command, message.command)
-            await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+                // Sempre informar sobre comandos desconhecidos (removido bloqueio para admins)
+                // Apenas ignora mensagens do próprio bot e quando já teve autoReply
+                if (!message.isBotMessage && !autoReplied) {
+                    console.log(`[UNKNOWN-GROUP] 📝 Enviando sugestão do assistente...`)
+                    let unknownCommandText = buildText(botTexts.unknown_command, message.command)
+                    
+                    try {
+                        const aiHelp = await askGemini(
+                            `O usuário digitou "${message.command}" em um grupo. Existe comando similar? Se sim, sugira usando !comando. Se não, oriente brevemente a usar !menu.`,
+                            message.isBotOwner,
+                            message.isGroupAdmin || false
+                        )
+                        unknownCommandText += `\n\n${aiHelp}\n\n💡 _Use !menu ou !ask [pergunta]_`
+                        console.log(`[UNKNOWN-GROUP] ✅ Resposta do assistente obtida`)
+                    } catch (error: any) {
+                        console.error('[UNKNOWN-GROUP] ❌ Erro ao consultar assistente:', error.message)
+                        unknownCommandText += `\n\n💡 _Use !menu para ver comandos ou !ask [pergunta] para tirar dúvidas._`
+                    }
+                    
+                    await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
+                    console.log(`[UNKNOWN-GROUP] 📤 Mensagem enviada`)
+                } else {
+                    console.log(`[UNKNOWN-GROUP] 🚫 Feedback bloqueado (isBotMessage: ${message.isBotMessage}, autoReplied: ${autoReplied})`)
+                }
+            }
+        } else {
+            callCommand = false
         }
     }
 

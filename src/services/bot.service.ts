@@ -4,6 +4,7 @@ import fs from 'fs-extra'
 import moment from "moment-timezone"
 import { removePrefix, normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { deepMerge } from "../utils/general.util.js"
+import { BOT_PREFIX } from "../constants.js"
 
 const CURRENT_DB_MIGRATION_VERSION = 3
 
@@ -14,7 +15,7 @@ export class BotService {
         started : 0,
         host_number: '',
         name: "Ξ ʟ ʏ s ɪ ᴜ ᴍ  ɮ ᴏ ᴛ™",
-        prefix: "!",
+        prefix: BOT_PREFIX,
         executed_cmds: 0,
         db_migrated: true,
         db_migration_version: CURRENT_DB_MIGRATION_VERSION,
@@ -68,6 +69,9 @@ export class BotService {
         const currentMigrationVersion = bot.db_migration_version ?? 0
         const requiresMigration = currentMigrationVersion < CURRENT_DB_MIGRATION_VERSION
 
+        // Forçar prefixo hardcoded
+        bot.prefix = BOT_PREFIX
+
         if (bot.host_number !== normalizedHostNumber) {
             bot.host_number = normalizedHostNumber
         }
@@ -97,10 +101,10 @@ export class BotService {
         this.updateBot(bot)
     }
     
+    // Prefixo é hardcoded, não pode ser alterado
     public setPrefix(prefix: string){
-        let bot = this.getBot()
-        bot.prefix = prefix
-        this.updateBot(bot)
+        console.warn('[BOT] ⚠️ Tentativa de alterar prefixo ignorada. Prefixo é hardcoded como "!"')
+        // Não faz nada - prefixo é hardcoded
     }
 
     public incrementExecutedCommands(){

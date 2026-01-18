@@ -12,6 +12,12 @@ const infoCommands = {
         msgs: {},
         function: infoAdminFunctions.logsCommand
     },
+    erros: {
+        guide: `Ex: *{$p}erros* - Exibe estatísticas de erros e top comandos com maior taxa de falha.\n`,
+        msgs: {},
+        permissions: { roles: ['owner'] },
+        function: infoAdminFunctions.errosCommand
+    },
     contatos: {
         guide: `Ex: *{$p}contatos* - Lista os contatos salvos no cache do banco de dados.\n`,
         msgs: {},

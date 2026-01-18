@@ -123,6 +123,22 @@ try {
   console.log('[DB] ⚠️ Erro na migração da constraint UNIQUE:', err);
 }
 
+// ============================================
+// TABELA DE CACHE DE PERGUNTAS (ASK)
+// ============================================
+db.run(`
+  CREATE TABLE IF NOT EXISTS ask_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_hash TEXT NOT NULL UNIQUE,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    user_type TEXT NOT NULL,
+    hit_count INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // Índices para performance
 db.run('CREATE INDEX IF NOT EXISTS idx_contacts_updated ON contacts(updated_at)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON command_logs(timestamp)');
@@ -130,6 +146,10 @@ db.run('CREATE INDEX IF NOT EXISTS idx_logs_user ON command_logs(user_jid)');
 db.run('CREATE INDEX IF NOT EXISTS idx_logs_command ON command_logs(command)');
 db.run('CREATE INDEX IF NOT EXISTS idx_audios_owner ON saved_audios(owner_jid)');
 db.run('CREATE INDEX IF NOT EXISTS idx_audios_name ON saved_audios(audio_name)');
+db.run('CREATE INDEX IF NOT EXISTS idx_ask_hash ON ask_cache(question_hash)');
+db.run('CREATE INDEX IF NOT EXISTS idx_ask_last_used ON ask_cache(last_used_at)');
+db.run('CREATE INDEX IF NOT EXISTS idx_ask_user_type ON ask_cache(user_type)');
+db.run('CREATE INDEX IF NOT EXISTS idx_ask_hit_count ON ask_cache(hit_count)');
 
 // ============================================
 // FUNÇÕES PARA CONTATOS
@@ -432,6 +452,126 @@ export const audiosDb = {
     `);
     stmt.run(newName.toLowerCase(), oldName.toLowerCase());
     console.log(`[DB] Áudio renomeado globalmente: "${oldName}" -> "${newName}"`);
+  }
+};
+
+// ============================================
+// FUNÇÕES PARA CACHE DE ASK
+// ============================================
+export const askCacheDb = {
+  // Buscar resposta em cache
+  get: (questionHash: string, userType: string) => {
+    const stmt = db.prepare(`
+      SELECT * FROM ask_cache 
+      WHERE question_hash = ? AND user_type = ?
+    `);
+    const result = stmt.get(questionHash, userType) as {
+      id: number;
+      question_hash: string;
+      question: string;
+      answer: string;
+      user_type: string;
+      hit_count: number;
+      created_at: string;
+      last_used_at: string;
+    } | undefined;
+    
+    // Se encontrou, incrementa hit_count e atualiza last_used_at
+    if (result) {
+      const updateStmt = db.prepare(`
+        UPDATE ask_cache 
+        SET hit_count = hit_count + 1, 
+            last_used_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+      `);
+      updateStmt.run(result.id);
+      result.hit_count += 1; // Atualiza objeto retornado
+    }
+    
+    return result;
+  },
+
+  // Salvar resposta no cache
+  set: (questionHash: string, question: string, answer: string, userType: string) => {
+    const stmt = db.prepare(`
+      INSERT INTO ask_cache 
+      (question_hash, question, answer, user_type, hit_count, created_at, last_used_at)
+      VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(question_hash) DO UPDATE SET 
+        answer = excluded.answer,
+        hit_count = hit_count + 1,
+        last_used_at = CURRENT_TIMESTAMP
+    `);
+    stmt.run(questionHash, question, answer, userType);
+  },
+
+  // Limpar cache antigo (mais de 30 dias sem uso)
+  cleanOld: () => {
+    const countBefore = db.prepare('SELECT COUNT(*) as count FROM ask_cache').get() as { count: number };
+    const stmt = db.prepare(`
+      DELETE FROM ask_cache 
+      WHERE last_used_at < datetime('now', '-30 days')
+    `);
+    stmt.run();
+    const countAfter = db.prepare('SELECT COUNT(*) as count FROM ask_cache').get() as { count: number };
+    const changes = countBefore.count - countAfter.count;
+    if (changes > 0) {
+      console.log(`[ASK-CACHE] 🧹 Limpou ${changes} entradas antigas (>30 dias)`);
+    }
+    return changes;
+  },
+
+  // Manter apenas as 500 perguntas mais acessadas
+  enforceLimit: (limit: number = 500) => {
+    const countStmt = db.prepare('SELECT COUNT(*) as count FROM ask_cache');
+    const { count } = countStmt.get() as { count: number };
+    
+    if (count > limit) {
+      const countBefore = count;
+      const stmt = db.prepare(`
+        DELETE FROM ask_cache 
+        WHERE id NOT IN (
+          SELECT id FROM ask_cache 
+          ORDER BY hit_count DESC, last_used_at DESC 
+          LIMIT ?
+        )
+      `);
+      stmt.run(limit);
+      const countAfter = db.prepare('SELECT COUNT(*) as count FROM ask_cache').get() as { count: number };
+      const changes = countBefore - countAfter.count;
+      console.log(`[ASK-CACHE] 🎯 Manteve top ${limit} perguntas, removeu ${changes} entradas`);
+      return changes;
+    }
+    
+    return 0;
+  },
+
+  // Estatísticas do cache
+  stats: () => {
+    const countStmt = db.prepare('SELECT COUNT(*) as count FROM ask_cache');
+    const { count } = countStmt.get() as { count: number };
+    
+    const topStmt = db.prepare(`
+      SELECT question, hit_count, user_type, last_used_at 
+      FROM ask_cache 
+      ORDER BY hit_count DESC 
+      LIMIT 10
+    `);
+    const topQuestions = topStmt.all() as Array<{
+      question: string;
+      hit_count: number;
+      user_type: string;
+      last_used_at: string;
+    }>;
+    
+    return { total: count, topQuestions };
+  },
+
+  // Contar entradas
+  count: () => {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM ask_cache');
+    const result = stmt.get() as { count: number };
+    return result.count;
   }
 };
 

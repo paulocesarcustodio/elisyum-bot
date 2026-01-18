@@ -18,7 +18,8 @@ export class UserService {
             expire_limited: 0,
             cmds: 1,
             expire_cmds: Math.round(moment.now()/1000) + 60
-        }
+        },
+        helpLevel: 'detailed'
     }
 
     public async registerUser(userId: string, name?: string|null, ...alternateIds: (string | null | undefined)[]){
@@ -111,6 +112,18 @@ export class UserService {
         } else {
             await db.updateAsync({id: user.id}, { $set : { 'command_rate.limited': isLimited, 'command_rate.expire_limited': 0, 'command_rate.cmds': 1, 'command_rate.expire_cmds': currentTimestamp + 60} })
         }
+    }
+
+    public async setHelpLevel(userId: string, level: 'simple' | 'detailed' | 'with-ai', ...alternateIds: (string | null | undefined)[]){
+        const user = await this.ensureUserRecord(userId, alternateIds)
+        if (!user) return
+
+        await db.updateAsync({id: user.id}, { $set: { helpLevel: level } })
+    }
+
+    public async getHelpLevel(userId: string, ...alternateIds: (string | null | undefined)[]): Promise<'simple' | 'detailed' | 'with-ai'> {
+        const user = await this.getUser(userId, ...alternateIds)
+        return user?.helpLevel || 'detailed'
     }
 
     private tryNormalizeUserId(userId: string){
