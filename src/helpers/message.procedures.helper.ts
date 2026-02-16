@@ -69,15 +69,7 @@ export async function isBotLimitedByGroupRestricted(group: Group, botInfo: Bot){
     return (group.restricted && !isBotGroupAdmin)
 }
 
-export async function sendPrivateWelcome(client: WASocket, botInfo: Bot, message: Message){
-    const user = await userController.getUser(message.sender, message.senderAlt)
 
-    if (user && !user.receivedWelcome){
-        const replyText = buildText(botTexts.new_user, botInfo.name, message.pushname)
-        await waUtil.sendText(client, message.chat_id, replyText, {expiration: message.expiration})
-        await userController.setReceivedWelcome(user.id, true)
-    }
-}
 
 export async function readUserMessage(client: WASocket, message: Message){
     await waUtil.readMessage(client, message.chat_id, message.sender, message.message_id)

@@ -34,9 +34,6 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         return false
     }
 
-    //Se o usuário não tiver recebido boas vindas no PV, faça-o
-    await procs.sendPrivateWelcome(client, botInfo, message)
-
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
 
