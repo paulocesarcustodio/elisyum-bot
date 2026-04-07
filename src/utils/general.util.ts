@@ -219,4 +219,9 @@ export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook
   return 'unknown'
 }
 
+export function getFirstSupportedDownloadUrl(text: string): string | null {
+  const urls = extractUrls(text)
+  return urls.find(url => detectPlatform(url) !== 'unknown') || null
+}
+
 

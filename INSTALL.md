@@ -43,6 +43,13 @@ DEEPGRAM_API_KEY=""
 bun start
 ```
 
+Para trocar o número conectado sem apagar os áudios salvos:
+```bash
+bun start -- --clear-session
+# ou apenas limpar a sessão e sair
+bun run session:clear
+```
+
 ### 4️⃣ Escaneie o QR Code
 Use seu WhatsApp para escanear o código que aparecerá no terminal.
 
@@ -53,8 +60,10 @@ Use seu WhatsApp para escanear o código que aparecerá no terminal.
 Agora você pode usar comandos como:
 - `!menu` - Ver todos os comandos
 - `!save` - Salvar áudios
-- `!audio` - Reproduzir áudios salvos
-- `!yt` - Baixar vídeos do YouTube
+- `!a` - Reproduzir ou listar áudios salvos
+- `!p` - Baixar áudio do YouTube
+- `!mp3` - Converter vídeo em áudio
+- Enviar link suportado - Baixar automaticamente
 - E muito mais!
 
 ---

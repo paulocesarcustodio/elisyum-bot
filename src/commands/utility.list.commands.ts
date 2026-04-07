@@ -6,14 +6,18 @@ import * as miscFunctions from './misc.functions.commands.js'
 const utilityCommands = {
     // === DOWNLOADS ===
     d: {
-        guide: `Ex: *{$p}d* link - Download automático de mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.\nTambém funciona respondendo mensagens com links ou buscando por título no YouTube.\n`,
+        guide: `Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.\n`+
+        `Ex: *{$p}d* link - Continua funcionando manualmente quando você quiser forçar o download.\n`+
+        `Ex: *{$p}d* musica - Busca por título no YouTube.\n`,
         msgs: {
             error_not_found: 'Não foi possível baixar a mídia'
         },
         function: downloadFunctions.downCommand
     },
     play: {
-        guide: `Ex: *{$p}play* musica - Faz download de uma música do Youtube e envia como audio.\nTambém funciona respondendo mensagens com links do YouTube.\n`,
+        guide: `Ex: *{$p}p* musica - Faz download de uma música do YouTube e envia como áudio.\n`+
+        `Ex: *{$p}p* respondendo um link do YouTube - Converte para áudio.\n`+
+        `*Obs*: *{$p}play* continua funcionando por compatibilidade.\n`,
         msgs: {
             wait: "[AGUARDE] 🎧 Sua música está sendo baixada e processada.\n\n"+
             "*Título*: {$1}\n"+
@@ -21,10 +25,22 @@ const utilityCommands = {
             error_limit: "O vídeo deve ter no máximo *9 minutos*",
             error_live: "Esse vídeo não pode ser convertido em áudio, lives não são aceitas.",
             error_not_found: "Nenhum áudio foi encontrado",
-            error_no_youtube_link: "❌ A mensagem respondida não contém nenhum link.\n\n💡 Use *{$p}play* respondendo mensagens com links do YouTube ou digite o título da música.",
-            error_only_youtube: "❌ O comando *{$p}play* só funciona com links do YouTube ao responder mensagens.\n\n💡 Para outras plataformas, use *{$p}d*."
+            error_no_youtube_link: "❌ A mensagem respondida não contém nenhum link.\n\n💡 Use *{$1}p* respondendo mensagens com links do YouTube ou digite o título da música.",
+            error_only_youtube: "❌ O comando *{$1}p* só funciona com links do YouTube ao responder mensagens.\n\n💡 Para outras plataformas, use *{$1}mp3* ou o auto-download."
         },
         function: downloadFunctions.playCommand
+    },
+    mp3: {
+        guide: `Ex: *{$p}mp3* musica - Busca no YouTube e envia só o áudio.\n`+
+        `Ex: *{$p}mp3* link - Converte um link suportado em áudio.\n`+
+        `Ex: responda um vídeo com *{$p}mp3* - Extrai o áudio do vídeo enviado no WhatsApp.\n`,
+        msgs: {
+            error_no_input: "Você precisa informar um link, termo de busca ou responder um vídeo.",
+            error_not_video: "A mídia respondida precisa ser um vídeo para converter em MP3.",
+            error_not_found: "Não foi possível gerar o MP3 a partir do conteúdo informado.",
+            error_only_supported: "❌ O link informado não possui vídeo compatível para conversão em MP3."
+        },
+        function: downloadFunctions.mp3Command
     },
     img: {
         guide: `Ex: *{$p}img* tema - Envia 2 imagens relacionadas ao tema pesquisado.\n`,
@@ -82,16 +98,18 @@ const utilityCommands = {
             error_already_exists: "Já existe um áudio com o nome *{$1}*. Escolha outro nome!",
             reply: "💾 *Áudio salvo com sucesso!*\n\n"+
             "Nome: *{$1}*\n\n"+
-            "Use *{$p}audio {$1}* para reproduzir."
+            "Use *{$p}a {$1}* para reproduzir."
         },
         function: utilityFunctions.saveCommand
     },
     audio: {
-        guide: `Ex: *{$p}audio nome-do-audio* - Reproduz um áudio salvo.\n\n`+
-        `Ex: Responda uma mensagem com *{$p}audio nome-do-audio* - Reproduz o áudio como resposta.\n`,
+        guide: `Ex: *{$p}a nome-do-audio* - Reproduz um áudio salvo.\n\n`+
+        `Ex: *{$p}a* - Lista os áudios disponíveis.\n\n`+
+        `Ex: Responda uma mensagem com *{$p}a nome-do-audio* - Reproduz o áudio como resposta.\n`+
+        `*Obs*: *{$p}audio* continua funcionando por compatibilidade.\n`,
         msgs: {
-            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver todos os áudios disponíveis.",
-            error_file_not_found: "O arquivo de áudio foi deletado do sistema. Use *{$p}audios* para ver os áudios disponíveis."
+            error_not_found: "Áudio não encontrado. Use *{$p}a* para ver os áudios disponíveis.",
+            error_file_not_found: "O arquivo de áudio foi deletado do sistema. Use *{$p}a* para ver os áudios disponíveis."
         },
         function: utilityFunctions.audioCommand
     },

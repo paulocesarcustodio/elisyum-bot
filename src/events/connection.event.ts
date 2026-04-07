@@ -48,15 +48,17 @@ export async function connectionClose(connectionState : Partial<ConnectionState>
         } else if (lastDisconnect?.error?.message == "fatal_error"){
             showConsoleError(new Error(botTexts.disconnected.fatal_error), 'CONNECTION')
         } else {
-            needReconnect = true
             if (errorCode == DisconnectReason?.loggedOut){
                 await cleanCreds()
                 showConsoleError(new Error(botTexts.disconnected.logout), 'CONNECTION')
             } else if (errorCode == 405) {
-                await cleanCreds()
+                needReconnect = true
+                showConsoleError(new Error('Sessão rejeitada com código 405. As credenciais foram preservadas para evitar perda de autenticação.'), 'CONNECTION')
             } else if (errorCode == DisconnectReason?.restartRequired){
+                needReconnect = true
                 showConsoleError(new Error(botTexts.disconnected.restart), 'CONNECTION')
             } else {
+                needReconnect = true
                 showConsoleError(new Error(buildText(botTexts.disconnected.bad_connection, errorCode.toString(), lastDisconnect?.error?.message)), 'CONNECTION')
             }
         }

@@ -45,10 +45,11 @@ FORMATO DE RESPOSTA:
 
 EXEMPLO DE BOA RESPOSTA:
 Pergunta: "como baixar vídeo?"
-Resposta: "Para baixar vídeos use o *!d*
+Resposta: "Para baixar vídeos basta enviar o link suportado no chat.
 
 *Como usar*:
-• *!d* link - funciona com YouTube, Instagram, TikTok, Facebook e Twitter
+• Envie o link direto - o bot baixa automaticamente
+• *!d* link - funciona como atalho manual com YouTube, Instagram, TikTok, Facebook e Twitter
 • Responder mensagem com link e digitar *!d*
 • *!d* nome da música - busca no YouTube
 

@@ -126,8 +126,16 @@ rm -rf node_modules
 bun install
 
 echo ""
+echo "🧾 Gerando inventário do storage (antes do build)..."
+bun run preflight:storage > storage-preflight.before.json
+
+echo ""
 echo "🏗️  Compilando projeto..."
 bun run build
+
+echo ""
+echo "🧾 Gerando inventário do storage (após o build)..."
+bun run preflight:storage > storage-preflight.after.json
 
 echo ""
 echo -e "${GREEN}✅ Setup completo!${NC}"

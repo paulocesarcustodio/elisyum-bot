@@ -132,6 +132,7 @@ DEBUG=false
   console.log('2. Inicie o bot:');
   console.log(color.applyColor('   bun start', 'yellow'));
   console.log(color.applyColor('   (ou use: ./run.sh)', 'brightBlack'));
+  console.log(color.applyColor('   bun run start:fresh   # troca para outro número', 'brightBlack'));
   console.log('');
   console.log(color.applyColor('📚 Documentação: ', 'blue') + color.applyColor('docs/', 'cyan'));
   console.log('');

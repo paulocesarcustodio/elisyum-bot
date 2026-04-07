@@ -49,6 +49,7 @@ source ~/.bashrc
 cd elisyum-bot
 nano .env
 bun start          # Também usa CLI colorida! 🎨
+bun run start:fresh # Limpa a sessão e inicia para conectar outro número
 ```
 
 **Instalação local com CLI bonita:**
@@ -57,6 +58,7 @@ git clone https://github.com/paulocesarcustodio/elisyum-bot.git
 cd elisyum-bot
 bun setup.js       # Setup com interface colorida
 bun start          # Inicia com banner bonito
+bun run session:clear # Limpa a sessão sem iniciar
 ```
 
 O script instala automaticamente:
@@ -99,6 +101,13 @@ Faça o download do **.zip** da última versão lançada [AQUI](https://github.c
 Após instalar o **Bun**, você só precisa iniciar o bot com o comando abaixo:
 ```bash
 bun start
+```
+
+Para trocar o número conectado ao bot sem apagar seus áudios ou o `bot.db`:
+```bash
+bun start -- --clear-session
+# ou apenas limpar e sair
+bun run session:clear
 ```
 
 <br>
@@ -152,6 +161,8 @@ Seu bot já deve estar iniciando normalmente após o passo anterior, use os coma
 **!menu** - Dá acesso ao **menu principal**.<br>
 **!admin** - Dá acesso ao **menu de administrador**.
 
+Para downloads, você também pode simplesmente enviar um link suportado no chat que o bot faz o download automaticamente.
+
 <br>
 
 Todos os comandos tem um guia ao digitar: **!comando** guia
@@ -176,10 +187,10 @@ Se você for administrador do grupo envie **!menu 5** dentro de um grupo para te
 Diversos comandos para criação de figurinhas
 
 ### 📥 Downloads 
-Diversos comandos para download de mídias das principais redes sociais : X, Youtube, Instagram, TikTok...
+Downloads automáticos ao detectar links suportados e comandos como `!d`, `!p` e `!mp3` para mídias das principais redes sociais: X, YouTube, Instagram, TikTok...
 
 ### ⚒️ Utilidades Gerais
-Diversos comandos de utilidades como encurtar link, editar áudio, obter letra de música, etc...
+Diversos comandos de utilidades como `!a` para áudios salvos, encurtar link, editar áudio, obter letra de música, etc...
 
 ### 👾 Entretenimento
 Diversos comandos para entretenimento do grupo
@@ -251,5 +262,6 @@ O projeto inclui um servidor webhook (`webhook-deploy.js`) para automatizar depl
 O webhook escuta por pushes na branch `main` e executa automaticamente:
 - `git pull origin main`
 - `bun install --frozen-lockfile`
+- `bun run preflight:storage`
 - `bun run build`
 - `systemctl restart lbot` (reinicia o serviço do bot)

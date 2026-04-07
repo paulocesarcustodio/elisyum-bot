@@ -144,7 +144,7 @@ export async function audioCommand(client: WASocket, botInfo: Bot, message: Mess
     const Fuse = (await import('fuse.js')).default
     
     if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+        return audiosCommand(client, botInfo, message, group)
     }
 
     const searchQuery = message.text_command.trim().toLowerCase()

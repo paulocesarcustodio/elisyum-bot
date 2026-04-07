@@ -258,6 +258,8 @@ echo ""
 echo -e "${BLUE}📚 Comandos úteis:${NC}"
 echo ""
 echo "  ${YELLOW}bun start${NC}        - Iniciar o bot"
+echo "  ${YELLOW}bun run start:fresh${NC} - Limpar sessão e iniciar com outro número"
+echo "  ${YELLOW}bun run session:clear${NC} - Limpar sessão e sair"
 echo "  ${YELLOW}./start-bot.sh${NC}   - Script auxiliar que configura PATH automaticamente"
 echo "  ${YELLOW}bun run dev${NC}      - Modo desenvolvimento (recompila)"
 echo "  ${YELLOW}bun run build${NC}    - Recompilar TypeScript"
@@ -283,7 +285,7 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 cd "$(dirname "$0")"
-exec bun start
+exec bun start -- "$@"
 RUNSCRIPT
 
 chmod +x elisyum-bot/run.sh

@@ -151,14 +151,14 @@ CREATE TABLE command_logs (
 ```sql
 CREATE TABLE saved_audios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_jid TEXT NOT NULL,
+    owner_jid TEXT NOT NULL,
     audio_name TEXT NOT NULL,
     file_path TEXT NOT NULL,
     mime_type TEXT NOT NULL,
     seconds INTEGER,
     ptt BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_jid, audio_name)
+    UNIQUE(audio_name)
 );
 ```
 
@@ -193,6 +193,16 @@ sqlite3 storage/bot.db .dump > backup.sql
 # Restaurar do SQL
 sqlite3 storage/bot.db < backup.sql
 ```
+
+### Inventário rápido para deploy
+
+Quando o ambiente real de deploy for diferente do seu ambiente local, prefira gerar um inventário do storage no servidor:
+
+```bash
+bun run preflight:storage > storage-preflight.json
+```
+
+O relatório lista `session.db`, `bot.db`, quantidade de áudios em `storage/audios` e referências quebradas em `saved_audios`.
 
 ## 🔧 Instalação Manual (sem script)
 
@@ -338,6 +348,20 @@ Ou delete e deixe recriar:
 ```bash
 rm storage/bot.db
 bun start  # Recria automaticamente
+```
+
+### Trocar o número conectado
+
+Para limpar apenas a sessão do WhatsApp e iniciar com outro número, sem tocar em `storage/audios` nem em `storage/bot.db`:
+
+```bash
+bun start -- --clear-session
+```
+
+Se quiser apenas remover a sessão e encerrar:
+
+```bash
+bun run session:clear
 ```
 
 ## 📞 Suporte

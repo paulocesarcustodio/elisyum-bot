@@ -54,15 +54,25 @@ PERMISSÃO: Usuário
 COMANDO: !d
 CATEGORIA: DOWNLOAD
 USO:
-  • *!d* link - Download automático de mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.
-DETALHES: Também funciona respondendo mensagens com links ou buscando por título no YouTube.
+  • envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.
+  • *!d* link - Continua funcionando manualmente quando você quiser forçar o download.
+  • *!d* musica - Busca por título no YouTube.
 PERMISSÃO: Usuário
 
 COMANDO: !play
 CATEGORIA: DOWNLOAD
 USO:
-  • *!play* musica - Faz download de uma música do Youtube e envia como audio.
-DETALHES: Também funciona respondendo mensagens com links do YouTube.
+  • *!p* musica - Faz download de uma música do YouTube e envia como áudio.
+  • *!p* respondendo um link do YouTube - Converte para áudio.
+DETALHES: OBS: *{$p}play* continua funcionando por compatibilidade.
+PERMISSÃO: Usuário
+
+COMANDO: !mp3
+CATEGORIA: DOWNLOAD
+USO:
+  • *!mp3* musica - Busca no YouTube e envia só o áudio.
+  • *!mp3* link - Converte um link suportado em áudio.
+  • responda um vídeo com *!mp3* - Extrai o áudio do vídeo enviado no WhatsApp.
 PERMISSÃO: Usuário
 
 COMANDO: !ask
@@ -98,8 +108,10 @@ PERMISSÃO: Usuário
 COMANDO: !audio
 CATEGORIA: UTILIDADE
 USO:
-  • *!audio nome-do-audio* - Reproduz um áudio salvo.
-  • Responda uma mensagem com *!audio nome-do-audio* - Reproduz o áudio como resposta.
+  • *!a nome-do-audio* - Reproduz um áudio salvo.
+  • *!a* - Lista os áudios disponíveis.
+  • Responda uma mensagem com *!a nome-do-audio* - Reproduz o áudio como resposta.
+DETALHES: OBS: *{$p}audio* continua funcionando por compatibilidade.
 PERMISSÃO: Usuário
 
 COMANDO: !audios
@@ -121,6 +133,14 @@ CATEGORIA: UTILIDADE
 USO:
   • *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
 DETALHES: Use *|* para separar o nome antigo do novo. OBS: Só o criador pode renomear!
+PERMISSÃO: Usuário
+
+COMANDO: !config
+CATEGORIA: UTILIDADE
+USO:
+  • *!config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.
+  • *!config ajuda* - Ver configuração atual
+DETALHES: *Opções de ajuda:* • *simple* - Apenas mensagem de erro • *detailed* - Erro + guia do comando (padrão) • *with-ai* - Erro + guia + assistente IA
 PERMISSÃO: Usuário
 
 
@@ -156,4 +176,4 @@ PERMISSÃO: Usuário
 
 
 ================================================================================
-Total de comandos: 20
+Total de comandos: 22

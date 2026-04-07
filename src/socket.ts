@@ -1,5 +1,5 @@
 
-import makeWASocket, { fetchLatestBaileysVersion, WASocket } from '@whiskeysockets/baileys'
+import makeWASocket, { fetchLatestBaileysVersion, type WAVersion, WASocket } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 import configSocket from './config.js'
 import { BotController } from './controllers/bot.controller.js'
@@ -31,7 +31,15 @@ const viewOnceCache = new NodeCache({stdTTL: 24*60*60, useClones: false})
 
 export default async function connect(){
     const { state, saveCreds } = await useNeDBAuthState()
-    const { version } = await fetchLatestBaileysVersion()
+    let version: WAVersion | undefined
+
+    try {
+        const latestVersion = await fetchLatestBaileysVersion()
+        version = latestVersion.version
+    } catch (error) {
+        console.warn('[socket] Não foi possível obter a versão mais recente do WA Web. Usando a versão interna do Baileys.', error)
+    }
+
     const client : WASocket = makeWASocket(configSocket(state, retryCache, version, messagesCache))
     let connectionType : string | null = null
     let isBotReady = false

@@ -45,4 +45,4 @@ if [ ! -f ".env" ]; then
 fi
 
 # Iniciar o bot (usando o novo script bonito)
-exec bun start.js
+exec bun start.js "$@"

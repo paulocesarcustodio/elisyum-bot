@@ -42,10 +42,12 @@ bun run scripts/setup/install-ytdlp.js
 
 ### 4. Compilar o projeto
 ```bash
+bun run preflight:storage > storage-preflight.before.json
 bun run build
 ```
 Ou manualmente:
 ```bash
+bun run preflight:storage > storage-preflight.before.json
 bun run tsc
 bun run copyfiles -u 2 src/media/* dist/media
 ```
@@ -63,7 +65,9 @@ bun start
 ```bash
 cd ~/elisyum-bot
 git pull origin main
+bun run preflight:storage > storage-preflight.before.json
 bun run build
+bun run preflight:storage > storage-preflight.after.json
 bun start
 ```
 
@@ -72,7 +76,9 @@ bun start
 cd ~/elisyum-bot
 git pull origin main
 bun install
+bun run preflight:storage > storage-preflight.before.json
 bun run build
+bun run preflight:storage > storage-preflight.after.json
 bun start
 ```
 
@@ -95,6 +101,13 @@ bun run build
 ```bash
 bun run tsc --noEmit
 ```
+
+### Inventariar storage no servidor
+```bash
+bun run preflight:storage > storage-preflight.json
+```
+
+Esse relatório é o ponto de checagem recomendado no ambiente real de deploy para conferir sessão, bot.db e áudios salvos antes e depois da atualização.
 
 ### Ver logs em tempo real
 ```bash
@@ -210,3 +223,4 @@ pm2 save
 3. **FFmpeg é obrigatório** para comandos de áudio/vídeo
 4. **yt-dlp pode ser global ou local** (o bot tenta ambos)
 5. **Use PM2 em produção** para restart automático
+6. **Rode `bun run preflight:storage` no servidor** antes e depois de atualizar para validar sessão e áudios no ambiente real

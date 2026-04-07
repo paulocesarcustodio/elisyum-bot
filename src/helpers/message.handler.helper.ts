@@ -4,16 +4,25 @@ import { Group } from "../interfaces/group.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { commandExist } from "../utils/commands.util.js";
 import * as waUtil from "../utils/whatsapp.util.js";
-import { buildText } from "../utils/general.util.js";
+import { buildText, getFirstSupportedDownloadUrl } from "../utils/general.util.js";
 import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
 import { findSimilarCommand } from "./command.fuzzy.helper.js";
 import { askGemini } from "../utils/ai.util.js";
 
+function prepareAutoDownload(botInfo: Bot, message: Message, url: string) {
+    message.command = `${botInfo.prefix}d`
+    message.args = [url]
+    message.text_command = url
+}
+
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
-    const isCommand = commandExist(botInfo.prefix, message.command)
+    let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && botInfo.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
+    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
+        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
+        : null
     let callCommand : boolean
 
     //Verifica se o usuário está bloqueado, se estiver retorna.
@@ -36,6 +45,11 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
+
+    if (autoDownloadUrl) {
+        prepareAutoDownload(botInfo, message, autoDownloadUrl)
+        isCommand = true
+    }
 
     if (isCommand || isAutosticker){
         //Se a taxa de comandos estiver ativado e o usuário estiver limitado, retorne.
@@ -98,9 +112,12 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 }
 
 export async function handleGroupMessage(client: WASocket, group: Group, botInfo: Bot, message: Message){
-    const isCommand = commandExist(botInfo.prefix, message.command)
+    let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
+    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
+        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
+        : null
     let callCommand : boolean
 
     //Atualize o nome do usuário
@@ -136,7 +153,7 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     }
 
     //Incrementa a contagem do participante.
-    await procs.incrementParticipantActivity(message, isCommand)
+    await procs.incrementParticipantActivity(message, isCommand || !!autoDownloadUrl)
 
     //Se o grupo estiver mutado e o participante não for um admin, retorne.
     if (procs.isIgnoredByGroupMuted(group, message)) {
@@ -150,6 +167,11 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
 
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
+
+    if (autoDownloadUrl) {
+        prepareAutoDownload(botInfo, message, autoDownloadUrl)
+        isCommand = true
+    }
 
     if (isCommand || isAutosticker){
         //Se a taxa de comandos estiver ativa e o usuário estiver limitado, retorne.

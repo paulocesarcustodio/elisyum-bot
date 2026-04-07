@@ -8,14 +8,18 @@ import adminCommands from "../commands/admin.list.commands.js"
 import botTexts from "../helpers/bot.texts.helper.js"
 import { removePrefix } from "./whatsapp.util.js"
 import { buildText } from "./general.util.js"
+import { resolveCommandAlias } from "./command.aliases.util.js"
 
 const COMMAND_CATEGORIES = ['info', 'utility', 'group', 'admin']
 
 export function commandExist(prefix: string, command: string, category? : CategoryCommand){
+    const commandName = resolveCommandAlias(removePrefix(prefix, command))
+    const resolvedCommand = prefix + commandName
+
     if (!category) {
-        return getCommands(prefix).includes(command)
+        return getCommands(prefix).includes(resolvedCommand)
     } else {
-        return getCommandsByCategory(prefix, category).includes(command)
+        return getCommandsByCategory(prefix, category).includes(resolvedCommand)
     }
 }
 
@@ -43,21 +47,13 @@ export function getCommandsByCategory(prefix: string, category: CategoryCommand)
     }
 }
 
-// Mapa de aliases de comandos
-const COMMAND_ALIASES: Record<string, string> = {
-    'audio': 'audio',
-    'áudio': 'audio',
-    'audios': 'audios',
-    'áudios': 'audios'
-}
-
 export function getCommandCategory(prefix: string, command: string){
     let foundCategory : CategoryCommand | null = null
     const categories = COMMAND_CATEGORIES as CategoryCommand[]
     const commandName = removePrefix(prefix, command)
     
     // Verifica se existe alias
-    const resolvedCommand = COMMAND_ALIASES[commandName] || commandName
+    const resolvedCommand = resolveCommandAlias(commandName)
     const resolvedFullCommand = prefix + resolvedCommand
 
     for (let category of categories){
@@ -73,23 +69,24 @@ export function getCommandGuide(prefix: string, command: string){
     const commandCategory = getCommandCategory(prefix, command)
     const {guide_header_text, no_guide_found} = botTexts
     let guide_text : string
+    const resolvedCommand = resolveCommandAlias(removePrefix(prefix, command))
 
     switch(commandCategory){
         case 'info':
             const info = infoCommands as Commands
-            guide_text = guide_header_text + info[removePrefix(prefix, command)].guide
+            guide_text = guide_header_text + info[resolvedCommand].guide
             break
         case 'utility':
             const utility = utilityCommands as Commands
-            guide_text = guide_header_text + utility[removePrefix(prefix, command)].guide
+            guide_text = guide_header_text + utility[resolvedCommand].guide
             break
         case 'group':
             const group = groupCommands as Commands
-            guide_text = guide_header_text + group[removePrefix(prefix, command)].guide
+            guide_text = guide_header_text + group[resolvedCommand].guide
             break
         case 'admin':
             const admin = adminCommands as Commands
-            guide_text = guide_header_text + admin[removePrefix(prefix, command)].guide
+            guide_text = guide_header_text + admin[resolvedCommand].guide
             break
         default:
             guide_text = no_guide_found

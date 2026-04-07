@@ -29,11 +29,141 @@ const downloadMsgs = {
         error_not_found: "Nenhuma imagem foi encontrada",
         error_download: "Erro ao baixar as imagens",
         error: "Erro ao buscar imagens"
+    },
+    mp3: {
+        error_no_input: 'Você precisa informar um link, termo de busca ou responder um vídeo.',
+        error_not_video: 'A mídia respondida precisa ser um vídeo para converter em MP3.',
+        error_not_found: 'Não foi possível gerar o MP3 a partir do conteúdo informado.',
+        error_only_supported: '❌ O link informado não possui vídeo compatível para conversão em MP3.'
+    }
+}
+
+function buildCompactStatus(label: string, percent?: number) {
+    if (percent === undefined) {
+        return `${label}...`
+    }
+
+    return `${label} ${percent}%\n${generateProgressBar(percent, 100, 20)}`
+}
+
+function buildIndexedCompactStatus(label: string, current: number, total: number, percent?: number) {
+    const suffix = total > 1 ? ` ${current}/${total}` : ''
+
+    if (percent === undefined) {
+        return `${label}${suffix}...`
+    }
+
+    return `${label}${suffix} ${percent}%\n${generateProgressBar(percent, 100, 20)}`
+}
+
+async function createStatusEditor(client: WASocket, message: Message, initialText: string, logTag: string) {
+    const sentMessage = await waUtil.replyText(client, message.chat_id, initialText, message.wa_message, {expiration: message.expiration})
+
+    if (!sentMessage || !sentMessage.key) {
+        throw new Error('Falha ao enviar mensagem inicial')
+    }
+
+    const messageKey = sentMessage.key
+
+    return async (text: string) => {
+        try {
+            await waUtil.editText(client, message.chat_id, messageKey, text)
+        } catch (err) {
+            console.error(`[${logTag}] Erro ao editar mensagem:`, err)
+        }
+    }
+}
+
+async function downloadVideoBufferFromSupportedInput(text: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    const urls = extractUrls(text)
+
+    if (urls.length === 0) {
+        const videoInfo = await downloadUtil.youtubeMedia(text)
+
+        if (!videoInfo) {
+            throw new Error(downloadMsgs.mp3.error_not_found)
+        }
+
+        if (videoInfo.is_live) {
+            throw new Error(downloadMsgs.play.error_live)
+        }
+
+        if (videoInfo.duration > 540) {
+            throw new Error(downloadMsgs.play.error_limit)
+        }
+
+        return downloadUtil.downloadYouTubeVideo(`https://www.youtube.com/watch?v=${videoInfo.id_video}`, onProgress)
+    }
+
+    const url = urls[0]
+    const platform = detectPlatform(url)
+
+    switch (platform) {
+        case 'youtube': {
+            const videoInfo = await downloadUtil.youtubeMedia(url)
+
+            if (!videoInfo) {
+                throw new Error(downloadMsgs.mp3.error_not_found)
+            }
+
+            if (videoInfo.is_live) {
+                throw new Error(downloadMsgs.play.error_live)
+            }
+
+            if (videoInfo.duration > 540) {
+                throw new Error(downloadMsgs.play.error_limit)
+            }
+
+            return downloadUtil.downloadYouTubeVideo(`https://www.youtube.com/watch?v=${videoInfo.id_video}`, onProgress)
+        }
+        case 'facebook': {
+            const facebookInfo = await downloadUtil.facebookMedia(url)
+
+            if (facebookInfo.duration > 540) {
+                throw new Error(downloadMsgs.play.error_limit)
+            }
+
+            return downloadUtil.downloadFromUrl(facebookInfo.sd, onProgress)
+        }
+        case 'instagram': {
+            const instagramInfo = await downloadUtil.instagramMedia(url)
+            const videoMedia = instagramInfo.media.find(media => media.type === 'video')
+
+            if (!videoMedia) {
+                throw new Error(downloadMsgs.mp3.error_only_supported)
+            }
+
+            return downloadUtil.downloadFromUrl(videoMedia.url, onProgress)
+        }
+        case 'tiktok': {
+            const tiktokInfo = await downloadUtil.tiktokMedia(url)
+
+            if (!tiktokInfo || tiktokInfo.type !== 'video' || Array.isArray(tiktokInfo.url)) {
+                throw new Error(downloadMsgs.mp3.error_only_supported)
+            }
+
+            if (tiktokInfo.duration && tiktokInfo.duration > 540) {
+                throw new Error(downloadMsgs.play.error_limit)
+            }
+
+            return downloadUtil.downloadFromUrl(tiktokInfo.url, onProgress)
+        }
+        case 'twitter': {
+            const xInfo = await downloadUtil.xMedia(url)
+            const videoMedia = xInfo?.media.find(media => media.type === 'video')
+
+            if (!videoMedia) {
+                throw new Error(downloadMsgs.mp3.error_only_supported)
+            }
+
+            return downloadUtil.downloadFromUrl(videoMedia.url, onProgress)
+        }
+        default:
+            throw new Error(downloadMsgs.mp3.error_only_supported)
     }
 }
 
 export async function playCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
-    const startTime = performance.now()
     const textToProcess = getTextOrQuotedText(message)
     
     if (!message.args.length && !message.isQuoted){
@@ -55,9 +185,7 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         }
     }
 
-    const metadataStart = performance.now()
     const videoInfo = await downloadUtil.youtubeMedia(textToProcess)
-    console.log(`[playCommand] ⏱️ Metadados: ${((performance.now() - metadataStart) / 1000).toFixed(2)}s`)
 
     if (!videoInfo){
         throw new Error(downloadMsgs.play.error_not_found)
@@ -67,133 +195,74 @@ export async function playCommand(client: WASocket, botInfo: Bot, message: Messa
         throw new Error(downloadMsgs.play.error_limit)
     }
 
-    // Mensagem inicial com barra de progresso (sempre texto para garantir atualizações)
-    const initialCaption = `🎵 *${videoInfo.title}*\n` +
-                          `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                          `📥 Baixando...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    // Envia apenas texto para permitir atualizações de status sem travamentos
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
+    const safeEdit = await createStatusEditor(client, message, buildCompactStatus('📥 Baixando áudio'), 'playCommand')
 
-    // Simula progresso do download (0-60%)
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
-    
-    // Função auxiliar para editar com segurança (sempre texto)
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[playCommand] Erro ao editar mensagem:', err)
-        }
-    }
-    
+
     try {
-        const downloadStart = performance.now()
-        console.log('[playCommand] Iniciando download...')
-        
-        // Progresso REAL monitorando o arquivo no filesystem
         const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl, async (progress) => {
-            await safeEdit(
-                `🎵 *${videoInfo.title}*\n` +
-                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                `📥 Baixando... ${progress}%\n` +
-                `${generateProgressBar(progress, 100, 20)}`
-            )
+            await safeEdit(buildCompactStatus('📥 Baixando áudio', progress))
         })
-        
-        const downloadTime = (performance.now() - downloadStart) / 1000
-        console.log(`[playCommand] ⏱️ Download: ${downloadTime.toFixed(2)}s - Tamanho: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`)
-        
-        // Conversão com progresso simulado suave
-        const conversionStart = performance.now()
-        console.log('[playCommand] Iniciando conversão para MP3...')
-        
-        let conversionProgress = 10 // Começa em 10% imediatamente
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `🔄 Convertendo para MP3... ${conversionProgress}%\n` +
-            `${generateProgressBar(conversionProgress, 100, 20)}`
-        )
-        
-        const conversionInterval = setInterval(async () => {
-            if (conversionProgress < 95) {
-                conversionProgress += 10
-                await safeEdit(
-                    `🎵 *${videoInfo.title}*\n` +
-                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                    `🔄 Convertendo para MP3... ${conversionProgress}%\n` +
-                    `${generateProgressBar(conversionProgress, 100, 20)}`
-                )
-            }
-        }, 400) // Atualiza a cada 0.4s (mais rápido)
-        
-        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer)
-        clearInterval(conversionInterval)
-        
-        // Marca 100% na conversão
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `🔄 Convertendo para MP3... 100%\n` +
-            `${generateProgressBar(100, 100, 20)}`
-        )
-        
-        const conversionTime = (performance.now() - conversionStart) / 1000
-        console.log(`[playCommand] ⏱️ Conversão: ${conversionTime.toFixed(2)}s - Tamanho: ${(audioBuffer.length / 1024 / 1024).toFixed(2)}MB`)
-        
-        // Atualiza para envio
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `📤 Enviando áudio... 0%\n` +
-            `${generateProgressBar(0, 100, 20)}`
-        )
-        
-        const sendStart = performance.now()
-        console.log('[playCommand] Enviando áudio...')
-        
-        // Progresso simulado durante envio
-        let sendProgress = 0
-        const sendInterval = setInterval(async () => {
-            if (sendProgress < 90) {
-                sendProgress += 30
-                await safeEdit(
-                    `🎵 *${videoInfo.title}*\n` +
-                    `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                    `📤 Enviando áudio... ${sendProgress}%\n` +
-                    `${generateProgressBar(sendProgress, 100, 20)}`
-                ).catch(() => {}) // Ignora erro se mensagem já foi enviada
-            }
-        }, 500)
-        
+
+        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, async (progress) => {
+            await safeEdit(buildCompactStatus('🔄 Convertendo para MP3', progress))
+        })
+
+        await safeEdit(buildCompactStatus('📤 Enviando áudio', 100))
         await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
-        clearInterval(sendInterval)
-        
-        const sendTime = (performance.now() - sendStart) / 1000
-        console.log(`[playCommand] ⏱️ Envio: ${sendTime.toFixed(2)}s`)
-        
-        // Atualiza para 100% - Concluído
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `✅ Concluído!`
-        )
-        const totalTime = (performance.now() - startTime) / 1000
-        console.log(`[playCommand] ⏱️ TOTAL: ${totalTime.toFixed(2)}s (metadata: ${((metadataStart - startTime) / 1000).toFixed(2)}s + download: ${downloadTime.toFixed(2)}s + conversão: ${conversionTime.toFixed(2)}s + envio: ${sendTime.toFixed(2)}s)`)
+        await safeEdit('✅ Concluído!')
     } catch (error) {
         console.error('[playCommand] Erro durante o processo:', error)
-        await safeEdit(
-            `🎵 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-        )
+        await safeEdit(`❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+        throw error
+    }
+}
+
+export async function mp3Command(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const hasQuotedVideo = message.isQuoted && message.quotedMessage?.type === 'videoMessage' && message.quotedMessage.isMedia
+
+    if (!message.args.length && !message.isQuoted) {
+        throw new Error(downloadMsgs.mp3.error_no_input)
+    }
+
+    if (message.isQuoted && message.quotedMessage?.isMedia && message.quotedMessage.type !== 'videoMessage' && !message.args.length) {
+        const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
+        const quotedUrls = extractUrls(quotedText)
+
+        if (quotedUrls.length === 0) {
+            throw new Error(downloadMsgs.mp3.error_not_video)
+        }
+    }
+
+    const safeEdit = await createStatusEditor(client, message, buildCompactStatus(hasQuotedVideo ? '📥 Obtendo vídeo' : '📥 Baixando vídeo'), 'mp3Command')
+
+    try {
+        let videoBuffer: Buffer
+
+        if (hasQuotedVideo && message.quotedMessage) {
+            videoBuffer = await waUtil.downloadMessageAsBuffer(client, message.quotedMessage.wa_message)
+        } else {
+            const textToProcess = getTextOrQuotedText(message)
+
+            if (!textToProcess.trim()) {
+                throw new Error(downloadMsgs.mp3.error_no_input)
+            }
+
+            videoBuffer = await downloadVideoBufferFromSupportedInput(textToProcess, async (progress) => {
+                await safeEdit(buildCompactStatus('📥 Baixando vídeo', progress))
+            })
+        }
+
+        const audioBuffer = await convertUtil.convertMp4ToMp3('buffer', videoBuffer, async (progress) => {
+            await safeEdit(buildCompactStatus('🔄 Convertendo para MP3', progress))
+        })
+
+        await safeEdit(buildCompactStatus('📤 Enviando áudio', 100))
+        await waUtil.replyFileFromBuffer(client, message.chat_id, 'audioMessage', audioBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'audio/mpeg'})
+        await safeEdit('✅ Concluído!')
+    } catch (error) {
+        console.error('[mp3Command] Erro durante o processo:', error)
+        await safeEdit(`❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
         throw error
     }
 }
@@ -215,31 +284,10 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         throw new Error('❌ O vídeo é muito longo (máximo 9 minutos).')
     }
 
-    // Mensagem inicial com barra de progresso (sempre texto para garantir atualizações)
-    const initialCaption = `🎥 *${videoInfo.title}*\n` +
-                          `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                          `📥 Baixando vídeo...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    // Envia apenas texto para permitir atualizações de status sem travamentos
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
+    const safeEdit = await createStatusEditor(client, message, buildCompactStatus('📥 Baixando vídeo'), 'ytCommand')
 
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoInfo.id_video}`
-    
-    // Função auxiliar para editar com segurança (sempre texto)
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[ytCommand] Erro ao editar mensagem:', err)
-        }
-    }
-    
+
     // Download com progresso real (0-100%)
     let lastProgress = 0
     const videoBuffer = await downloadUtil.downloadYouTubeVideo(youtubeUrl, async (percent) => {
@@ -250,12 +298,7 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
         
         if (shouldUpdate) {
             lastProgress = percent
-            await safeEdit(
-                `🎥 *${videoInfo.title}*\n` +
-                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                `📥 Baixando vídeo...\n` +
-                `${generateProgressBar(percent, 100, 20)}`
-            )
+            await safeEdit(buildCompactStatus('📥 Baixando vídeo', percent))
         }
     })
     
@@ -266,48 +309,22 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     const videoSizeMB = videoBuffer.length / 1024 / 1024
     
     if (videoBuffer.length > MAX_WHATSAPP_VIDEO_SIZE) {
-        await safeEdit(
-            `🎥 *${videoInfo.title}*\n` +
-            `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-            `⚠️ Vídeo muito grande (${videoSizeMB.toFixed(2)}MB)\n` +
-            `🔄 Comprimindo para 16MB...\n` +
-            `${generateProgressBar(0, 100, 20)}`
-        )
+        await safeEdit(buildCompactStatus('🔄 Comprimindo vídeo', 0))
         
         // Comprime o vídeo
         finalVideoBuffer = await convertUtil.compressVideoToLimit(videoBuffer, MAX_WHATSAPP_VIDEO_SIZE, async (percent) => {
-            await safeEdit(
-                `🎥 *${videoInfo.title}*\n` +
-                `⏱️ Duração: ${videoInfo.duration_formatted}\n\n` +
-                `🔄 Comprimindo vídeo... ${percent}%\n` +
-                `${generateProgressBar(percent, 100, 20)}`
-            )
+            await safeEdit(buildCompactStatus('🔄 Comprimindo vídeo', percent))
         })
         
         const compressedSizeMB = finalVideoBuffer.length / 1024 / 1024
         console.log(`[ytCommand] ✅ Vídeo comprimido: ${videoSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB`)
     }
     
-    const finalSizeMB = finalVideoBuffer.length / 1024 / 1024
-    
-    // Download completo - Enviando
-    await safeEdit(
-        `🎥 *${videoInfo.title}*\n` +
-        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${finalSizeMB.toFixed(2)}MB\n\n` +
-        `📤 Enviando vídeo...\n` +
-        `${generateProgressBar(100, 100, 20)}`
-    )
+    await safeEdit(buildCompactStatus('📤 Enviando vídeo', 100))
     
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', finalVideoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
-    // Atualiza para 100% - Concluído
-    await safeEdit(
-        `🎥 *${videoInfo.title}*\n` +
-        `⏱️ Duração: ${videoInfo.duration_formatted}\n` +
-        `📦 Tamanho: ${finalSizeMB.toFixed(2)}MB\n\n` +
-        `✅ Concluído!`
-    )
+    await safeEdit('✅ Concluído!')
 }
 
 export async function fbCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -323,26 +340,7 @@ export async function fbCommand(client: WASocket, botInfo: Bot, message: Message
         throw new Error('❌ O vídeo é muito grande para ser baixado.')
     }
 
-    // Mensagem inicial com barra de progresso
-    const initialCaption = `📘 *${fbInfo.title}*\n` +
-                          `⏱️ Duração: ${format(fbInfo.duration * 1000)}\n\n` +
-                          `📥 Baixando...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
-
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[fbCommand] Erro ao editar mensagem:', err)
-        }
-    }
+    const safeEdit = await createStatusEditor(client, message, buildCompactStatus('📥 Baixando vídeo'), 'fbCommand')
     
     // Download com progresso simulado
     let lastProgress = 0
@@ -353,31 +351,15 @@ export async function fbCommand(client: WASocket, botInfo: Bot, message: Message
         
         if (shouldUpdate) {
             lastProgress = percent
-            await safeEdit(
-                `📘 *${fbInfo.title}*\n` +
-                `⏱️ Duração: ${format(fbInfo.duration * 1000)}\n\n` +
-                `📥 Baixando...\n` +
-                `${generateProgressBar(percent, 100, 20)}`
-            )
+            await safeEdit(buildCompactStatus('📥 Baixando vídeo', percent))
         }
     })
     
-    // Enviando
-    await safeEdit(
-        `📘 *${fbInfo.title}*\n` +
-        `⏱️ Duração: ${format(fbInfo.duration * 1000)}\n\n` +
-        `📤 Enviando...\n` +
-        `${generateProgressBar(100, 100, 20)}`
-    )
+    await safeEdit(buildCompactStatus('📤 Enviando vídeo', 100))
     
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', videoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     
-    // Concluído
-    await safeEdit(
-        `📘 *${fbInfo.title}*\n` +
-        `⏱️ Duração: ${format(fbInfo.duration * 1000)}\n\n` +
-        `✅ Concluído!`
-    )
+    await safeEdit('✅ Concluído!')
 }
 
 export async function igCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -389,40 +371,14 @@ export async function igCommand(client: WASocket, botInfo: Bot, message: Message
 
     const igInfo = await downloadUtil.instagramMedia(textToProcess)
     
-    // Mensagem inicial com barra de progresso
     const totalMedia = igInfo.media.length
-    const initialCaption = `📷 *${igInfo.author_fullname}* (@${igInfo.author_username})\n` +
-                          `${igInfo.caption ? `📝 ${igInfo.caption}\n` : ''}` +
-                          `❤️ ${igInfo.likes} curtidas\n\n` +
-                          `📥 Baixando${totalMedia > 1 ? ` 1/${totalMedia}` : ''}...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
-
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[igCommand] Erro ao editar mensagem:', err)
-        }
-    }
+    const safeEdit = await createStatusEditor(client, message, buildIndexedCompactStatus('📥 Baixando mídia', 1, totalMedia), 'igCommand')
 
     for (let i = 0; i < totalMedia; i++){
         const media = igInfo.media[i]
         
         if (i > 0) {
-            await safeEdit(
-                `📷 *${igInfo.author_fullname}* (@${igInfo.author_username})\n` +
-                `${igInfo.caption ? `📝 ${igInfo.caption}\n` : ''}` +
-                `❤️ ${igInfo.likes} curtidas\n\n` +
-                `📥 Baixando ${i + 1}/${totalMedia}...\n` +
-                `${generateProgressBar(0, 100, 20)}`
-            )
+            await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, 0))
         }
         
         let lastProgress = 0
@@ -433,36 +389,18 @@ export async function igCommand(client: WASocket, botInfo: Bot, message: Message
             
             if (shouldUpdate) {
                 lastProgress = percent
-                await safeEdit(
-                    `📷 *${igInfo.author_fullname}* (@${igInfo.author_username})\n` +
-                    `${igInfo.caption ? `📝 ${igInfo.caption}\n` : ''}` +
-                    `❤️ ${igInfo.likes} curtidas\n\n` +
-                    `📥 Baixando${totalMedia > 1 ? ` ${i + 1}/${totalMedia}` : ''}...\n` +
-                    `${generateProgressBar(percent, 100, 20)}`
-                )
+                await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, percent))
             }
         })
         
-        await safeEdit(
-            `📷 *${igInfo.author_fullname}* (@${igInfo.author_username})\n` +
-            `${igInfo.caption ? `📝 ${igInfo.caption}\n` : ''}` +
-            `❤️ ${igInfo.likes} curtidas\n\n` +
-            `📤 Enviando${totalMedia > 1 ? ` ${i + 1}/${totalMedia}` : ''}...\n` +
-            `${generateProgressBar(100, 100, 20)}`
-        )
+        await safeEdit(buildIndexedCompactStatus('📤 Enviando mídia', i + 1, totalMedia, 100))
         
         const messageType = media.type == 'image' ? 'imageMessage' : 'videoMessage'
         const mimetype = media.type == 'video' ? 'video/mp4' : undefined
         await waUtil.replyFileFromBuffer(client, message.chat_id, messageType, mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype})
     }
     
-    // Concluído
-    await safeEdit(
-        `📷 *${igInfo.author_fullname}* (@${igInfo.author_username})\n` +
-        `${igInfo.caption ? `📝 ${igInfo.caption}\n` : ''}` +
-        `❤️ ${igInfo.likes} curtidas\n\n` +
-        `✅ Concluído!${totalMedia > 1 ? ` (${totalMedia} mídias)` : ''}`
-    )
+    await safeEdit('✅ Concluído!')
 }
 
 export async function xCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -478,38 +416,14 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
         throw new Error(downloadMsgs.d.error_not_found)
     }
 
-    // Mensagem inicial com barra de progresso
     const totalMedia = xInfo.media.length
-    const initialCaption = `𝕏 *Tweet*\n` +
-                          `${xInfo.text ? `📝 ${xInfo.text}\n` : ''}` +
-                          `\n📥 Baixando${totalMedia > 1 ? ` 1/${totalMedia}` : ''}...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
-
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[xCommand] Erro ao editar mensagem:', err)
-        }
-    }
+    const safeEdit = await createStatusEditor(client, message, buildIndexedCompactStatus('📥 Baixando mídia', 1, totalMedia), 'xCommand')
     
     for (let i = 0; i < totalMedia; i++) {
         const media = xInfo.media[i]
         
         if (i > 0) {
-            await safeEdit(
-                `𝕏 *Tweet*\n` +
-                `${xInfo.text ? `📝 ${xInfo.text}\n` : ''}` +
-                `\n📥 Baixando ${i + 1}/${totalMedia}...\n` +
-                `${generateProgressBar(0, 100, 20)}`
-            )
+            await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, 0))
         }
         
         let lastProgress = 0
@@ -520,33 +434,18 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
             
             if (shouldUpdate) {
                 lastProgress = percent
-                await safeEdit(
-                    `𝕏 *Tweet*\n` +
-                    `${xInfo.text ? `📝 ${xInfo.text}\n` : ''}` +
-                    `\n📥 Baixando${totalMedia > 1 ? ` ${i + 1}/${totalMedia}` : ''}...\n` +
-                    `${generateProgressBar(percent, 100, 20)}`
-                )
+                await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, percent))
             }
         })
         
-        await safeEdit(
-            `𝕏 *Tweet*\n` +
-            `${xInfo.text ? `📝 ${xInfo.text}\n` : ''}` +
-            `\n📤 Enviando${totalMedia > 1 ? ` ${i + 1}/${totalMedia}` : ''}...\n` +
-            `${generateProgressBar(100, 100, 20)}`
-        )
+        await safeEdit(buildIndexedCompactStatus('📤 Enviando mídia', i + 1, totalMedia, 100))
         
         const messageType = media.type == 'image' ? 'imageMessage' : 'videoMessage'
         const mimetype = media.type == 'video' ? 'video/mp4' : undefined
         await waUtil.replyFileFromBuffer(client, message.chat_id, messageType, mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype})
     }
     
-    // Concluído
-    await safeEdit(
-        `𝕏 *Tweet*\n` +
-        `${xInfo.text ? `📝 ${xInfo.text}\n` : ''}` +
-        `\n✅ Concluído!${totalMedia > 1 ? ` (${totalMedia} mídias)` : ''}`
-    )
+    await safeEdit('✅ Concluído!')
 }
 
 export async function tkCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -562,26 +461,8 @@ export async function tkCommand(client: WASocket, botInfo: Bot, message: Message
         throw new Error(downloadMsgs.d.error_not_found)
     }
 
-    // Mensagem inicial com barra de progresso
-    const initialCaption = `🎵 *@${tiktok.author_profile}*\n` +
-                          `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-                          `\n📥 Baixando...\n` +
-                          `${generateProgressBar(0, 100, 20)}`
-    
-    const sentMessage = await waUtil.replyText(client, message.chat_id, initialCaption, message.wa_message, {expiration: message.expiration})
-    
-    if (!sentMessage || !sentMessage.key) {
-        throw new Error('Falha ao enviar mensagem inicial')
-    }
-    const messageKey = sentMessage.key
-
-    const safeEdit = async (caption: string) => {
-        try {
-            await waUtil.editText(client, message.chat_id, messageKey, caption)
-        } catch (err) {
-            console.error('[tkCommand] Erro ao editar mensagem:', err)
-        }
-    }
+    const totalMedia = Array.isArray(tiktok.url) ? tiktok.url.length : 1
+    const safeEdit = await createStatusEditor(client, message, buildIndexedCompactStatus('📥 Baixando mídia', 1, totalMedia), 'tkCommand')
     
     if (!Array.isArray(tiktok.url)){
         // Download único com progresso
@@ -593,46 +474,23 @@ export async function tkCommand(client: WASocket, botInfo: Bot, message: Message
             
             if (shouldUpdate) {
                 lastProgress = percent
-                await safeEdit(
-                    `🎵 *@${tiktok.author_profile}*\n` +
-                    `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-                    `\n📥 Baixando...\n` +
-                    `${generateProgressBar(percent, 100, 20)}`
-                )
+                await safeEdit(buildCompactStatus('📥 Baixando mídia', percent))
             }
         })
         
-        // Enviando
-        await safeEdit(
-            `🎵 *@${tiktok.author_profile}*\n` +
-            `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-            `\n📤 Enviando...\n` +
-            `${generateProgressBar(100, 100, 20)}`
-        )
+        await safeEdit(buildCompactStatus('📤 Enviando mídia', 100))
         
         const messageType = tiktok.type == 'image' ? 'imageMessage' : 'videoMessage'
         const mimetype = tiktok.type == 'video' ? 'video/mp4' : undefined
         await waUtil.replyFileFromBuffer(client, message.chat_id, messageType, mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype})
         
-        // Concluído
-        await safeEdit(
-            `🎵 *@${tiktok.author_profile}*\n` +
-            `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-            `\n✅ Concluído!`
-        )
+        await safeEdit('✅ Concluído!')
     } else {
         // Múltiplas mídias (carrossel de imagens)
-        const totalMedia = tiktok.url.length
-        
         for (let i = 0; i < totalMedia; i++) {
             const url = tiktok.url[i]
             
-            await safeEdit(
-                `🎵 *@${tiktok.author_profile}*\n` +
-                `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-                `\n📥 Baixando ${i + 1}/${totalMedia}...\n` +
-                `${generateProgressBar(0, 100, 20)}`
-            )
+            await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, 0))
             
             let lastProgress = 0
             const mediaBuffer = await downloadUtil.downloadFromUrl(url, async (percent) => {
@@ -642,33 +500,18 @@ export async function tkCommand(client: WASocket, botInfo: Bot, message: Message
                 
                 if (shouldUpdate) {
                     lastProgress = percent
-                    await safeEdit(
-                        `🎵 *@${tiktok.author_profile}*\n` +
-                        `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-                        `\n📥 Baixando ${i + 1}/${totalMedia}...\n` +
-                        `${generateProgressBar(percent, 100, 20)}`
-                    )
+                    await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, percent))
                 }
             })
             
-            await safeEdit(
-                `🎵 *@${tiktok.author_profile}*\n` +
-                `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-                `\n📤 Enviando ${i + 1}/${totalMedia}...\n` +
-                `${generateProgressBar(100, 100, 20)}`
-            )
+            await safeEdit(buildIndexedCompactStatus('📤 Enviando mídia', i + 1, totalMedia, 100))
             
             const messageType = tiktok.type == 'image' ? 'imageMessage' : 'videoMessage'
             const mimetype = tiktok.type == 'video' ? 'video/mp4' : undefined
             await waUtil.replyFileFromBuffer(client, message.chat_id, messageType, mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype})
         }
         
-        // Concluído
-        await safeEdit(
-            `🎵 *@${tiktok.author_profile}*\n` +
-            `${tiktok.description ? `📝 ${tiktok.description}\n` : ''}` +
-            `\n✅ Concluído! (${totalMedia} ${totalMedia > 1 ? 'mídias' : 'mídia'})`
-        )
+        await safeEdit('✅ Concluído!')
     }
 }
 

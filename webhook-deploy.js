@@ -63,8 +63,12 @@ createServer((req, res) => {
         git pull origin main
         echo "📦 Installing dependencies..."
         /root/.bun/bin/bun install --frozen-lockfile
+        echo "🧾 Generating storage preflight (before build)..."
+        /root/.bun/bin/bun run preflight:storage > storage-preflight.before.json
         echo "🔨 Building..."
         /root/.bun/bin/bun run build
+        echo "🧾 Generating storage preflight (after build)..."
+        /root/.bun/bin/bun run preflight:storage > storage-preflight.after.json
         echo "🔄 Restarting bot service..."
         systemctl restart lbot
         echo "✅ Deploy completed!"

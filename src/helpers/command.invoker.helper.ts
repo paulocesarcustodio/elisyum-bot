@@ -16,14 +16,7 @@ import { PermissionService } from "../services/permission.service.js";
 import { findSimilarCommand } from "./command.fuzzy.helper.js";
 import { askGemini } from "../utils/ai.util.js";
 import { UserController } from "../controllers/user.controller.js";
-
-// Mapa de aliases de comandos (sincronizado com commands.util.ts)
-const COMMAND_ALIASES: Record<string, string> = {
-    'audio': 'audio',
-    'áudio': 'audio',
-    'audios': 'audios',
-    'áudios': 'audios'
-}
+import { resolveCommandAlias } from "../utils/command.aliases.util.js";
 
 export async function commandInvoker(client: WASocket, botInfo: Bot, message: Message, group: Group|null){
     const isGuide = (!message.args.length) ? false : message.args[0] === 'guia'
@@ -31,7 +24,7 @@ export async function commandInvoker(client: WASocket, botInfo: Bot, message: Me
     let commandName = waUtil.removePrefix(botInfo.prefix, message.command)
     
     // Resolve alias
-    commandName = COMMAND_ALIASES[commandName] || commandName
+    commandName = resolveCommandAlias(commandName)
     
     // Se comando não existe, tentar correção fuzzy
     if (categoryCommand === null) {

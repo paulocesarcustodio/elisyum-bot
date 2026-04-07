@@ -37,4 +37,4 @@ echo -e "${BLUE}Iniciando bot...${NC}"
 echo ""
 
 # Iniciar o bot
-bun start
+bun start -- "$@"

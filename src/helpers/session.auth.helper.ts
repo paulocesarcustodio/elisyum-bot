@@ -9,12 +9,19 @@ mkdirSync(dirname(DB_FILENAME), { recursive: true });
 
 const db = new DataStore<{key: string, data: string}>({filename : DB_FILENAME, autoload: true});
 const dbMutex = new Mutex();
+const pendingPersistOperations = new Set<Promise<unknown>>();
+
+function trackPersistOperation<T>(operation: Promise<T>): Promise<T> {
+    pendingPersistOperations.add(operation);
+    operation.finally(() => pendingPersistOperations.delete(operation));
+    return operation;
+}
 
 export async function useNeDBAuthState() : Promise<{ state: AuthenticationState, saveCreds: () => Promise<void>}> {
     const write = async (data: any, key: string) => {
-        await dbMutex.runExclusive(async () => {
+        await trackPersistOperation(dbMutex.runExclusive(async () => {
             await db.updateAsync({key}, { $set: { data: JSON.stringify(data, BufferJSON.replacer) }}, {upsert: true})
-        })
+        }))
     }
 
     const read = async (key: string) => {
@@ -25,9 +32,9 @@ export async function useNeDBAuthState() : Promise<{ state: AuthenticationState,
     }
 
     const remove = async (key: string) => {
-        await dbMutex.runExclusive(async () => {
+        await trackPersistOperation(dbMutex.runExclusive(async () => {
             await db.removeAsync({ key }, {multi: false})
-        })
+        }))
     }
 
     const creds: AuthenticationCreds = await read("creds") || initAuthCreds()
@@ -87,7 +94,14 @@ export async function useNeDBAuthState() : Promise<{ state: AuthenticationState,
 }
 
 export async function cleanCreds(){
-    await dbMutex.runExclusive(async () => {
+    await trackPersistOperation(dbMutex.runExclusive(async () => {
         await db.removeAsync({}, {multi: true});
-    });
+    }));
+}
+
+export async function waitForAuthPersistence(): Promise<void> {
+    while (pendingPersistOperations.size) {
+        const pending = [...pendingPersistOperations];
+        await Promise.allSettled(pending);
+    }
 }

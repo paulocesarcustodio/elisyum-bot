@@ -9,11 +9,13 @@
 - Auto sticker
 
 ### 📥 Downloads 
+- Links suportados com download automático
 - Youtube (video/audio)
 - Facebook (video)
 - Instagram (video/imagem)
 - X (video/imagem)
 - Tiktok (video)
+- Conversão para MP3 (`!mp3`)
 - Google (imagem)
 
 ### ⚒️ Utilidades Gerais
@@ -37,6 +39,7 @@
 - Noticias atuais
 - Tradutor de texto
 - Revelar mensagens de visualização única
+- Reproduzir/listar áudios salvos com `!a`
 
 ### 👾 Variado
 - Pedra, papel e tesoura

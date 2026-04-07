@@ -2,6 +2,16 @@ COMANDOS DO BOT ELISYUM
 ================================================================================
 
 
+### INFORMAÇÃO
+--------------------------------------------------------------------------------
+
+COMANDO: !erros
+CATEGORIA: INFORMAÇÃO
+USO:
+  • *!erros* - Exibe estatísticas de erros e top comandos com maior taxa de falha.
+PERMISSÃO: Dono do Bot
+
+
 ### GRUPO
 --------------------------------------------------------------------------------
 
@@ -461,4 +471,4 @@ PERMISSÃO: Dono do Bot
 
 
 ================================================================================
-Total de comandos: 65
+Total de comandos: 66

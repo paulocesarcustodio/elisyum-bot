@@ -11,7 +11,7 @@ const commandDocs: Record<string, { title: string; content: string; keywords: st
     // DOWNLOAD
     d: {
         title: "COMO BAIXAR VÍDEOS, ÁUDIOS E IMAGENS",
-        content: `Se você quer baixar vídeo, áudio ou imagem de redes sociais, use o comando *!d*
+        content: `Se você quer baixar vídeo, áudio ou imagem de redes sociais, basta enviar o link suportado no chat.
 
 Funciona com:
 • YouTube - vídeos, shorts, músicas
@@ -21,7 +21,8 @@ Funciona com:
 • Twitter/X - vídeos e GIFs
 
 Como usar:
-• *!d* seguido do link - exemplo: !d https://youtube.com/watch?v=...
+• Envie o link direto - o bot detecta e baixa automaticamente
+• *!d* seguido do link - continua funcionando como atalho manual
 • Responder uma mensagem que tenha link com *!d*
 • *!d* seguido do título para buscar no YouTube - exemplo: !d nome da música
 
@@ -31,17 +32,32 @@ O bot identifica automaticamente a plataforma e baixa o melhor formato disponív
     
     play: {
         title: "COMO BAIXAR MÚSICA/ÁUDIO DO YOUTUBE",
-        content: `Para baixar apenas o áudio de vídeos do YouTube (música), use *!play*
+    content: `Para baixar apenas o áudio de vídeos do YouTube (música), use *!p*
 
 Como usar:
-• *!play* seguido do nome da música - exemplo: !play imagine dragons
-• *!play* com link do YouTube - exemplo: !play https://youtube.com/watch?v=...
-• Responder mensagem com link do YouTube e digitar *!play*
+• *!p* seguido do nome da música - exemplo: !p imagine dragons
+• *!p* com link do YouTube - exemplo: !p https://youtube.com/watch?v=...
+• Responder mensagem com link do YouTube e digitar *!p*
+• *!play* continua funcionando por compatibilidade
 
 O bot vai buscar a música no YouTube, baixar e enviar como áudio. O vídeo pode ter no máximo 9 minutos.
 
-Diferença do !d: o !play só funciona com YouTube e envia como áudio. O !d baixa vídeo de várias plataformas.`,
-        keywords: "música, musica, audio, áudio, som, mp3, baixar música, download música, play, youtube música, canção"
+Diferença do auto-download: o *!p* só funciona com YouTube e envia como áudio.`,
+    keywords: "música, musica, audio, áudio, som, mp3, baixar música, download música, play, p, youtube música, canção"
+    },
+
+    mp3: {
+    title: "COMO CONVERTER VÍDEO EM MP3",
+    content: `Para transformar vídeos em áudio, use *!mp3*
+
+Como usar:
+• *!mp3* seguido do nome da música - busca no YouTube
+• *!mp3* com link suportado - converte o vídeo em áudio
+• Responder um link com *!mp3*
+• Responder um vídeo enviado no WhatsApp com *!mp3*
+
+O comando baixa o vídeo quando necessário e envia apenas o áudio em MP3.`,
+    keywords: "mp3, converter video em audio, extrair audio, tirar audio do video, converter video, musica, audio"
     },
     
     img: {
@@ -97,31 +113,34 @@ Como usar:
 Exemplo: responder áudio do "eita" com !save eita
 
 O áudio fica salvo GLOBALMENTE - todos do grupo podem usar!
-Depois use *!audio eita* para reproduzir.`,
+Depois use *!a eita* para reproduzir.`,
         keywords: "salvar áudio, salvar audio, gravar áudio, guardar áudio, meme de áudio, meme de voz, salvar som"
     },
     
     audio: {
         title: "COMO REPRODUZIR ÁUDIO SALVO",
-        content: `Para reproduzir um áudio que foi salvo, use *!audio*
+    content: `Para reproduzir um áudio que foi salvo, use *!a*
 
 Como usar:
-• *!audio nome-do-audio* - exemplo: !audio eita
-• Responder uma mensagem com *!audio nome-do-audio* - reproduz como resposta
+• *!a nome-do-audio* - exemplo: !a eita
+• *!a* sem parâmetro - mostra a lista de áudios
+• Responder uma mensagem com *!a nome-do-audio* - reproduz como resposta
+• *!audio* continua funcionando por compatibilidade
 
-Para ver todos os áudios disponíveis, use *!audios*`,
-        keywords: "tocar áudio, reproduzir áudio, meme de áudio, som salvo, áudio salvo, voice, voz"
+Para ver todos os áudios disponíveis, use *!a* ou *!audios*`,
+    keywords: "tocar áudio, reproduzir áudio, meme de áudio, som salvo, áudio salvo, voice, voz, a"
     },
     
     audios: {
         title: "COMO VER LISTA DE ÁUDIOS SALVOS",
-        content: `Para ver todos os áudios disponíveis, use *!audios*
+    content: `Para ver todos os áudios disponíveis, use *!a* ou *!audios*
 
 Como usar:
+• *!a* - mostra a primeira página
 • *!audios* - mostra primeira página
 • *!audios 2* - mostra página 2
 
-A lista mostra todos os áudios salvos que podem ser usados com !audio`,
+A lista mostra todos os áudios salvos que podem ser usados com !a`,
         keywords: "lista de áudios, ver áudios, áudios disponíveis, listar áudios, memes de áudio"
     },
     
@@ -223,7 +242,7 @@ Este documento foi criado para ajudar você a encontrar o comando certo para o q
     let botOwnerContent = userContent
 
     // Adicionar comandos de usuário
-    const userCommandNames = ['d', 'play', 'img', 's', 'simg', 'save', 'audio', 'audios', 'delete', 'rename', 'revelar', 'menu', 'ask', 'info', 'meusdados']
+    const userCommandNames = ['d', 'play', 'mp3', 'img', 's', 'simg', 'save', 'audio', 'audios', 'delete', 'rename', 'revelar', 'menu', 'ask', 'info', 'meusdados']
     
     for (const cmdName of userCommandNames) {
         if (commandDocs[cmdName]) {
