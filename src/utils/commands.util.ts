@@ -13,6 +13,10 @@ import { resolveCommandAlias } from "./command.aliases.util.js"
 const COMMAND_CATEGORIES = ['info', 'utility', 'group', 'admin']
 
 export function commandExist(prefix: string, command: string, category? : CategoryCommand){
+    if (!command.startsWith(prefix)) {
+        return false
+    }
+
     const commandName = resolveCommandAlias(removePrefix(prefix, command))
     const resolvedCommand = prefix + commandName
 
@@ -48,6 +52,10 @@ export function getCommandsByCategory(prefix: string, category: CategoryCommand)
 }
 
 export function getCommandCategory(prefix: string, command: string){
+    if (!command.startsWith(prefix)) {
+        return null
+    }
+
     let foundCategory : CategoryCommand | null = null
     const categories = COMMAND_CATEGORIES as CategoryCommand[]
     const commandName = removePrefix(prefix, command)

@@ -233,8 +233,11 @@ export function normalizeWhatsappJid(jid?: string | null): string {
 }
 
 export function removePrefix(prefix: string, command: string){
-    const commandWithoutPrefix = command.replace(prefix, '')
-    return commandWithoutPrefix
+    if (!command.startsWith(prefix)) {
+        return command
+    }
+
+    return command.slice(prefix.length)
 }
 
 export function getGroupParticipantsByMetadata(group : GroupMetadata){

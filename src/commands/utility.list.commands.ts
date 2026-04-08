@@ -114,8 +114,9 @@ const utilityCommands = {
         function: utilityFunctions.audioCommand
     },
     audios: {
-        guide: `Ex: *{$p}audios* - Lista todos os áudios disponíveis (página 1).\n\n`+
-        `Ex: *{$p}audios 2* - Lista a página 2 dos áudios.\n`,
+        guide: `Ex: *{$p}a* - Lista todos os áudios disponíveis (página 1).\n\n`+
+        `Ex: *{$p}a 2* - Lista a página 2 dos áudios.\n`+
+        `*Obs*: *{$p}audios* continua funcionando por compatibilidade.\n`,
         msgs: {
             error_invalid_page: "Número de página inválido.",
             error_no_audios: "Ainda não há nenhum áudio salvo.\n\nUse *{$p}save* para salvar áudios!",
@@ -123,7 +124,7 @@ const utilityCommands = {
             reply_title: "🎵 *Áudios disponíveis*\n\n"+
             "Página {$1}/{$2} | Total: {$3}\n\n",
             reply_item: "{$1}. *{$2}* ({$3})\n",
-            reply_next_page: "\n📄 Use *{$p}audios {$1}* para ver a próxima página."
+            reply_next_page: "\n📄 Use *{$p}a {$1}* para ver a próxima página."
         },
         function: utilityFunctions.audiosCommand
     },
@@ -131,7 +132,7 @@ const utilityCommands = {
         guide: `Ex: *{$p}delete nome-do-audio* - Deleta permanentemente um áudio que você criou.\n\n`+
         `*Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!`,
         msgs: {
-            error_not_found: "Áudio não encontrado. Use *{$p}audios* para ver os áudios disponíveis.",
+            error_not_found: "Áudio não encontrado. Use *{$p}a* para ver os áudios disponíveis.",
             error_not_owner: "Você não pode deletar este áudio! Apenas o criador pode deletá-lo.",
             reply: "🗑️ *Áudio deletado!*\n\nO áudio *{$1}* foi removido permanentemente."
         },
@@ -143,7 +144,7 @@ const utilityCommands = {
         `*Obs*: Só o criador pode renomear!`,
         msgs: {
             error_invalid_format: "Formato inválido. Use: {$p}rename nome-antigo | nome-novo",
-            error_not_found: "Áudio *{$1}* não encontrado. Use *{$p}audios* para ver os áudios disponíveis.",
+            error_not_found: "Áudio *{$1}* não encontrado. Use *{$p}a* para ver os áudios disponíveis.",
             error_name_exists: "Já existe um áudio com o nome *{$1}*.",
             error_name_too_long: "O novo nome é muito longo (máximo 100 caracteres).",
             error_not_owner: "Você não pode renomear este áudio! Apenas o criador pode renomeá-lo.",

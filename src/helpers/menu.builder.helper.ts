@@ -77,7 +77,7 @@ export const utilityMenuUnified = (botInfo : Bot)=>{
 *|*► *${prefix}revelar* - Revelar mensagem visualizar única
 *|*► *${prefix}save* - Salvar status
 *|*► *${prefix}audio* - Extrai áudio de um video
-*|*► *${prefix}audios* - Lista de áudios disponíveis
+*|*► *${prefix}a* - Lista de áudios disponíveis
 *|*
 *|*━━ ✦ 🧩 *VARIADOS* ✦
 *|*► *${prefix}vtnc* - Vai tomar no c*
