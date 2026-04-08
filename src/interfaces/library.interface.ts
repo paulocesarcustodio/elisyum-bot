@@ -34,7 +34,7 @@ export interface MusicRecognition {
 export interface XMedia {
     text: string,
     media: {
-        type: "video" | "image",
+        type: "video",
         url: string
     }[]
 }

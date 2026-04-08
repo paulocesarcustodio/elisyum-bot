@@ -63,23 +63,35 @@ const bunPath = resolveBunBinary()
 console.log(`[download.util] 🔧 Configuração inicial: yt-dlp=${ytDlpPath}, bun=${bunPath}`)
 const ytdlp = new YtDlp({ binaryPath: ytDlpPath })
 
+const X_DOWNLOADABLE_MEDIA_TYPES = new Set(['video', 'gif'])
+
 export async function xMedia (url: string){
     try {
         const newURL = url.replace(/twitter\.com|x\.com/g, 'api.vxtwitter.com')
         const {data : xResponse} = await axios.get(newURL)
 
-        if (!xResponse.media_extended){
+        if (!Array.isArray(xResponse.media_extended)){
             return null
-        } 
+        }
 
-        const xMedia : XMedia = {
-            text: xResponse.text,
-            media : xResponse.media_extended.map((media : {type: string, url: string}) => {
+        const media = xResponse.media_extended
+            .filter((media: {type?: string, url?: string}) => {
+                return Boolean(media.url) && X_DOWNLOADABLE_MEDIA_TYPES.has(media.type ?? '')
+            })
+            .map((media: {url: string}) => {
                 return {
-                    type: (media.type === 'video') ? 'video' : 'image',
+                    type: 'video' as const,
                     url: media.url
                 }
             })
+
+        if (!media.length) {
+            return null
+        }
+
+        const xMedia : XMedia = {
+            text: xResponse.text,
+            media
         }
     
         return xMedia

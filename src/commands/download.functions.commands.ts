@@ -413,7 +413,7 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
     const xInfo = await downloadUtil.xMedia(textToProcess)
 
     if (!xInfo){
-        throw new Error(downloadMsgs.d.error_not_found)
+        throw new Error('❌ O link do Twitter/X não contém vídeo para download.')
     }
 
     const totalMedia = xInfo.media.length
@@ -438,11 +438,8 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
             }
         })
         
-        await safeEdit(buildIndexedCompactStatus('📤 Enviando mídia', i + 1, totalMedia, 100))
-        
-        const messageType = media.type == 'image' ? 'imageMessage' : 'videoMessage'
-        const mimetype = media.type == 'video' ? 'video/mp4' : undefined
-        await waUtil.replyFileFromBuffer(client, message.chat_id, messageType, mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype})
+        await safeEdit(buildIndexedCompactStatus('📤 Enviando vídeo', i + 1, totalMedia, 100))
+        await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     }
     
     await safeEdit('✅ Concluído!')
