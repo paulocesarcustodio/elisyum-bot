@@ -58,6 +58,7 @@ function getUserController(){
 }
 
 const ownerCache = new NodeCache({ stdTTL: 120, checkperiod: 60 })
+const VIDEO_THUMBNAIL_TIMEOUT_MS = 10000
 const OWNER_CACHE_KEY = "bot-owner"
 
 type DownloadMediaOptions = Parameters<typeof downloadMediaMessage>[2]
@@ -487,7 +488,12 @@ export async function replyFileFromUrl (client: WASocket, chatId: string, type: 
 export async function replyFileFromBuffer (client: WASocket, chatId: string, type: MessageTypes, buffer: Buffer, caption: string, quoted: WAMessage, options?: MessageOptions){ 
     if (type == "videoMessage"){
         try {
-            const base64Thumb = await convertLibrary.convertVideoToThumbnail('buffer', buffer)
+            const base64Thumb = await Promise.race([
+                convertLibrary.convertVideoToThumbnail('buffer', buffer),
+                new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error(`Thumbnail timeout após ${VIDEO_THUMBNAIL_TIMEOUT_MS}ms`)), VIDEO_THUMBNAIL_TIMEOUT_MS)
+                })
+            ])
             return client.sendMessage(chatId, {video: buffer, caption, mimetype: options?.mimetype, jpegThumbnail: base64Thumb}, {quoted, ephemeralExpiration: options?.expiration})
         } catch (thumbError) {
             console.warn('[replyFileFromBuffer] Failed to generate thumbnail, sending without it:', thumbError)

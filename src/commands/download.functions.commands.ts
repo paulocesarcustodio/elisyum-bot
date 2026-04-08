@@ -38,6 +38,8 @@ const downloadMsgs = {
     }
 }
 
+const MAX_WHATSAPP_VIDEO_SIZE = 16 * 1024 * 1024
+
 function buildCompactStatus(label: string, percent?: number) {
     if (percent === undefined) {
         return `${label}...`
@@ -304,7 +306,6 @@ export async function ytCommand(client: WASocket, botInfo: Bot, message: Message
     
     
     // Verifica tamanho e comprime se necessário
-    const MAX_WHATSAPP_VIDEO_SIZE = 16 * 1024 * 1024 // 16MB
     let finalVideoBuffer = videoBuffer
     const videoSizeMB = videoBuffer.length / 1024 / 1024
     
@@ -442,9 +443,31 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
                 await safeEdit(buildIndexedCompactStatus('📥 Baixando mídia', i + 1, totalMedia, percent))
             }
         })
+
+        let finalVideoBuffer = mediaBuffer
+
+        try {
+            await safeEdit(buildIndexedCompactStatus('🔄 Preparando vídeo', i + 1, totalMedia))
+            finalVideoBuffer = await convertUtil.convertVideoToWhatsApp('buffer', mediaBuffer)
+            console.log(`[xCommand] ✅ Vídeo normalizado para WhatsApp: ${(mediaBuffer.length / 1024 / 1024).toFixed(2)}MB → ${(finalVideoBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+        } catch (normalizeError) {
+            console.warn('[xCommand] ⚠️ Falha ao normalizar vídeo do Twitter/X, tentando enviar original:', normalizeError)
+        }
+
+        if (finalVideoBuffer.length > MAX_WHATSAPP_VIDEO_SIZE) {
+            await safeEdit(buildIndexedCompactStatus('🔄 Comprimindo vídeo', i + 1, totalMedia, 0))
+            finalVideoBuffer = await convertUtil.compressVideoToLimit(finalVideoBuffer, MAX_WHATSAPP_VIDEO_SIZE, async (percent) => {
+                await safeEdit(buildIndexedCompactStatus('🔄 Comprimindo vídeo', i + 1, totalMedia, percent))
+            })
+            console.log(`[xCommand] ✅ Vídeo comprimido: ${(mediaBuffer.length / 1024 / 1024).toFixed(2)}MB → ${(finalVideoBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+        }
+
+        if (finalVideoBuffer.length > MAX_WHATSAPP_VIDEO_SIZE) {
+            throw new Error('❌ O vídeo do Twitter/X continua acima do limite de envio do WhatsApp.')
+        }
         
         await safeEdit(buildIndexedCompactStatus('📤 Enviando vídeo', i + 1, totalMedia, 100))
-        await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', mediaBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
+        await waUtil.replyFileFromBuffer(client, message.chat_id, 'videoMessage', finalVideoBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'video/mp4'})
     }
     
     await safeEdit('✅ Concluído!')
