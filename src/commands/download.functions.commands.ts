@@ -413,6 +413,11 @@ export async function xCommand(client: WASocket, botInfo: Bot, message: Message,
     const xInfo = await downloadUtil.xMedia(textToProcess)
 
     if (!xInfo){
+        if (message.isAutoDownload) {
+            console.log('[xCommand] Ignorando auto-download de Twitter/X sem vídeo')
+            return
+        }
+
         throw new Error('❌ O link do Twitter/X não contém vídeo para download.')
     }
 

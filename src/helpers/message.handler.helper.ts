@@ -4,8 +4,7 @@ import { Group } from "../interfaces/group.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { commandExist } from "../utils/commands.util.js";
 import * as waUtil from "../utils/whatsapp.util.js";
-import * as downloadUtil from '../utils/download.util.js'
-import { buildText, detectPlatform, extractUrls } from "../utils/general.util.js";
+import { buildText, getFirstSupportedDownloadUrl } from "../utils/general.util.js";
 import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
 import { findSimilarCommand } from "./command.fuzzy.helper.js";
@@ -15,46 +14,16 @@ function prepareAutoDownload(botInfo: Bot, message: Message, url: string) {
     message.command = `${botInfo.prefix}d`
     message.args = [url]
     message.text_command = url
-}
-
-async function resolveAutoDownloadUrl(message: Message, isCommand: boolean, isAutosticker: boolean) {
-    if (isCommand || isAutosticker || message.isBotMessage) {
-        return null
-    }
-
-    const messageText = message.caption || message.body || ''
-    const urls = extractUrls(messageText)
-
-    for (const url of urls) {
-        const platform = detectPlatform(url)
-
-        if (platform === 'unknown') {
-            continue
-        }
-
-        if (platform !== 'twitter') {
-            return url
-        }
-
-        try {
-            const twitterMedia = await downloadUtil.xMedia(url)
-
-            if (twitterMedia?.media.length) {
-                return url
-            }
-        } catch (error) {
-            const reason = error instanceof Error ? error.message : 'erro desconhecido'
-            console.warn(`[AUTO-DOWNLOAD] Ignorando link do Twitter/X sem vídeo válido: ${reason}`)
-        }
-    }
-
-    return null
+    message.isAutoDownload = true
 }
 
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
     let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && botInfo.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
+    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
+        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
+        : null
     let callCommand : boolean
 
     //Verifica se o usuário está bloqueado, se estiver retorna.
@@ -77,8 +46,6 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
-
-    const autoDownloadUrl = await resolveAutoDownloadUrl(message, isCommand, isAutosticker)
 
     if (autoDownloadUrl) {
         prepareAutoDownload(botInfo, message, autoDownloadUrl)
@@ -149,6 +116,9 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
+    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
+        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
+        : null
     let callCommand : boolean
 
     //Atualize o nome do usuário
@@ -182,8 +152,6 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     if (await procs.isOwnerRegister(client, botInfo, message)) {
         return false
     }
-
-    const autoDownloadUrl = await resolveAutoDownloadUrl(message, isCommand, isAutosticker)
 
     //Incrementa a contagem do participante.
     await procs.incrementParticipantActivity(message, isCommand || !!autoDownloadUrl)

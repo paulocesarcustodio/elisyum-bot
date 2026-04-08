@@ -35,6 +35,7 @@ export interface Message {
     isBotAdmin : boolean,
     isBotOwner: boolean,
     isBotMessage: boolean,
+    isAutoDownload?: boolean,
     isBroadcast: boolean,
     isMedia: boolean,
     wa_message: WAMessage,
