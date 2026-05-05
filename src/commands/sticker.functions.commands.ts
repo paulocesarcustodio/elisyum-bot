@@ -1,4 +1,4 @@
-import { WASocket } from "@whiskeysockets/baileys"
+import { GroupMetadata, WASocket } from "@whiskeysockets/baileys"
 import { Bot } from "../interfaces/bot.interface.js"
 import { Group } from "../interfaces/group.interface.js"
 import { Message } from "../interfaces/message.interface.js"
@@ -9,6 +9,7 @@ import * as quoteUtil from '../utils/quote.util.js'
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import { UserController } from "../controllers/user.controller.js"
 import { getContactFromStore } from "../helpers/contacts.store.helper.js"
+import { replaceMentionIdsWithNames } from "../utils/mention.util.js"
 
 // Mensagens dos comandos de sticker (para evitar dependência circular)
 const stickerMsgs = {
@@ -27,6 +28,57 @@ const stickerMsgs = {
         error_image: `Este comando é válido apenas para imagens.`,
         error_message: "Houve um erro ao obter os dados da mensagem.",
         author_text: 'Solicitado por: {$1}'
+    }
+}
+
+function getGroupParticipantName(participant: GroupMetadata['participants'][number]) {
+    const participantData = participant as GroupMetadata['participants'][number] & {
+        notify?: string
+        name?: string
+        verifiedName?: string
+    }
+
+    return participantData.notify || participantData.name || participantData.verifiedName
+}
+
+function createMentionNameResolver(client: WASocket, group: Group | undefined, userController: UserController) {
+    let groupMetadataPromise: Promise<GroupMetadata> | undefined
+
+    return async (mentionedJid: string) => {
+        const normalizedMentionedJid = waUtil.normalizeWhatsappJid(mentionedJid) || mentionedJid
+
+        if (group) {
+            try {
+                groupMetadataPromise ??= client.groupMetadata(group.id)
+                const groupMetadata = await groupMetadataPromise
+                const participant = groupMetadata.participants.find((participant) => {
+                    const normalizedParticipantId = waUtil.normalizeWhatsappJid(participant.id) || participant.id
+                    return normalizedParticipantId === normalizedMentionedJid || participant.id === mentionedJid
+                })
+                const participantName = participant ? getGroupParticipantName(participant) : undefined
+
+                if (participantName?.trim()) {
+                    return participantName.trim()
+                }
+            } catch (err) {
+                console.log(`[STICKER-MENCAO] Não foi possível buscar metadados do grupo:`, err)
+            }
+        }
+
+        const user = await userController.getUser(normalizedMentionedJid, mentionedJid)
+
+        if (user?.name?.trim()) {
+            return user.name.trim()
+        }
+
+        const contact = getContactFromStore(normalizedMentionedJid) || getContactFromStore(mentionedJid)
+        const contactName = contact?.notify || contact?.name || contact?.verifiedName
+
+        if (contactName?.trim()) {
+            return contactName.trim()
+        }
+
+        return undefined
     }
 }
 
@@ -175,8 +227,15 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         const now = new Date()
         const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
 
+        const userController = new UserController()
+        const stickerText = await replaceMentionIdsWithNames(
+            quotedText,
+            message.quotedMessage?.mentioned || [],
+            createMentionNameResolver(client, group, userController)
+        )
+
         const imageBuffer = await quoteUtil.createWhatsAppBubble({
-            text: quotedText,
+            text: stickerText,
             authorName: authorName,
             avatarUrl: avatarUrl,
             time: time
@@ -218,5 +277,4 @@ export async function simgCommand(client: WASocket, botInfo: Bot, message: Messa
     const imageBuffer = await stickerUtil.stickerToImage(stickerBuffer)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', imageBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'image/png'})
 }
-
 
