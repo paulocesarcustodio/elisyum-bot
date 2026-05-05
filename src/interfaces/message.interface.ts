@@ -52,6 +52,7 @@ export interface Message {
         pushname?: string,
         body: string,
         caption : string,
+        mentioned: string[],
         isMedia: boolean,
         media? : {
             url: string,

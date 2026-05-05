@@ -23,7 +23,8 @@ async function isImageUrlAccessible(url: string, timeout: number = 3000): Promis
             timeout,
             validateStatus: (status) => status === 200
         })
-        return response.status === 200 && response.headers['content-type']?.startsWith('image/')
+        const contentType = response.headers['content-type']
+        return response.status === 200 && typeof contentType === 'string' && contentType.startsWith('image/')
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
         console.warn('[isImageUrlAccessible] Thumbnail não acessível:', url, errorMsg)
@@ -684,6 +685,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         if (!typeQuoted || !senderQuoted ) return
 
         const captionQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "caption" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].caption as string | null : undefined
+        const contextInfoQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "contextInfo" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].contextInfo as proto.IContextInfo | undefined : undefined
         const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: senderQuoted, messageId: quotedStanzaId })
         quotedWAMessage.key.fromMe = (normalizedHostId == senderQuoted)
 
@@ -693,6 +695,7 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
             pushname: (contextInfo as any)?.notifyName || (contextInfo as any)?.pushName || undefined,
             body: quotedMessage.conversation || quotedMessage.extendedTextMessage?.text || '',
             caption: captionQuoted || '',
+            mentioned: contextInfoQuoted?.mentionedJid?.map(mention => normalizeWhatsappJid(mention)).filter((mention): mention is string => !!mention) || [],
             isMedia : typeQuoted != "conversation" && typeQuoted != "extendedTextMessage",
             wa_message: quotedWAMessage
         }
