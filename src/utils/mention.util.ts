@@ -43,7 +43,7 @@ export async function replaceMentionIdsWithNames(
         }
 
         const mentionPattern = new RegExp(`(^|[^\\p{L}\\p{N}_@])@${escapeRegExp(mentionToken)}(?![\\p{L}\\p{N}_])`, 'gu')
-        resolvedText = resolvedText.replace(mentionPattern, `$1${mentionName}`)
+        resolvedText = resolvedText.replace(mentionPattern, (_match, prefix: string) => `${prefix}${mentionName}`)
     }
 
     return resolvedText
