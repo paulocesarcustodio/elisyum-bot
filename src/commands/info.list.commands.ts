@@ -59,6 +59,10 @@ const infoCommands = {
         function: infoFunctions.meusdadosCommand
     },
     info: {
+        semantic: {
+            description: 'Exibir informações e status do bot.',
+            examples: ['me fala sobre o bot', 'qual versão está rodando', 'mostra o status do bot']
+        },
         guide: `Ex: *{$p}info* - Exibe as informações completas do bot, inclusive as configurações atuais.\n`,
         msgs: {
             reply_title:"*Nome do bot*: {$1}\n"+

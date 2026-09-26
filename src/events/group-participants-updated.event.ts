@@ -7,6 +7,7 @@ import botTexts from '../helpers/bot.texts.helper.js'
 import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix, normalizeWhatsappJid } from '../utils/whatsapp.util.js'
 
 type ParticipantLike = GroupParticipant | string
+const participantEventQueues = new Map<string, Promise<void>>()
 
 export type ParticipantsUpdateEvent = {
     id: string
@@ -17,6 +18,18 @@ export type ParticipantsUpdateEvent = {
 }
 
 export async function groupParticipantsUpdated(client: WASocket, event: ParticipantsUpdateEvent, botInfo: Bot) {
+    const previous = participantEventQueues.get(event.id) || Promise.resolve()
+    const current = previous.catch(() => {}).then(() => processParticipantsUpdate(client, event, botInfo))
+    participantEventQueues.set(event.id, current)
+
+    try {
+        await current
+    } finally {
+        if (participantEventQueues.get(event.id) === current) participantEventQueues.delete(event.id)
+    }
+}
+
+async function processParticipantsUpdate(client: WASocket, event: ParticipantsUpdateEvent, botInfo: Bot) {
     try{
         const groupController = new GroupController()
         const group = await groupController.getGroup(event.id)
@@ -41,11 +54,22 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
         )
 
         for (const participant of participants) {
-            const participantId = normalizeWhatsappJid(participant.id)
+            const participantData = participant as GroupParticipant & { phoneNumber?: string; lid?: string }
+            const participantIds = [...new Set([
+                normalizeWhatsappJid(participant.id),
+                normalizeWhatsappJid(participantData.phoneNumber),
+                normalizeWhatsappJid(participantData.lid)
+            ].filter(Boolean))].sort((left, right) => Number(right.endsWith('@s.whatsapp.net')) - Number(left.endsWith('@s.whatsapp.net')))
+            let participantId = participantIds[0]
 
             if (!participantId) {
                 continue
             }
+
+            const existingRecords = await Promise.all(participantIds.map(id => groupController.getParticipant(group.id, id)))
+            participantId = participantIds.includes(normalizedBotNumber)
+                ? normalizedBotNumber
+                : existingRecords.find(Boolean)?.user_id || participantId
 
             const isBotUpdate = normalizedBotNumber ? participantId === normalizedBotNumber : false
 
@@ -62,8 +86,8 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
                 if (await isParticipantBlacklisted(client, normalizedBotNumber, botInfo, group, participantId)) continue
                 if (await isParticipantFake(client, normalizedBotNumber, botInfo, group, participantId)) continue
 
-                await sendWelcome(client, group, botInfo, participantId)
                 await groupController.addParticipant(group.id, participantId, participant.admin != null)
+                await sendWelcome(client, group, botInfo, participantId)
             } else if (event.action === 'remove') {
                 const isParticipant = await groupController.isParticipant(group.id, participantId)
 
@@ -109,7 +133,6 @@ export async function groupParticipantsUpdated(client: WASocket, event: Particip
         }
     } catch(err: any){
         showConsoleError(err, "GROUP-PARTICIPANTS-UPDATE")
-        client.end(new Error("fatal_error"))
     }
 }
 

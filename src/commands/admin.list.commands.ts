@@ -2,6 +2,7 @@ import * as adminFunctions from './admin.functions.commands.js'
 
 const adminCommands = {
     admin: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}admin* - Exibe o menu de administração do bot.\n`,
         permissions: { roles: ['owner'] },
         function: adminFunctions.adminCommand
@@ -35,6 +36,7 @@ const adminCommands = {
         function: adminFunctions.sairCommand
     },
     sairgrupos: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}sairgrupos* - Sai de todos os grupos.\n`,
         permissions: { roles: ['owner'] },
         msgs: {
@@ -91,6 +93,7 @@ const adminCommands = {
         function: adminFunctions.autostickerpvCommand
     },
     bcmdglobal: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}bcmdglobal* {$p}s {$p}sgif {$p}play - Bloqueia  os comandos {$p}s, {$p}sgif e {$p}play (você pode escolher os comandos a sua necessidade).\n\n`+
         `Ex: *{$p}bcmdglobal* sticker - Bloqueia todos os comandos da categoria STICKER.\n\n`+
         `Ex: *{$p}bcmdglobal* utilidade - Bloqueia todos os comandos da categoria UTILIDADE.\n\n`+
@@ -108,6 +111,7 @@ const adminCommands = {
         function: adminFunctions.bcmdglobalCommand
     },
     dcmdglobal: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}dcmdglobal* {$p}s {$p}sgif {$p}play - Desbloqueia  os comandos {$p}s, {$p}sgif e {$p}play.\n\n`+
         `Ex: *{$p}dcmdglobal* todos - Desbloqueia todos os comandos.\n\n`+
         `Ex: *{$p}dcmdglobal* sticker - Desbloqueia todos os comandos da categoria STICKER.\n\n`+
@@ -135,6 +139,7 @@ const adminCommands = {
         function: adminFunctions.entrargrupoCommand
     },
     bcgrupos: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}bcgrupos* mensagem - Envia uma mensagem para todos os *GRUPOS*.\n`,
         permissions: { roles: ['owner'] },
         msgs: {
@@ -164,6 +169,7 @@ const adminCommands = {
         function: adminFunctions.nomebotCommand
     },
     prefixo: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}prefixo* .  - Muda o prefixo dos *COMANDOS* para *.* e atualiza os menus e comandos com o novo prefixo.\n\n`+
         `Suporta os seguintes prefixos: *!*  *#*  *.*  ***\n`,
         permissions: { roles: ['owner'] },
@@ -238,6 +244,7 @@ const adminCommands = {
         function: adminFunctions.usuarioCommand
     },
     desligar: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}desligar* - Desliga o bot.\n`,
         permissions: { roles: ['owner'] },
         msgs: {

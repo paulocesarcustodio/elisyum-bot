@@ -26,6 +26,7 @@ export interface Message {
     body: string,
     caption: string,
     mentioned: string[],
+    hasBotMention?: boolean,
     text_command: string,
     command: string,
     args: string[],
@@ -36,6 +37,8 @@ export interface Message {
     isBotOwner: boolean,
     isBotMessage: boolean,
     isAutoDownload?: boolean,
+    semanticSource?: 'text' | 'audio',
+    semanticTranscript?: string,
     isBroadcast: boolean,
     isMedia: boolean,
     wa_message: WAMessage,
@@ -43,12 +46,13 @@ export interface Message {
         mimetype: string,
         url: string,
         seconds?: number,
-        file_length: number | Long,
+        file_length: number,
         ptt?: boolean
     },
     quotedMessage?: {
         type: keyof proto.IMessage,
         sender: string,
+        senderAlt?: string,
         pushname?: string,
         body: string,
         caption : string,
@@ -57,7 +61,7 @@ export interface Message {
         media? : {
             url: string,
             mimetype: string,
-            file_length: number | Long,
+            file_length: number,
             seconds?: number,
             ptt?: boolean
         }

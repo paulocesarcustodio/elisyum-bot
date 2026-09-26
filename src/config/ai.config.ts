@@ -49,7 +49,7 @@ Resposta: "Para baixar vídeos basta enviar o link suportado no chat.
 
 *Como usar*:
 • Envie o link direto - o bot baixa automaticamente
-• *!d* link - funciona como atalho manual com YouTube, Instagram, TikTok, Facebook e Twitter
+• *!d* link - funciona como atalho manual com YouTube, Instagram, Facebook, Twitter e TikTok
 • Responder mensagem com link e digitar *!d*
 • *!d* nome da música - busca no YouTube
 

@@ -126,11 +126,3 @@ export function findSimilarCommand(commandName: string, threshold: number = 0.5)
     console.log(`[FUZZY] ❌ Nenhum match encontrado para "${commandName}"`)
     return null
 }
-
-/**
- * Verifica se comando existe exatamente
- */
-export function commandExists(commandName: string): boolean {
-    const allCommands = getAllCommands()
-    return allCommands.some(cmd => cmd.name === commandName)
-}

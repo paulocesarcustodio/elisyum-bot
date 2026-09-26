@@ -1,4 +1,3 @@
-import ffmpeg from 'fluent-ffmpeg'
 import fs from 'fs-extra'
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import { convertMp4ToMp3 } from './convert.util.js'
@@ -11,6 +10,7 @@ import FormData from 'form-data'
 import { ApiKeys, AudioModificationType, MusicRecognition } from '../interfaces/library.interface.js'
 import crypto from 'node:crypto'
 import botTexts from '../helpers/bot.texts.helper.js'
+import {ffmpegPool} from './worker-pool.util.js'
 
 export async function audioTranscription (audioBuffer : Buffer){
     try {
@@ -24,15 +24,15 @@ export async function audioTranscription (audioBuffer : Buffer){
                 const deepgramConfig = {
                     model: 'nova-2',
                     language: 'pt-BR',
-                    smart_format: true, 
+                    smart_format: true,
                 }
-        
+
                 const { result, error } = await deepgram.listen.prerecorded.transcribeFile(audioBuffer, deepgramConfig)
-                
+
                 if (error) {
                     throw new Error("An error occurred while trying to get the audio transcript")
                 }
-        
+
                 return result.results.channels[0].alternatives[0].transcript
             } catch(err: any) {
                 error = err
@@ -58,7 +58,7 @@ export async function musicRecognition (mediaBuffer : Buffer){
                 const URL_BASE = 'http://'+ key.host + ENDPOINT
                 const { mime } = await fileTypeFromBuffer(mediaBuffer) as FileTypeResult
                 let audioBuffer : Buffer | undefined
-        
+
                 if (!mime.startsWith('video') && !mime.startsWith('audio')){
                     throw new Error('This file type is not supported')
                 } else if(mime.startsWith('video')) {
@@ -66,7 +66,7 @@ export async function musicRecognition (mediaBuffer : Buffer){
                 } else {
                     audioBuffer = mediaBuffer
                 }
-        
+
                 const timestamp = (new Date().getTime()/1000).toFixed(0).toString()
                 const signatureString = ['POST', ENDPOINT, key.access_key, 'audio', 1, timestamp].join('\n')
                 const signature =  crypto.createHmac('sha1', key.secret_key).update(Buffer.from(signatureString, 'utf-8')).digest().toString('base64');
@@ -79,15 +79,15 @@ export async function musicRecognition (mediaBuffer : Buffer){
                 formData.append('signature_version', 1)
                 formData.append('signature', signature)
                 formData.append('timestamp', timestamp)
-                
+
                 const config : AxiosRequestConfig = {
                     url: URL_BASE,
                     method: 'POST',
                     data: formData
                 }
-        
+
                 const { data : recognitionResponse} = await axios.request(config)
-        
+
                 if (recognitionResponse.status.code == 1001){
                     return null
                 } else if(recognitionResponse.status.code == 3003 || recognitionResponse.status.code == 3015){
@@ -97,7 +97,7 @@ export async function musicRecognition (mediaBuffer : Buffer){
                 }
 
                 const arrayReleaseDate = recognitionResponse.metadata.humming[0].release_date ? recognitionResponse.metadata.humming[0].release_date.split("-") : []
-                const artists : string[] = recognitionResponse.metadata.humming[0].artists.map((artist : {name: string}) => artist.name)    
+                const artists : string[] = recognitionResponse.metadata.humming[0].artists.map((artist : {name: string}) => artist.name)
                 const musicRecognition : MusicRecognition = {
                     producer : recognitionResponse.metadata.humming[0].label || "-----",
                     duration: format(recognitionResponse.metadata.humming[0].duration_ms),
@@ -106,7 +106,7 @@ export async function musicRecognition (mediaBuffer : Buffer){
                     title: recognitionResponse.metadata.humming[0].title,
                     artists: artists.toString()
                 }
-                
+
                 return musicRecognition
             } catch(err: any) {
                 error = err
@@ -140,54 +140,42 @@ export async function textToVoice (lang: "pt" | 'en' | 'ja' | 'es' | 'it' | 'ru'
 
 export async function audioModified (audioBuffer: Buffer, type: AudioModificationType){
     try {
-        const inputAudioPath = getTempPath('mp3')
-        const outputAudioPath = getTempPath('mp3')
-        let options : string[] = []
-        fs.writeFileSync(inputAudioPath, audioBuffer)
+        let args: string[]
 
         switch(type){
             case "estourar":
-                options = ["-y", "-filter_complex", "acrusher=level_in=3:level_out=5:bits=10:mode=log:aa=1"] 
+                args = ["-filter_complex", "acrusher=level_in=3:level_out=5:bits=10:mode=log:aa=1"]
                 break
             case "reverso":
-                options = ["-y", "-filter_complex", "areverse"]
+                args = ["-filter_complex", "areverse"]
                 break
             case "grave":
-                options = ["-y", "-af", "asetrate=44100*0.5,aresample=44100,atempo=1.20"]
+                args = ["-af", "asetrate=44100*0.5,aresample=44100,atempo=1.20"]
                 break
             case "agudo":
-                options = ["-y", "-af", "asetrate=44100*1.1,aresample=44100,atempo=0.70"]
+                args = ["-af", "asetrate=44100*1.1,aresample=44100,atempo=0.70"]
                 break
             case "x2":
-                options = ["-y", "-filter:a", "atempo=2.0", "-vn"]
+                args = ["-filter:a", "atempo=2.0", "-vn"]
                 break
             case "volume":
-                options = ["-y", "-filter:a", "volume=4.0"]
+                args = ["-filter:a", "volume=4.0"]
                 break
             default:
-                fs.unlinkSync(inputAudioPath)
                 throw new Error(`This type of editing is not supported`)
         }
-        
-        await new Promise <void>((resolve, reject) => {
-            ffmpeg(inputAudioPath)
-            .outputOptions(options)
-            .save(outputAudioPath)
-            .on('end', () => resolve())
-            .on("error", (err: Error) => reject(err))
-        }).catch((err: any)=>{
-            fs.unlinkSync(inputAudioPath)
-            throw err
+
+        const outputBuffer = await ffmpegPool.exec({
+            inputBuffer: audioBuffer,
+            inputExt: 'mp3',
+            outputExt: 'mp3',
+            args,
+            timeout: 30000
         })
 
-        const bufferModifiedAudio = fs.readFileSync(outputAudioPath)
-        fs.unlinkSync(inputAudioPath)
-        fs.unlinkSync(outputAudioPath)
-        
-        return bufferModifiedAudio
+        return outputBuffer
     } catch(err){
-        showConsoleLibraryError(err, 'audioTranscription')
+        showConsoleLibraryError(err, 'audioModified')
         throw new Error(botTexts.library_error)
     }
 }
-

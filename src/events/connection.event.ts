@@ -41,7 +41,13 @@ export async function connectionClose(connectionState : Partial<ConnectionState>
     try{
         const { lastDisconnect } = connectionState
         let needReconnect = false
-        const errorCode = (new Boom(lastDisconnect?.error)).output.statusCode
+        const err: any = lastDisconnect?.error
+        console.log('[DEBUG 405] lastDisconnect:', JSON.stringify(lastDisconnect, null, 2))
+        console.log('[DEBUG 405] error obj:', err)
+        console.log('[DEBUG 405] error isBoom:', err?.isBoom)
+        console.log('[DEBUG 405] error output:', err?.output)
+        const boom = err?.isBoom ? err : new Boom(err)
+        const errorCode = boom.output.statusCode
 
         if (lastDisconnect?.error?.message == "admin_command"){
             showConsoleError(new Error(botTexts.disconnected.command), 'CONNECTION')
@@ -52,8 +58,9 @@ export async function connectionClose(connectionState : Partial<ConnectionState>
                 await cleanCreds()
                 showConsoleError(new Error(botTexts.disconnected.logout), 'CONNECTION')
             } else if (errorCode == 405) {
+                await cleanCreds()
                 needReconnect = true
-                showConsoleError(new Error('Sessão rejeitada com código 405. As credenciais foram preservadas para evitar perda de autenticação.'), 'CONNECTION')
+                showConsoleError(new Error('Sessão rejeitada com código 405. As credenciais foram limpas para gerar um novo QR Code.'), 'CONNECTION')
             } else if (errorCode == DisconnectReason?.restartRequired){
                 needReconnect = true
                 showConsoleError(new Error(botTexts.disconnected.restart), 'CONNECTION')

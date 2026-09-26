@@ -153,13 +153,6 @@ No momento não consigo processar sua pergunta, mas você pode:
 Por exemplo: *!play guia* mostra como usar o comando de música.`
 }
 
-// Limpar cache (útil para testes)
-export function clearDocsCache() {
-    userDocsCache = null
-    groupAdminDocsCache = null
-    botOwnerDocsCache = null
-}
-
 // Funções antigas mantidas para compatibilidade
 export async function questionAI(text: string){
     try {

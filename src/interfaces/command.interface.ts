@@ -10,6 +10,11 @@ type CommandFunction = (client: WASocket, botInfo: Bot, message: Message, group?
 export type Commands = {
     [command_name : string] : {
         guide: string,
+        semantic?: {
+            description: string
+            examples: string[]
+            naturalCommand?: boolean
+        },
         permissions?: CommandPermissions,
         msgs?: {
             [message_type : string] : string | string[]
@@ -21,6 +26,4 @@ export type Commands = {
 export type CommandsList = {
     [category in CategoryCommand]: Commands
 }
-
-
 

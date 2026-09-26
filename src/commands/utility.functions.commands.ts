@@ -4,8 +4,11 @@ import { Group } from "../interfaces/group.interface.js"
 import { Message, MimeTypes } from "../interfaces/message.interface.js"
 import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import * as waUtil from '../utils/whatsapp.util.js'
+import { createProfileBubbleVideo } from '../utils/video.util.js'
+import { fetchProfilePictureUrl } from './sticker.functions.commands.js'
 import utilityCommands from "./utility.list.commands.js"
 import { UserController } from "../controllers/user.controller.js"
+import axios from 'axios'
 
 export async function revelarCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     // Restrição silenciosa: apenas o dono pode usar
@@ -138,45 +141,41 @@ export async function saveCommand(client: WASocket, botInfo: Bot, message: Messa
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
 
-export async function audioCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+async function findSavedAudio(message: Message) {
     const { audiosDb } = await import('../database/db.js')
     const fs = await import('fs')
     const Fuse = (await import('fuse.js')).default
-    
-    if (!message.args.length) {
-        return audiosCommand(client, botInfo, message, group)
-    }
 
     const searchQuery = message.text_command.trim().toLowerCase()
-    
+
     // Tenta busca exata primeiro
     let audio = audiosDb.get(searchQuery)
 
     // Se não encontrar, usa busca fuzzy
     if (!audio) {
         const allAudios = audiosDb.getAllAudios(1000, 0)
-        
+
         if (allAudios.length === 0) {
             throw new Error(utilityCommands.audio.msgs.error_not_found)
         }
-        
+
         const fuse = new Fuse(allAudios, {
             keys: ['audio_name'],
             threshold: 0.4, // 0 = exact, 1 = match anything
             ignoreLocation: true,
             minMatchCharLength: 2
         })
-        
+
         const results = fuse.search(searchQuery)
-        
+
         if (results.length === 0) {
             throw new Error(utilityCommands.audio.msgs.error_not_found)
         }
-        
+
         // Pega o primeiro resultado (melhor match)
         const bestMatch = results[0].item
         audio = audiosDb.get(bestMatch.audio_name)
-        
+
         if (!audio) {
             throw new Error(utilityCommands.audio.msgs.error_not_found)
         }
@@ -187,38 +186,84 @@ export async function audioCommand(client: WASocket, botInfo: Bot, message: Mess
         throw new Error(utilityCommands.audio.msgs.error_file_not_found)
     }
 
+    return audio
+}
+
+export async function audioCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const fs = await import('fs')
+
+    if (!message.args.length) {
+        return audiosCommand(client, botInfo, message, group)
+    }
+
+    if (/^\d+$/.test(message.args[0]) && message.args.length === 1) {
+        return audiosCommand(client, botInfo, message, group)
+    }
+
+    const audio = await findSavedAudio(message)
+
     // Lê o arquivo
     const audioBuffer = fs.readFileSync(audio.file_path)
 
-    // Se é resposta a uma mensagem, responde ela
-    if (message.isQuoted && message.quotedMessage) {
+    await waUtil.replyFileFromBuffer(
+        client,
+        message.chat_id,
+        'audioMessage',
+        audioBuffer,
+        '',
+        message.wa_message,
+        {
+            expiration: message.expiration,
+            mimetype: audio.mime_type as MimeTypes,
+            ptt: audio.ptt === 1
+        }
+    )
+}
+
+export async function vCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
+    const fs = await import('fs')
+
+    if (!message.args.length) {
+        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
+    }
+
+    if (!message.isQuoted || !message.quotedMessage) {
+        throw new Error(utilityCommands.v.msgs.error_no_quote)
+    }
+
+    const audio = await findSavedAudio(message)
+
+    try {
+        await waUtil.replyText(client, message.chat_id, '🎬 Gerando vídeo...', message.wa_message, {expiration: message.expiration})
+
+        const isGroup = message.quotedMessage.sender.includes('@g.us')
+        if (isGroup) throw new Error('sender é grupo')
+
+        const profilePicUrl = await fetchProfilePictureUrl(client, message.quotedMessage.sender, message.quotedMessage.senderAlt)
+        if (!profilePicUrl) throw new Error('sem url da foto')
+
+        const picResponse = await axios.get(profilePicUrl, { responseType: 'arraybuffer', timeout: 5000, maxContentLength: 256 * 1024 })
+        const profilePicBuffer = Buffer.from(picResponse.data)
+
+        const audioBuffer = fs.readFileSync(audio.file_path)
+
+        const videoBuffer = await createProfileBubbleVideo(profilePicBuffer, audioBuffer)
+
         await waUtil.replyFileFromBuffer(
-            client, 
-            message.chat_id, 
-            'audioMessage', 
-            audioBuffer, 
-            '', 
-            message.quotedMessage.wa_message, 
+            client,
+            message.chat_id,
+            'videoMessage',
+            videoBuffer,
+            '',
+            message.quotedMessage.wa_message,
             {
-                expiration: message.expiration, 
-                mimetype: audio.mime_type as MimeTypes,
-                ptt: audio.ptt === 1
+                expiration: message.expiration,
+                mimetype: 'video/mp4' as MimeTypes
             }
         )
-    } else {
-        await waUtil.replyFileFromBuffer(
-            client, 
-            message.chat_id, 
-            'audioMessage', 
-            audioBuffer, 
-            '', 
-            message.wa_message, 
-            {
-                expiration: message.expiration, 
-                mimetype: audio.mime_type as MimeTypes,
-                ptt: audio.ptt === 1
-            }
-        )
+    } catch (error: any) {
+        console.error('[V] Erro ao gerar vídeo:', error?.message || error)
+        throw new Error(utilityCommands.v.msgs.error_video)
     }
 }
 

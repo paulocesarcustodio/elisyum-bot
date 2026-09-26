@@ -10,11 +10,16 @@ import { buildText, messageErrorCommandUsage} from "../utils/general.util.js"
 import { UserController } from "../controllers/user.controller.js"
 import { getContactFromStore } from "../helpers/contacts.store.helper.js"
 import { replaceMentionIdsWithNames } from "../utils/mention.util.js"
+import NodeCache from "node-cache"
+import { profilePictureCache } from "../helpers/profile-picture.cache.helper.js"
+import { setBoundedCache } from "../utils/cache.util.js"
 
-// Mensagens dos comandos de sticker (para evitar dependência circular)
+const groupMetadataCache = new NodeCache({ stdTTL: 30, checkperiod: 10 })
+
 const stickerMsgs = {
     s: {
         error_limit: 'O video/gif deve ter no máximo 8 segundos.',
+        error_file_limit: 'A mídia é muito grande para criar uma figurinha. O limite é 20 MB.',
         error_message: "Houve um erro ao obter os dados da mensagem.",
         error_no_text: 'A mensagem citada não possui texto.',
         error_too_long: 'A mensagem é muito longa. Máximo de 500 caracteres.',
@@ -49,11 +54,14 @@ function createMentionNameResolver(client: WASocket, group: Group | undefined, u
 
         if (group) {
             try {
-                groupMetadataPromise ??= client.groupMetadata(group.id)
+                groupMetadataPromise ??= fetchGroupMetadataCached(client, group.id)
                 const groupMetadata = await groupMetadataPromise
                 const participant = groupMetadata.participants.find((participant) => {
-                    const normalizedParticipantId = waUtil.normalizeWhatsappJid(participant.id) || participant.id
-                    return normalizedParticipantId === normalizedMentionedJid || participant.id === mentionedJid
+                    const participantData = participant as typeof participant & { phoneNumber?: string; lid?: string }
+                    const participantIds = [participantData.id, participantData.phoneNumber, participantData.lid]
+                        .filter((id): id is string => !!id)
+                        .map(id => waUtil.normalizeWhatsappJid(id) || id)
+                    return participantIds.includes(normalizedMentionedJid) || participantIds.includes(mentionedJid)
                 })
                 const participantName = participant ? getGroupParticipantName(participant) : undefined
 
@@ -82,6 +90,70 @@ function createMentionNameResolver(client: WASocket, group: Group | undefined, u
     }
 }
 
+async function fetchGroupMetadataCached(client: WASocket, groupId: string): Promise<GroupMetadata> {
+    const cached = groupMetadataCache.get<GroupMetadata>(groupId)
+    if (cached) return cached
+
+    const metadata = await client.groupMetadata(groupId)
+    if (!groupMetadataCache.has(groupId) && groupMetadataCache.keys().length >= 500) {
+        const oldestGroupId = groupMetadataCache.keys()[0]
+        if (oldestGroupId !== undefined) groupMetadataCache.del(oldestGroupId)
+    }
+    groupMetadataCache.set(groupId, metadata)
+    return metadata
+}
+
+async function fetchProfilePicCached(client: WASocket, sender: string, senderAlt?: string): Promise<string | undefined> {
+    const normalizedSender = waUtil.normalizeWhatsappJid(sender) || sender
+    const cached = profilePictureCache.get<string | null>(normalizedSender)
+    if (cached !== undefined) return cached || undefined
+
+    const contact = getContactFromStore(normalizedSender) || getContactFromStore(sender)
+    const candidates = [...new Set([
+        normalizedSender,
+        sender,
+        senderAlt,
+        contact?.phoneNumber,
+        contact?.lid,
+        contact?.id
+    ].filter((jid): jid is string => !!jid))]
+
+    let profilePictureTimeout: NodeJS.Timeout | undefined
+    const profilePicture = await Promise.race([
+        (async () => {
+            for (const jid of candidates) {
+                try {
+                    const url = await client.profilePictureUrl(jid, 'image')
+                    if (url) return url
+                } catch {
+                    // Try the next phone-number/LID alias.
+                }
+            }
+            return undefined
+        })(),
+        new Promise<undefined>(resolve => {
+            profilePictureTimeout = setTimeout(() => resolve(undefined), 3000)
+            profilePictureTimeout.unref()
+        })
+    ]).finally(() => clearTimeout(profilePictureTimeout))
+    if (profilePicture) {
+        setBoundedCache(profilePictureCache, normalizedSender, profilePicture, 2000)
+        return profilePicture
+    }
+
+    if (contact?.imgUrl && /^https?:\/\//i.test(contact.imgUrl)) {
+        setBoundedCache(profilePictureCache, normalizedSender, contact.imgUrl, 2000)
+        return contact.imgUrl
+    }
+
+    setBoundedCache(profilePictureCache, normalizedSender, null, 2000, 60)
+    return undefined
+}
+
+export function fetchProfilePictureUrl(client: WASocket, sender: string, senderAlt?: string) {
+    return fetchProfilePicCached(client, sender, senderAlt)
+}
+
 export async function sCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
     let stickerType : "resize" | "contain" | "circle" =  'resize'
 
@@ -101,7 +173,6 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
         throw new Error(stickerMsgs.s.error_message)
     }
 
-    // Se for mensagem de texto citada, criar balão do WhatsApp
     if (message.isQuoted && (messageData.type === "conversation" || messageData.type === "extendedTextMessage")) {
         const quotedText = message.quotedMessage?.body || message.quotedMessage?.caption
         
@@ -113,121 +184,18 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
             throw new Error(stickerMsgs.s.error_too_long)
         }
 
-        // Obter foto de perfil
-        let avatarUrl: string | undefined
-        try {
-            const profilePicUrl = await client.profilePictureUrl(message.quotedMessage!.sender, 'image')
-            avatarUrl = profilePicUrl
-        } catch (err) {
-            // Se não conseguir obter a foto, continua sem ela
-            avatarUrl = undefined
-        }
+        const quotedSender = message.quotedMessage!.sender
+        const quotedSenderAlt = message.quotedMessage!.senderAlt
+        const userController = new UserController()
 
-        // Obter nome do autor do grupo
-        let authorName = 'Membro do grupo';
-        try {
-            const quotedSender = message.quotedMessage!.sender;
-            const userController = new UserController();
+    const [avatarUrl, authorName] = await Promise.all([
+        fetchProfilePicCached(client, quotedSender, quotedSenderAlt),
+        resolveAuthorName(client, message, group, quotedSender, userController)
+    ])
 
-            console.log(`\n[STICKER-NOME] ========== BUSCANDO NOME ==========`)
-            console.log(`[STICKER-NOME] Sender ID: ${quotedSender}`)
-            console.log(`[STICKER-NOME] É grupo?: ${!!group}`)
-            console.log(`[STICKER-NOME] Group ID: ${group?.id || 'N/A'}`)
-
-            // ESTRATÉGIA: Para GRUPOS, buscar SEMPRE nos metadados primeiro (fonte mais confiável)
-            if (group) {
-                console.log(`[STICKER-NOME] 📋 Buscando nos METADADOS DO GRUPO (fonte principal)...`)
-                try {
-                    const groupMetadata = await client.groupMetadata(group.id);
-                    console.log(`[STICKER-NOME] Total de participantes: ${groupMetadata.participants.length}`)
-                    
-                    const participant = groupMetadata.participants.find(p => p.id === quotedSender);
-                    console.log(`[STICKER-NOME] Participante encontrado?: ${!!participant}`)
-                    
-                    if (participant) {
-                        // Log de toda a estrutura do participante para debug
-                        console.log(`[STICKER-NOME] Estrutura do participante:`, JSON.stringify(participant, null, 2))
-                        
-                        // Tenta várias propriedades possíveis
-                        const participantNotify = (participant as any).notify;
-                        const participantName = (participant as any).name;
-                        const participantVerifiedName = (participant as any).verifiedName;
-                        
-                        console.log(`[STICKER-NOME] - notify: "${participantNotify || 'vazio'}"`)
-                        console.log(`[STICKER-NOME] - name: "${participantName || 'vazio'}"`)
-                        console.log(`[STICKER-NOME] - verifiedName: "${participantVerifiedName || 'vazio'}"`)
-                        
-                        const metadataName = participantNotify || participantName || participantVerifiedName;
-                        if (metadataName && metadataName.trim().length > 0) {
-                            authorName = metadataName.trim();
-                            console.log(`[STICKER-NOME] ✅ Nome encontrado nos METADADOS: "${authorName}"`)
-                            
-                            // Salva no banco para próxima vez
-                            await userController.setName(quotedSender, authorName);
-                            console.log(`[STICKER-NOME] 💾 Nome salvo no banco`)
-                        } else {
-                            console.log(`[STICKER-NOME] ⚠️ Participante existe mas sem nome nos metadados`)
-                        }
-                    } else {
-                        console.log(`[STICKER-NOME] ⚠️ Participante NÃO encontrado nos metadados`)
-                        console.log(`[STICKER-NOME] Listando alguns IDs dos participantes:`)
-                        groupMetadata.participants.slice(0, 3).forEach((p, i) => {
-                            console.log(`[STICKER-NOME]   ${i + 1}. ${p.id}`)
-                        })
-                    }
-                } catch (groupErr) {
-                    console.log(`[STICKER-NOME] ❌ ERRO ao buscar metadados:`, groupErr);
-                }
-            }
-
-            // Se ainda não encontrou, tenta outras fontes
-            if (authorName === 'Membro do grupo') {
-                console.log(`[STICKER-NOME] ⏩ Tentando fontes alternativas...`)
-                
-                // 1. notifyName do contextInfo
-                const pushName = message.quotedMessage?.pushname;
-                console.log(`[STICKER-NOME] 1️⃣ contextInfo.notifyName: "${pushName || 'vazio'}"`)
-                if (pushName?.trim()) {
-                    authorName = pushName.trim();
-                    console.log(`[STICKER-NOME] ✅ Encontrado no contextInfo`)
-                }
-                
-                // 2. Banco de dados
-                if (authorName === 'Membro do grupo') {
-                    const user = await userController.getUser(quotedSender);
-                    console.log(`[STICKER-NOME] 2️⃣ Banco de dados: "${user?.name || 'vazio'}"`)
-                    if (user?.name?.trim()) {
-                        authorName = user.name.trim();
-                        console.log(`[STICKER-NOME] ✅ Encontrado no banco`)
-                    }
-                }
-                
-                // 3. Store de contatos (contacts.update)
-                if (authorName === 'Membro do grupo') {
-                    const contact = getContactFromStore(quotedSender);
-                    console.log(`[STICKER-NOME] 3️⃣ Store de contatos: notify="${contact?.notify || 'vazio'}", name="${contact?.name || 'vazio'}"`)
-                    const contactName = contact?.notify || contact?.name || contact?.verifiedName;
-                    if (contactName?.trim()) {
-                        authorName = contactName.trim();
-                        console.log(`[STICKER-NOME] ✅ Encontrado no store de contatos`)
-                        // Salva no banco para próxima vez
-                        await userController.setName(quotedSender, authorName);
-                    }
-                }
-            }
-
-            console.log(`[STICKER-NOME] 🎯 NOME FINAL USADO: "${authorName}"`)
-            console.log(`[STICKER-NOME] ========================================\n`)
-
-        } catch (err) {
-            console.log(`[STICKER] ❌ Erro geral ao buscar nome:`, err);
-        }
-        
-        // Obter horário
         const now = new Date()
         const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
 
-        const userController = new UserController()
         const stickerText = await replaceMentionIdsWithNames(
             quotedText,
             message.quotedMessage?.mentioned || [],
@@ -243,21 +211,78 @@ export async function sCommand(client: WASocket, botInfo: Bot, message: Message,
 
         const authorText = buildText(stickerMsgs.s.author_text, message.pushname)
         const stickerBuffer = await stickerUtil.createSticker(imageBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: 'resize'})
+        if (stickerBuffer.length > 1024 * 1024) throw new Error('A figurinha ultrapassou o limite de 1 MB do WhatsApp.')
         await waUtil.sendSticker(client, message.chat_id, stickerBuffer, {expiration: message.expiration})
         return
     }
 
-    // Comportamento original para imagens/vídeos
     if (messageData.type != "imageMessage" && messageData.type != "videoMessage") {
         throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
     } else if (messageData.type == "videoMessage" && messageData.seconds && messageData.seconds  > 9) {
         throw new Error(stickerMsgs.s.error_limit)
     }
+
+    const fileLength = message.isQuoted ? message.quotedMessage?.media?.file_length : message.media?.file_length
+    if (fileLength && fileLength > 20 * 1024 * 1024) {
+        throw new Error(stickerMsgs.s.error_file_limit)
+    }
     
     const mediaBuffer = await waUtil.downloadMessageAsBuffer(client, messageData.message)
     const authorText = buildText(stickerMsgs.s.author_text, message.pushname)
     const stickerBuffer = await stickerUtil.createSticker(mediaBuffer, {pack: botInfo.name, author: authorText, fps: 9, type: stickerType})
+    if (stickerBuffer.length > 1024 * 1024) throw new Error('A figurinha ultrapassou o limite de 1 MB do WhatsApp.')
     await waUtil.sendSticker(client, message.chat_id, stickerBuffer, { expiration: message.expiration })
+}
+
+async function resolveAuthorName(client: WASocket, message: Message, group: Group | undefined, quotedSender: string, userController: UserController): Promise<string> {
+    let authorName = 'Membro do grupo'
+
+    if (group) {
+        try {
+            const groupMetadata = await fetchGroupMetadataCached(client, group.id)
+            const normalizedSender = waUtil.normalizeWhatsappJid(quotedSender) || quotedSender
+            const participant = groupMetadata.participants.find(p => {
+                const participantData = p as typeof p & { phoneNumber?: string; lid?: string }
+                return [participantData.id, participantData.phoneNumber, participantData.lid]
+                    .filter((id): id is string => !!id)
+                    .some(id => (waUtil.normalizeWhatsappJid(id) || id) === normalizedSender || id === quotedSender)
+            })
+            if (participant) {
+                const metadataName = getGroupParticipantName(participant)
+                if (metadataName?.trim()) {
+                    authorName = metadataName.trim()
+                    const participantData = participant as typeof participant & { phoneNumber?: string; lid?: string }
+                    await userController.setName(quotedSender, authorName, participantData.phoneNumber, participantData.lid)
+                    return authorName
+                }
+            }
+        } catch (groupErr) {
+            console.log(`[STICKER-NOME] Erro ao buscar metadados:`, groupErr)
+        }
+    }
+
+    const pushName = message.quotedMessage?.pushname
+    if (pushName?.trim()) {
+        authorName = pushName.trim()
+    }
+
+    if (authorName === 'Membro do grupo') {
+        const user = await userController.getUser(quotedSender)
+        if (user?.name?.trim()) {
+            authorName = user.name.trim()
+        }
+    }
+
+    if (authorName === 'Membro do grupo') {
+        const contact = getContactFromStore(quotedSender)
+        const contactName = contact?.notify || contact?.name || contact?.verifiedName
+        if (contactName?.trim()) {
+            authorName = contactName.trim()
+            await userController.setName(quotedSender, authorName)
+        }
+    }
+
+    return authorName
 }
 
 export async function simgCommand(client: WASocket, botInfo: Bot, message: Message, group? : Group){
@@ -277,4 +302,3 @@ export async function simgCommand(client: WASocket, botInfo: Bot, message: Messa
     const imageBuffer = await stickerUtil.stickerToImage(stickerBuffer)
     await waUtil.replyFileFromBuffer(client, message.chat_id, 'imageMessage', imageBuffer, '', message.wa_message, {expiration: message.expiration, mimetype: 'image/png'})
 }
-

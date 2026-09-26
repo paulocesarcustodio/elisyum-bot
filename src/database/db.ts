@@ -9,6 +9,8 @@ if (!fs.existsSync(dataDir)) {
 
 const dbPath = path.join(dataDir, 'bot.db');
 export const db = new Database(dbPath);
+db.run('PRAGMA journal_mode = WAL');
+db.run('PRAGMA busy_timeout = 5000');
 
 // ============================================
 // TABELA DE CONTATOS (substitui NodeCache)
@@ -21,9 +23,15 @@ db.run(`
     verified_name TEXT,
     phone_number TEXT,
     lid TEXT,
+    avatar_url TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+const contactColumns = db.prepare('PRAGMA table_info(contacts)').all() as Array<{ name: string }>;
+if (!contactColumns.some(column => column.name === 'avatar_url')) {
+  db.run('ALTER TABLE contacts ADD COLUMN avatar_url TEXT');
+}
 
 // ============================================
 // TABELA DE LOGS DE COMANDOS
@@ -163,16 +171,22 @@ export const contactsDb = {
     verifiedName?: string;
     phoneNumber?: string;
     lid?: string;
+    imgUrl?: string | null;
   }) => {
     const stmt = db.prepare(`
-      INSERT INTO contacts (jid, name, notify, verified_name, phone_number, lid, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO contacts (jid, name, notify, verified_name, phone_number, lid, avatar_url, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(jid) DO UPDATE SET 
         name = COALESCE(excluded.name, name),
         notify = COALESCE(excluded.notify, notify),
         verified_name = COALESCE(excluded.verified_name, verified_name),
         phone_number = COALESCE(excluded.phone_number, phone_number),
         lid = COALESCE(excluded.lid, lid),
+        avatar_url = CASE
+          WHEN excluded.avatar_url = '' THEN NULL
+          WHEN excluded.avatar_url IS NOT NULL THEN excluded.avatar_url
+          ELSE avatar_url
+        END,
         updated_at = CURRENT_TIMESTAMP
     `);
     
@@ -182,7 +196,8 @@ export const contactsDb = {
       contact.notify || null,
       contact.verifiedName || null,
       contact.phoneNumber || null,
-      contact.lid || null
+      contact.lid || null,
+      contact.imgUrl === 'removed' ? '' : contact.imgUrl && /^https?:\/\//i.test(contact.imgUrl) ? contact.imgUrl : null
     );
     
     console.log(`[DB] Contato salvo: ${contact.notify || contact.name || contact.jid}`);
@@ -190,14 +205,20 @@ export const contactsDb = {
 
   // Buscar contato do cache
   get: (jid: string) => {
-    const stmt = db.prepare('SELECT * FROM contacts WHERE jid = ? OR lid = ? OR phone_number = ?');
-    return stmt.get(jid, jid, jid) as {
+    const stmt = db.prepare(`
+      SELECT * FROM contacts
+      WHERE jid = ? OR lid = ? OR phone_number = ?
+        OR REPLACE(jid, '@s.whatsapp.net', '') = ?
+        OR REPLACE(phone_number, '@s.whatsapp.net', '') = ?
+    `);
+    return stmt.get(jid, jid, jid, jid, jid) as {
       jid: string;
       name: string | null;
       notify: string | null;
       verified_name: string | null;
       phone_number: string | null;
       lid: string | null;
+      avatar_url: string | null;
       updated_at: string;
     } | undefined;
   },
@@ -212,6 +233,7 @@ export const contactsDb = {
       verified_name: string | null;
       phone_number: string | null;
       lid: string | null;
+      avatar_url: string | null;
       updated_at: string;
     }>;
   },
@@ -574,6 +596,99 @@ export const askCacheDb = {
     return result.count;
   }
 };
+
+// ============================================
+// TABELAS PARA USUÁRIOS (migração NeDB → SQLite)
+// ============================================
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT DEFAULT '',
+    commands INTEGER DEFAULT 0,
+    received_welcome INTEGER DEFAULT 0,
+    owner INTEGER DEFAULT 0,
+    command_rate_limited INTEGER DEFAULT 0,
+    command_rate_expire_limited INTEGER DEFAULT 0,
+    command_rate_cmds INTEGER DEFAULT 1,
+    command_rate_expire_cmds INTEGER DEFAULT 0,
+    help_level TEXT DEFAULT 'detailed',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// ============================================
+// TABELAS PARA GRUPOS (migração NeDB → SQLite)
+// ============================================
+db.run(`
+  CREATE TABLE IF NOT EXISTS groups_data (
+    id TEXT PRIMARY KEY,
+    name TEXT DEFAULT '',
+    description TEXT,
+    commands_executed INTEGER DEFAULT 0,
+    owner TEXT,
+    restricted INTEGER DEFAULT 0,
+    expiration INTEGER,
+    muted INTEGER DEFAULT 0,
+    muted_members TEXT DEFAULT '[]',
+    welcome_status INTEGER DEFAULT 0,
+    welcome_msg TEXT DEFAULT '',
+    antifake_status INTEGER DEFAULT 0,
+    antifake_exceptions TEXT DEFAULT '{"prefixes":["55"],"numbers":[]}',
+    antilink_status INTEGER DEFAULT 0,
+    antilink_exceptions TEXT DEFAULT '[]',
+    antiflood_status INTEGER DEFAULT 0,
+    antiflood_max_messages INTEGER DEFAULT 10,
+    antiflood_interval INTEGER DEFAULT 10,
+    auto_reply_status INTEGER DEFAULT 0,
+    auto_reply_config TEXT DEFAULT '[]',
+    autosticker INTEGER DEFAULT 0,
+    block_cmds TEXT DEFAULT '[]',
+    blacklist TEXT DEFAULT '[]',
+    word_filter TEXT DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// ============================================
+// TABELAS PARA PARTICIPANTES (migração NeDB → SQLite)
+// ============================================
+db.run(`
+  CREATE TABLE IF NOT EXISTS participants (
+    group_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    registered_since TEXT,
+    commands INTEGER DEFAULT 0,
+    admin INTEGER DEFAULT 0,
+    msgs INTEGER DEFAULT 0,
+    image INTEGER DEFAULT 0,
+    audio INTEGER DEFAULT 0,
+    sticker INTEGER DEFAULT 0,
+    video INTEGER DEFAULT 0,
+    text_count INTEGER DEFAULT 0,
+    other INTEGER DEFAULT 0,
+    warnings INTEGER DEFAULT 0,
+    antiflood_expire INTEGER DEFAULT 0,
+    antiflood_msgs INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (group_id, user_id)
+  )
+`);
+
+// ============================================
+// TABELA PARA SESSION STORE (migração NeDB → SQLite)
+// ============================================
+db.run(`
+  CREATE TABLE IF NOT EXISTS session_store (
+    key TEXT PRIMARY KEY,
+    data TEXT
+  )
+`);
+
+// ============================================
+// ÍNDICES
+// ============================================
+db.run('CREATE INDEX IF NOT EXISTS idx_participants_group ON participants(group_id)');
+db.run('CREATE INDEX IF NOT EXISTS idx_participants_admin ON participants(group_id, admin)');
 
 console.log('[DB] 🗄️ Banco de dados SQLite inicializado:', dbPath);
 

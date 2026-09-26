@@ -21,7 +21,18 @@ createServer((req, res) => {
   }
 
   let body = '';
-  req.on('data', chunk => body += chunk.toString());
+  let bodySize = 0;
+  const MAX_BODY_SIZE = 1024 * 1024;
+  req.on('data', chunk => {
+    bodySize += chunk.length;
+    if (bodySize > MAX_BODY_SIZE) {
+      res.writeHead(413);
+      res.end('Payload Too Large');
+      req.destroy();
+      return;
+    }
+    body += chunk.toString();
+  });
   
   req.on('end', () => {
     try {
@@ -49,7 +60,7 @@ createServer((req, res) => {
         return res.end('OK - Ignored');
       }
 
-      console.log('🎯 Deploy triggered!');
+      if (isDeploying) { console.log('⚠️ Deploy already in progress, ignoring'); res.end('OK - Already deploying'); return; } isDeploying = true; console.log('🎯 Deploy triggered!');
       console.log(`   Commit: ${payload.head_commit.message}`);
       console.log(`   Author: ${payload.pusher.name}`);
 
@@ -77,11 +88,13 @@ createServer((req, res) => {
       exec(deployScript, (error, stdout, stderr) => {
         if (error) {
           console.error('❌ Deploy failed:', error.message);
+          isDeploying = false;
           return;
         }
         if (stderr) console.error('stderr:', stderr);
         console.log(stdout);
         console.log('✅ Deploy successful!\n');
+        isDeploying = false;
       });
 
     } catch (err) {

@@ -2,6 +2,10 @@ import * as groupFunctions from './group.functions.commands.js'
 
 const groupCommands = {
     grupo: {
+        semantic: {
+            description: 'Exibir nome, participantes, administradores e configurações do grupo atual.',
+            examples: ['me mostra as informações do grupo', 'quais são os dados desse grupo', 'como está configurado o grupo']
+        },
         guide: `Ex: *{$p}grupo* - Exibe os dados atuais do grupo.\n`,
         msgs: {
             reply_title: "👥 *Dados gerais do grupo* \n\n"+
@@ -13,8 +17,6 @@ const groupCommands = {
             reply_resource_title: '🧰 *RECURSOS DO GRUPO* \n\n',
             reply_item_welcome_on: "*Boas vindas*: ✅\n",
             reply_item_welcome_off: "*Boas vindas*: ❌\n",
-            reply_item_mute_on: "*Mutar*: ✅\n",
-            reply_item_mute_off: "*Mutar*: ❌\n",
             reply_item_autosticker_on: "*Auto-Sticker*: ✅\n",
             reply_item_autosticker_off: "*Auto-Sticker*: ❌\n",
             reply_item_antilink_on: "*Anti-Link*: ✅\n"+
@@ -70,6 +72,10 @@ const groupCommands = {
         function: groupFunctions.avisoCommand
     },
     silenciar:{
+        semantic: {
+            description: 'Alternar silêncio de um membro do grupo.',
+            examples: ['silencia o membro', 'muta a pessoa', 'faz parar de falar', 'tira o membro do mute', 'dessilencia']
+        },
         guide: `Ex: Responda alguém com *{$p}silenciar* - Alterna o silêncio do membro respondido.\n`+
         `Ex: Marque alguém com *{$p}silenciar* - Alterna o silêncio do membro marcado.\n\n`+
         `*Obs*: Use novamente para desmutar o membro.\n`,
@@ -179,6 +185,10 @@ const groupCommands = {
         function: groupFunctions.addCommand
     },
     ban: {
+        semantic: {
+            description: 'Remover ou expulsar membro não administrador deste grupo.',
+            examples: ['remove o membro do grupo', 'expulsa a pessoa', 'tira esse membro daqui', 'bane o participante']
+        },
         guide: `Ex: *{$p}ban* @membro - Para banir um membro marcando ele.\n\n`+
         `Ex: Responder alguém com *{$p}ban* - Bane o membro que você respondeu.\n`,
         msgs: {
@@ -191,6 +201,10 @@ const groupCommands = {
         function: groupFunctions.banCommand
     },
     promover: {
+        semantic: {
+            description: 'Promover membro a administrador deste grupo.',
+            examples: ['promove o membro pra admin', 'torna a pessoa administradora', 'dá admin para o participante']
+        },
         guide: `Ex: *{$p}promover* @membro - Promove o membro mencionado a *administrador*.\n\n`+
         `Ex: Responder com *{$p}promover* - Promove o usuário respondido a *administrador*.\n`,
         msgs: {
@@ -203,6 +217,10 @@ const groupCommands = {
         function: groupFunctions.promoverCommand
     },
     rebaixar: {
+        semantic: {
+            description: 'Remover privilégios de administrador de um membro.',
+            examples: ['rebaixa o admin', 'tira ele de admin', 'remove o cargo de administrador']
+        },
         guide: `Ex: *{$p}rebaixar* @admin - Rebaixa o administrador mencionado a *membro*.\n\n`+
         `Ex: Responder com *{$p}rebaixar* - Rebaixa o administrador respondido a *membro*.\n`,
         msgs: {
@@ -239,6 +257,10 @@ const groupCommands = {
         function: groupFunctions.mmCommand
     },
     adms: {
+        semantic: {
+            description: 'Listar ou mencionar os administradores deste grupo.',
+            examples: ['quem são os admins', 'mostra os administradores', 'marca os adms do grupo']
+        },
         guide: `Ex: Responder com *{$p}adms* - Marca todos os *ADMINISTRADORES* em uma postagem.\n\n`+
         `Ex: *{$p}adms* - Marca os *ADMINISTRADORES* do grupo.\n`,
         msgs: {
@@ -250,6 +272,10 @@ const groupCommands = {
         function: groupFunctions.admsCommand
     },
     dono: {
+        semantic: {
+            description: 'Informar quem é o dono deste grupo.',
+            examples: ['quem é o dono do grupo', 'quem criou o grupo']
+        },
         guide: `Ex: *{$p}dono* - Exibe quem é dono do grupo.\n`,
         msgs: {
             reply: "🤖 O dono do grupo é: +{$1}",
@@ -258,16 +284,11 @@ const groupCommands = {
         permissions: {roles: ['owner', 'group_moderator']},
         function: groupFunctions.donoCommand
     },
-    mutar: {
-        guide: `Ex: *{$p}mutar* - Liga/desliga a execução de comandos dos membros.\n`,
-        msgs: {
-            reply_on: "✅ O recurso de *MUTAR GRUPO* foi ativado com sucesso",
-            reply_off: "✅ O recurso de *MUTAR GRUPO* foi desativado com sucesso"
-        },
-        permissions: {roles: ['owner', 'group_moderator']},
-        function: groupFunctions.mutarCommand
-    },
     link: {
+        semantic: {
+            description: 'Obter o link de convite deste grupo.',
+            examples: ['me passa o link do grupo', 'qual é o convite do grupo']
+        },
         guide: `Ex: *{$p}link* - Exibe o link do grupo.\n`,
         msgs: {
             reply: "👥 *Link do grupo*\n\n"+
@@ -369,6 +390,7 @@ const groupCommands = {
         function: groupFunctions.rmexlinkCommand
     },
     autosticker: {
+        semantic: { description: '', examples: [], naturalCommand: false },
         guide: `Ex: *{$p}autosticker* - Liga/desliga a criação automatica de stickers sem precisar de comandos.\n`,
         msgs: {
             reply_on: "✅ O recurso de *AUTO-STICKER* foi ativado com sucesso.",

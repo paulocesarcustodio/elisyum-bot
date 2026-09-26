@@ -17,20 +17,28 @@ import { executeEventQueue, queueEvent } from './helpers/events.queue.helper.js'
 import { checkAndNotifyPatchNotes } from './helpers/patch-notes.helper.js'
 import botTexts from './helpers/bot.texts.helper.js'
 import { askQuestion, colorText } from './utils/general.util.js'
-import { useNeDBAuthState } from './helpers/session.auth.helper.js'
+import { useSQLiteAuthState } from './helpers/session.auth.helper.js'
 import { SchedulerService } from './services/scheduler.service.js'
+import { setBoundedCache } from './utils/cache.util.js'
 
 //Cache de tentativa de envios
-const retryCache = new NodeCache()
+const retryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 60 })
 //Cache de eventos na fila até o bot inicializar
-const eventsCache = new NodeCache()
+const eventsCache = new NodeCache({ useClones: false })
 //Cache de mensagens para serem reenviadas em caso de falha
 const messagesCache = new NodeCache({stdTTL: 5*60, useClones: false})
 //Cache de mensagens de visualização única (view once) - TTL de 24 horas
-const viewOnceCache = new NodeCache({stdTTL: 24*60*60, useClones: false})
+const viewOnceCache = new NodeCache({stdTTL: 6*60*60, useClones: false})
+
+//Controle de reconexão
+let reconnectAttempts = 0
+const BASE_RECONNECT_DELAY_MS = 10_000
+const MAX_RECONNECT_DELAY_MS = 300_000
+let isSyncingOnStart = false
+let activeClient: WASocket | undefined
 
 export default async function connect(){
-    const { state, saveCreds } = await useNeDBAuthState()
+    const { state, saveCreds } = await useSQLiteAuthState()
     let version: WAVersion | undefined
 
     try {
@@ -43,11 +51,18 @@ export default async function connect(){
     const client : WASocket = makeWASocket(configSocket(state, retryCache, version, messagesCache))
     let connectionType : string | null = null
     let isBotReady = false
+    let reconnectScheduled = false
     eventsCache.set("events", [])
 
     //Eventos
     client.ev.process(async(events)=>{
+        if (activeClient !== client) return
         const botInfo = new BotController().getBot()
+
+        //Persiste credenciais ANTES de processar conexão (evita reconectar com creds desatualizadas)
+        if (events['creds.update']){
+            await saveCreds()
+        }
 
         //Status da conexão
         if (events['connection.update']){
@@ -55,7 +70,10 @@ export default async function connect(){
             const { connection, qr, receivedPendingNotifications } = connectionState
             let needReconnect = false
 
-            if (!receivedPendingNotifications) {
+            if (connection === 'close') {
+                isBotReady = false
+                needReconnect = await connectionClose(connectionState)
+            } else if (!receivedPendingNotifications) {
                 if (qr) {
                     if (!connectionType) {
                         console.log(colorText(botTexts.not_connected, '#e0e031'))
@@ -71,13 +89,19 @@ export default async function connect(){
                     }
                 } else if (connection == 'connecting'){
                     console.log(colorText(botTexts.connecting))
-                } else if (connection === 'close'){
-                    needReconnect = await connectionClose(connectionState)
                 }
-            } else {
+            } else if (!isBotReady) {
+                reconnectAttempts = 0
                 await client.waitForSocketOpen()
                 connectionOpen(client)
-                await syncGroupsOnStart(client)
+                if (!isSyncingOnStart) {
+                    isSyncingOnStart = true
+                    try {
+                        await syncGroupsOnStart(client)
+                    } finally {
+                        isSyncingOnStart = false
+                    }
+                }
                 isBotReady = true
                 await executeEventQueue(client, eventsCache)
                 console.log(colorText(botTexts.server_started))
@@ -94,12 +118,27 @@ export default async function connect(){
                 }, 5000) // Aguarda 5 segundos após o bot estar pronto
             }
             
-            if (needReconnect) connect()
-        }
+            if (needReconnect) {
+                if (reconnectScheduled) return
+                reconnectScheduled = true
 
-        // Credenciais
-        if (events['creds.update']){
-            await saveCreds()
+                reconnectAttempts++
+                const delay = Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, Math.min(reconnectAttempts - 1, 5)), MAX_RECONNECT_DELAY_MS)
+                const jitter = Math.round(Math.random() * 2000)
+                const totalDelay = delay + jitter
+                console.log(colorText(`[RECONEXÃO] Tentativa ${reconnectAttempts} — aguardando ${totalDelay/1000}s...`))
+
+                await new Promise(r => setTimeout(r, totalDelay))
+                while (activeClient === client) {
+                    try {
+                        await connect()
+                        break
+                    } catch (error) {
+                        console.error('[RECONEXÃO] Falha ao criar conexão:', error)
+                        await new Promise(r => setTimeout(r, MAX_RECONNECT_DELAY_MS))
+                    }
+                }
+            }
         }
 
         // Receber mensagem
@@ -151,11 +190,16 @@ export default async function connect(){
             }
         }
 
-        // Atualização de contatos (captura nomes/notify)
+        // Inserções e atualizações podem conter nomes/IDs e ambos devem ser persistidos.
+        if (events['contacts.upsert']) {
+            const contacts = events['contacts.upsert']
+            if (isBotReady) await contactsUpdate(contacts)
+            else queueEvent(eventsCache, 'contacts.upsert', contacts)
+        }
         if (events['contacts.update']){
             const contacts = events['contacts.update']
-
             if (isBotReady) await contactsUpdate(contacts)
+            else queueEvent(eventsCache, 'contacts.update', contacts)
         }
 
         if (events['chats.update']){
@@ -167,5 +211,5 @@ export default async function connect(){
             await logNewslettersUpdate(newsletterMetaUpdates)
         }
     })
+    activeClient = client
 }
-

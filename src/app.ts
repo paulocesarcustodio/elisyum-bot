@@ -6,6 +6,8 @@ import ffmpeg from "fluent-ffmpeg"
 import { buildText, getCurrentBotVersion } from "./utils/general.util.js"
 import botTexts from "./helpers/bot.texts.helper.js"
 import { waitForAuthPersistence } from './helpers/session.auth.helper.js'
+import { BotController } from './controllers/bot.controller.js'
+import { ffmpegPool } from './utils/worker-pool.util.js'
 import('@ffmpeg-installer/ffmpeg').then((ffmpegInstaller)=>{
     ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 }).catch(()=>{})
@@ -15,6 +17,9 @@ async function init(){
     let hasBotUpdated = await botUpdater()
     
     if (!hasBotUpdated) {
+        await ffmpegPool.initialize().catch((err) => {
+            console.error('[app] ⚠️ Falha ao inicializar worker pool (será iniciado sob demanda):', err)
+        })
         connect()
     }
 }
@@ -34,6 +39,8 @@ async function shutdown(signal: string){
     } catch (error) {
         console.error('[app] Erro ao finalizar persistência da autenticação:', error)
     } finally {
+        const botController = new BotController()
+        botController.persistOnExit()
         process.exit(0)
     }
 }

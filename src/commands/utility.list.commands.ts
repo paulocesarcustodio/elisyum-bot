@@ -6,7 +6,11 @@ import * as miscFunctions from './misc.functions.commands.js'
 const utilityCommands = {
     // === DOWNLOADS ===
     d: {
-        guide: `Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.\n`+
+        semantic: {
+            description: 'Baixar a mídia de uma URL suportada ou de uma mensagem respondida.',
+            examples: ['baixa esse vídeo', 'faz download desse link', 'salva essa mídia']
+        },
+        guide: `Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X e TikTok.\n`+
         `Ex: *{$p}d* link - Continua funcionando manualmente quando você quiser forçar o download.\n`+
         `Ex: *{$p}d* musica - Busca por título no YouTube.\n`,
         msgs: {
@@ -31,6 +35,10 @@ const utilityCommands = {
         function: downloadFunctions.playCommand
     },
     mp3: {
+        semantic: {
+            description: 'Extrair ou baixar somente o áudio de um vídeo/link.',
+            examples: ['extrai o áudio desse vídeo', 'pega só o áudio', 'converte isso pra mp3']
+        },
         guide: `Ex: *{$p}mp3* musica - Busca no YouTube e envia só o áudio.\n`+
         `Ex: *{$p}mp3* link - Converte um link suportado em áudio.\n`+
         `Ex: responda um vídeo com *{$p}mp3* - Extrai o áudio do vídeo enviado no WhatsApp.\n`,
@@ -52,6 +60,10 @@ const utilityCommands = {
     
     // === STICKERS ===
     s: {
+        semantic: {
+            description: 'Criar uma figurinha da mídia ou texto respondido.',
+            examples: ['faz figurinha disso', 'transforma isso em figurinha', 'cria um sticker dessa imagem']
+        },
         guide: `Ex: Envie/responda uma *IMAGEM/VIDEO* com *{$p}s* - Transforma em sticker.\n`+
         `Ex: Responda uma *MENSAGEM DE TEXTO* com *{$p}s* - Transforma em sticker estilo WhatsApp.\n`+
         `Ex: Envie/responda uma *IMAGEM* com *{$p}s 1* - Transforma em sticker circular.\n`+
@@ -112,6 +124,15 @@ const utilityCommands = {
             error_file_not_found: "O arquivo de áudio foi deletado do sistema. Use *{$p}a* para ver os áudios disponíveis."
         },
         function: utilityFunctions.audioCommand
+    },
+    v: {
+        guide: `Ex: Responda uma mensagem com *{$p}v nome-do-audio* - Gera um vídeo com a foto de perfil + o áudio.\n\n`+
+        `*Obs*: Este comando funciona apenas respondendo mensagens.\n`,
+        msgs: {
+            error_no_quote: "❌ Use *{$p}v nome-do-audio* respondendo uma mensagem para gerar o vídeo.",
+            error_video: "❌ Não foi possível gerar o vídeo. Tente novamente."
+        },
+        function: utilityFunctions.vCommand
     },
     audios: {
         guide: `Ex: *{$p}a* - Lista todos os áudios disponíveis (página 1).\n\n`+

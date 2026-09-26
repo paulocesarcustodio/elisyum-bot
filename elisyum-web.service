@@ -1,0 +1,16 @@
+[Unit]
+Description=Elisyum Web App (Next.js)
+After=network.target
+
+[Service]
+Type=exec
+User=root
+WorkingDirectory=/root/elisyum-bot
+ExecStart=/root/elisyum-bot/start-web.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/root/elisyum-bot/web.log
+StandardError=append:/root/elisyum-bot/web.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,5 @@
-import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, jidNormalizedUser, proto, downloadMediaMessage, type WAMessageAddressingMode } from "@whiskeysockets/baileys"
-import { buildText, randomDelay } from "./general.util.js"
+import { GroupMetadata, WAMessage, WAPresence, WASocket, S_WHATSAPP_NET, generateWAMessageFromContent, getContentType, jidNormalizedUser, proto, downloadMediaMessage, normalizeMessageContent, type WAMessageAddressingMode } from "@whiskeysockets/baileys"
+import { buildText } from "./general.util.js"
 import { MessageOptions, MessageTypes, Message } from "../interfaces/message.interface.js"
 import * as convertLibrary from './convert.util.js'
 import { Group } from "../interfaces/group.interface.js"
@@ -10,6 +10,7 @@ import { clearBlockedContactsCache } from "../helpers/blocked-contacts.cache.js"
 import { UserController } from "../controllers/user.controller.js"
 import botTexts from "../helpers/bot.texts.helper.js"
 import axios from "axios"
+import { setBoundedCache } from "./cache.util.js"
 
 /**
  * Valida se uma URL de thumbnail está acessível
@@ -93,6 +94,19 @@ export async function downloadMessageAsBuffer(
     message: WAMessage,
     options: DownloadMediaOptions = {} as DownloadMediaOptions
 ): Promise<Buffer> {
+    const content = message.message ? normalizeMessageContent(message.message) : undefined
+    const mediaType = content ? getContentType(content) : undefined
+    const media = content && mediaType
+        ? content[mediaType] as { fileLength?: number | Long } | undefined
+        : undefined
+    const mediaSizeLimit = mediaType === 'audioMessage' ? 8 : mediaType === 'stickerMessage' || mediaType === 'imageMessage' ? 8 : 24
+    if (media?.fileLength && Number(media.fileLength) > mediaSizeLimit * 1024 * 1024) {
+        throw new Error(`Mídia excede o limite de ${mediaSizeLimit} MB para processamento.`)
+    }
+    if (mediaType === 'videoMessage' && media && 'seconds' in media) {
+        const duration = Number((media as {seconds?: number | Long}).seconds || 0)
+        if (duration > 15) throw new Error('Comandos de voz aceitam vídeos de até 15 segundos.')
+    }
     const context = createMediaDownloadContext(client)
     const buffer = await downloadMediaMessage(message, 'buffer', options, context)
     return buffer
@@ -164,11 +178,7 @@ export async function extractViewOnceMessage(client: WASocket, message: WAMessag
 }
 
 async function updatePresence(client: WASocket, chatId: string, presence: WAPresence){
-    await client.presenceSubscribe(chatId)
-    await randomDelay(200, 400)
     await client.sendPresenceUpdate(presence, chatId)
-    await randomDelay(300, 1000)
-    await client.sendPresenceUpdate('paused', chatId)
 }
 
 export function addWhatsappSuffix(userNumber : string){
@@ -181,24 +191,14 @@ export function removeWhatsappSuffix(userId: string){
         return userId
     }
 
-    const suffixes = [
-        S_WHATSAPP_NET,
-        '@whatsapp.net',
-        '@c.us',
-        '@lid',
-        '@hosted',
-        '@hosted.lid'
-    ]
-
-    let sanitized = userId
-
-    for (const suffix of suffixes) {
-        if (sanitized.endsWith(suffix)) {
-            sanitized = sanitized.slice(0, -suffix.length)
-        }
+    const normalized = jidNormalizedUser(userId)
+    if (normalized) {
+        const [user] = normalized.split('@')
+        return user || userId
     }
 
-    return sanitized
+    const [user] = userId.split('@')
+    return user || userId
 }
 
 export function normalizeWhatsappJid(jid?: string | null): string {
@@ -206,32 +206,12 @@ export function normalizeWhatsappJid(jid?: string | null): string {
         return ''
     }
 
-    const normalizedCaseJid = jid.toLowerCase()
-
-    // Não normalizar JIDs de grupos, broadcasts, newsletters e LIDs (Linked Devices)
-    if (normalizedCaseJid.endsWith('@g.us') || 
-        normalizedCaseJid.endsWith('@broadcast') || 
-        normalizedCaseJid.endsWith('@newsletter') ||
-        normalizedCaseJid.endsWith('@lid')) {
-        return jid
-    }
-
     try {
         const normalized = jidNormalizedUser(jid)
-        const [userPart] = normalized.split('@')
-        const sanitizedUser = (userPart ?? '').split(':')[0] ?? ''
-
-        if (sanitizedUser) {
-            return `${sanitizedUser}${S_WHATSAPP_NET}`
-        }
-    } catch (error) {
-        // If Baileys cannot normalize the JID, fall back to a best-effort sanitization below.
+        return normalized || jid
+    } catch {
+        return jid
     }
-
-    const [rawUser] = jid.split('@')
-    const sanitizedRawUser = (rawUser ?? '').split(':')[0] ?? ''
-
-    return sanitizedRawUser ? `${sanitizedRawUser}${S_WHATSAPP_NET}` : ''
 }
 
 export function removePrefix(prefix: string, command: string){
@@ -240,20 +220,6 @@ export function removePrefix(prefix: string, command: string){
     }
 
     return command.slice(prefix.length)
-}
-
-export function getGroupParticipantsByMetadata(group : GroupMetadata){
-    return group.participants
-        .map(participant => normalizeWhatsappJid(participant.id))
-        .filter((participantId): participantId is string => !!participantId)
-}
-
-export function getGroupAdminsByMetadata(group: GroupMetadata){
-    const admins = group.participants.filter(user => (user.admin != null))
-
-    return admins
-        .map(admin => normalizeWhatsappJid(admin.id))
-        .filter((adminId): adminId is string => !!adminId)
 }
 
 export function deleteMessage(client: WASocket, message : WAMessage, deleteQuoted : boolean){
@@ -265,7 +231,7 @@ export function deleteMessage(client: WASocket, message : WAMessage, deleteQuote
     if (deleteQuoted){
         deletedMessage = {
             remoteJid: message.key.remoteJid,
-            fromMe: message.key.participant === message?.message?.extendedTextMessage?.contextInfo?.participant,
+            fromMe: message.key.fromMe,
             id: message.message?.extendedTextMessage?.contextInfo?.stanzaId,
             participant: message?.message?.extendedTextMessage?.contextInfo?.participant
         }
@@ -320,10 +286,6 @@ export async function getBlockedContacts(client: WASocket): Promise<string[]>{
 export async function sendText(client: WASocket, chatId: string, text: string, options?: MessageOptions){
     await updatePresence(client, chatId, "composing")
     return client.sendMessage(chatId, {text, linkPreview: null}, {ephemeralExpiration: options?.expiration})
-}
-
-export function sendLinkWithPreview(client: WASocket, chatId: string, text: string, options?: MessageOptions){
-    return client.sendMessage(chatId, {text}, {ephemeralExpiration: options?.expiration})
 }
 
 export async function sendTextWithMentions(client: WASocket, chatId: string, text: string, mentions: string[], options?: MessageOptions) {
@@ -530,10 +492,6 @@ export function leaveGroup (client: WASocket, groupId: string){
     return client.groupLeave(groupId)
 }
 
-export function getGroupInviteInfo (client: WASocket, linkGroup: string){
-    return client.groupGetInviteInfo(linkGroup)
-}
-
 export function updateGroupRestriction(client: WASocket, groupId: string, status: boolean){
     let config : "announcement" | "not_announcement" = status ? "announcement" : "not_announcement"
     return client.groupSettingUpdate(groupId, config)
@@ -572,28 +530,13 @@ export async function demoteParticipant(client: WASocket, groupId: string, parti
 
 export function storeMessageOnCache(message : proto.IWebMessageInfo, messageCache : NodeCache){
     if (message.key && message.key.remoteJid && message.key.id && message.message){
-        messageCache.set(message.key.id, message.message)
+        setBoundedCache(messageCache, message.key.id, message.message, 999)
     }    
 }
 
 export function getMessageFromCache(messageId: string, messageCache: NodeCache){
     let message = messageCache.get(messageId) as proto.IMessage | undefined 
     return message
-}
-
-export function storeViewOnceMessage(message: WAMessage, viewOnceCache: NodeCache){
-    if (message.key && message.key.id && message.message){
-        const messageType = getContentType(message.message)
-        if (messageType === 'viewOnceMessage' || messageType === 'viewOnceMessageV2' || messageType === 'viewOnceMessageV2Extension') {
-            viewOnceCache.set(message.key.id, message)
-            return true
-        }
-    }
-    return false
-}
-
-export function getViewOnceMessageFromCache(messageId: string, viewOnceCache: NodeCache): WAMessage | undefined {
-    return viewOnceCache.get(messageId) as WAMessage | undefined
 }
 
 export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: string, requestId?: string){
@@ -604,8 +547,6 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     if (!type || !isAllowedType(type) || !m.message[type]) return
 
     const normalizedHostId = normalizeWhatsappJid(hostId)
-    const owner = await getCachedOwner()
-    const normalizedOwnerId = owner ? normalizeWhatsappJid(owner.id) : null
     const contextInfo : proto.IContextInfo | undefined  = (typeof m.message[type] != "string" && m.message[type] && "contextInfo" in m.message[type]) ? m.message[type].contextInfo as proto.IContextInfo: undefined
     const isQuoted = (contextInfo?.quotedMessage) ? true : false
     const rawSender = m.key.fromMe ? normalizedHostId : m.key.participant || m.key.remoteJid
@@ -623,7 +564,6 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
     const t = m.messageTimestamp as number
     const chat_id = m.key.remoteJid
     const chatIdAlt = m.key.remoteJidAlt ? normalizeWhatsappJid(m.key.remoteJidAlt) : undefined
-    const isGroupAdmin = (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false
 
     if (!message_id || !t || !sender || !chat_id ) return
 
@@ -642,14 +582,15 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         body: m.message.conversation || m.message.extendedTextMessage?.text || '',
         caption : caption || '',
         mentioned: contextInfo?.mentionedJid?.map(mention => normalizeWhatsappJid(mention)).filter((mention): mention is string => !!mention) || [],
+        hasBotMention: contextInfo?.mentionedJid?.some(mention => normalizeWhatsappJid(mention) === normalizedHostId) || false,
         text_command: args?.join(" ").trim() || '',
         command: removeBold(command?.toLowerCase().trim()) || '',
         args,
         isQuoted,
         isGroupMsg,
-        isGroupAdmin,
-        isBotAdmin : normalizedOwnerId ? sender === normalizedOwnerId : false,
-        isBotOwner: normalizedOwnerId ? sender === normalizedOwnerId : false,
+        isGroupAdmin: (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false,
+        isBotAdmin: sender ? await getCachedOwner().then(owner => owner ? sender === normalizeWhatsappJid(owner.id) : false) : false,
+        isBotOwner: sender ? await getCachedOwner().then(owner => owner ? sender === normalizeWhatsappJid(owner.id) : false) : false,
         isBotMessage: m.key.fromMe ?? false,
         isBroadcast: m.key.remoteJid == "status@broadcast",
         isMedia: type != "conversation" && type != "extendedTextMessage",
@@ -660,15 +601,16 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         const mimetype = (typeof m.message[type] != "string" && m.message[type] && "mimetype" in m.message[type]) ? m.message[type].mimetype as string | null : undefined
         const url = (typeof m.message[type] != "string" && m.message[type] && "url" in m.message[type]) ? m.message[type].url as string | null : undefined
         const seconds = (typeof m.message[type] != "string" && m.message[type] && "seconds" in m.message[type]) ? m.message[type].seconds as number | null : undefined
-        const file_length = (typeof m.message[type] != "string" && m.message[type] && "fileLength" in m.message[type]) ? m.message[type].fileLength as number | Long | null : undefined
+        const file_length = (typeof m.message[type] != "string" && m.message[type] && "fileLength" in m.message[type]) ? m.message[type].fileLength as number | null : undefined
 
-        if (!mimetype || !url || !file_length) return
+        const hasPayload = Boolean(m.message.conversation || m.message.extendedTextMessage?.text || caption)
+        if (!hasPayload && !mimetype && type !== 'audioMessage') return
 
         formattedMessage.media = {
-            mimetype,
-            url,
+            mimetype: mimetype || (type === 'audioMessage' ? 'audio/ogg; codecs=opus' : 'application/octet-stream'),
+            url: url || '',
             seconds : seconds || undefined,
-            file_length
+            file_length: file_length || 0
         }
     }
 
@@ -680,18 +622,26 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
         let typeQuoted = getContentType(quotedMessage)
         const quotedStanzaId = contextInfo.stanzaId ?? undefined
-        const senderQuoted = normalizeWhatsappJid(contextInfo.participant || contextInfo.remoteJid)
+        const quotedParticipantAlt = (contextInfo as proto.IContextInfo & { participantAlt?: string }).participantAlt
+        const senderQuoted = normalizeWhatsappJid(contextInfo.participant || quotedParticipantAlt || contextInfo.remoteJid)
+        const senderQuotedAlt = normalizeWhatsappJid(quotedParticipantAlt)
 
-        if (!typeQuoted || !senderQuoted ) return
+        if (!typeQuoted) return
+        if (!senderQuoted && isGroupMsg) return
+        const resolvedQuotedSender = senderQuoted || normalizeWhatsappJid(m.key.remoteJid)
+        if (!resolvedQuotedSender) return
 
         const captionQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "caption" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].caption as string | null : undefined
         const contextInfoQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "contextInfo" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].contextInfo as proto.IContextInfo | undefined : undefined
-        const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: senderQuoted, messageId: quotedStanzaId })
-        quotedWAMessage.key.fromMe = (normalizedHostId == senderQuoted)
+        const quotedWAMessage = generateWAMessageFromContent(formattedMessage.chat_id, quotedMessage, { userJid: resolvedQuotedSender, messageId: quotedStanzaId })
+        quotedWAMessage.key.fromMe = normalizedHostId === resolvedQuotedSender
+        quotedWAMessage.key.participant = resolvedQuotedSender
+        quotedWAMessage.key.remoteJid = formattedMessage.chat_id
 
         formattedMessage.quotedMessage = {
             type: typeQuoted,
-            sender: senderQuoted,
+            sender: resolvedQuotedSender,
+            senderAlt: senderQuotedAlt && senderQuotedAlt !== resolvedQuotedSender ? senderQuotedAlt : undefined,
             pushname: (contextInfo as any)?.notifyName || (contextInfo as any)?.pushName || undefined,
             body: quotedMessage.conversation || quotedMessage.extendedTextMessage?.text || '',
             caption: captionQuoted || '',
@@ -703,15 +653,15 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         if (formattedMessage.quotedMessage?.isMedia){
             const urlQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "url" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].url as string | null : undefined
             const mimetypeQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "mimetype" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].mimetype as string | null : undefined
-            const fileLengthQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "fileLength" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].fileLength as number| Long | null : undefined
+            const fileLengthQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "fileLength" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].fileLength as number | null : undefined
             const secondsQuoted = (typeof quotedMessage[typeQuoted] != "string" && quotedMessage[typeQuoted] && "seconds" in quotedMessage[typeQuoted]) ? quotedMessage[typeQuoted].seconds as number| null : undefined
             
-            if (!urlQuoted || !mimetypeQuoted || !fileLengthQuoted) return
+            if (!mimetypeQuoted && !urlQuoted) return
 
             formattedMessage.quotedMessage.media = {
-                url: urlQuoted,
-                mimetype: mimetypeQuoted,
-                file_length: fileLengthQuoted,
+                url: urlQuoted || '',
+                mimetype: mimetypeQuoted || 'application/octet-stream',
+                file_length: fileLengthQuoted || 0,
                 seconds: secondsQuoted || undefined,
             }
         }

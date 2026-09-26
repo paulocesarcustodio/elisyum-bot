@@ -1,107 +1,70 @@
-import DataStore from "@seald-io/nedb";
-import { mkdirSync } from "fs";
-import { dirname } from "path";
+import { db } from "../database/db.js";
 import { AuthenticationCreds, AuthenticationState, initAuthCreds, SignalDataTypeMap, BufferJSON, proto } from "@whiskeysockets/baileys";
-import { Mutex } from "async-mutex";
 
-const DB_FILENAME = "./storage/session.db";
-mkdirSync(dirname(DB_FILENAME), { recursive: true });
+const getStmt = db.prepare('SELECT data FROM session_store WHERE key = ?');
+const upsertStmt = db.prepare('INSERT OR REPLACE INTO session_store (key, data) VALUES (?, ?)');
+const deleteStmt = db.prepare('DELETE FROM session_store WHERE key = ?');
 
-const db = new DataStore<{key: string, data: string}>({filename : DB_FILENAME, autoload: true});
-const dbMutex = new Mutex();
-const pendingPersistOperations = new Set<Promise<unknown>>();
+const read = (key: string) => {
+    const result = getStmt.get(key) as { data: string } | undefined;
+    return result ? JSON.parse(result.data, BufferJSON.reviver) : null;
+};
 
-function trackPersistOperation<T>(operation: Promise<T>): Promise<T> {
-    pendingPersistOperations.add(operation);
-    operation.finally(() => pendingPersistOperations.delete(operation));
-    return operation;
-}
-
-export async function useNeDBAuthState() : Promise<{ state: AuthenticationState, saveCreds: () => Promise<void>}> {
-    const write = async (data: any, key: string) => {
-        await trackPersistOperation(dbMutex.runExclusive(async () => {
-            await db.updateAsync({key}, { $set: { data: JSON.stringify(data, BufferJSON.replacer) }}, {upsert: true})
-        }))
-    }
-
-    const read = async (key: string) => {
-        return dbMutex.runExclusive(async () => {
-            const result = await db.findOneAsync({key})
-            return result ? JSON.parse(result.data, BufferJSON.reviver) : null
-        })
-    }
-
-    const remove = async (key: string) => {
-        await trackPersistOperation(dbMutex.runExclusive(async () => {
-            await db.removeAsync({ key }, {multi: false})
-        }))
-    }
-
-    const creds: AuthenticationCreds = await read("creds") || initAuthCreds()
+export async function useSQLiteAuthState(): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void> }> {
+    const creds: AuthenticationCreds = read("creds") || initAuthCreds();
 
     return {
         state: {
             creds,
             keys: {
                 get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
-                    const data: { [_: string]: SignalDataTypeMap[T] } = {}
-                    await Promise.all(
-                        ids.map(async (id: string) => {
-                            let value = await read(`${type}-${id}`)
-
-                            if (type === "app-state-sync-key" && value) {
-                                value = proto.Message.AppStateSyncKeyData.create(value as proto.Message.IAppStateSyncKeyData)
-                            }
-
-                            if (value !== null && value !== undefined) {
-                                data[id] = value as SignalDataTypeMap[T]
-                            }
-                        })
-                    )
-
-                    return data
+                    const data: { [_: string]: SignalDataTypeMap[T] } = {};
+                    for (const id of ids) {
+                        let value = read(`${type}-${id}`);
+                        if (type === "app-state-sync-key" && value) {
+                            value = proto.Message.AppStateSyncKeyData.create(value as proto.Message.IAppStateSyncKeyData);
+                        }
+                        if (value !== null && value !== undefined) {
+                            data[id] = value as SignalDataTypeMap[T];
+                        }
+                    }
+                    return data;
                 },
-                set: async (
-                    data: {
-                        [T in keyof SignalDataTypeMap]?: {
-                            [id: string]: SignalDataTypeMap[T] | null | undefined
-                        }
-                    }
-                ) => {
-                    const tasks: Promise<void>[] = [];
-                    for (const category of Object.keys(data) as (keyof SignalDataTypeMap)[]) {
-                        const entries = data[category]
-                        if (!entries) continue
-
-                        for (const id of Object.keys(entries)) {
-                            const value = entries[id]
-                            const key = `${category}-${id}`
-                            if (value === null || value === undefined) {
-                                tasks.push(remove(key))
-                            } else {
-                                tasks.push(write(value, key))
+                set: async (data: { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null | undefined } }) => {
+                    db.run('BEGIN IMMEDIATE');
+                    try {
+                        for (const category of Object.keys(data) as (keyof SignalDataTypeMap)[]) {
+                            const entries = data[category];
+                            if (!entries) continue;
+                            for (const id of Object.keys(entries)) {
+                                const value = entries[id];
+                                const key = `${category}-${id}`;
+                                if (value === null || value === undefined) {
+                                    deleteStmt.run(key);
+                                } else {
+                                    upsertStmt.run(key, JSON.stringify(value, BufferJSON.replacer));
+                                }
                             }
                         }
+                        db.run('COMMIT');
+                    } catch (e) {
+                        db.run('ROLLBACK');
+                        throw e;
                     }
-                    await Promise.all(tasks)
-                }
-            }
+                },
+            },
         },
         saveCreds: async () => {
-            await write(creds, "creds")
-        }
-    }
+            if (!creds?.noiseKey?.private) return;
+            upsertStmt.run("creds", JSON.stringify(creds, BufferJSON.replacer));
+        },
+    };
 }
 
 export async function cleanCreds(){
-    await trackPersistOperation(dbMutex.runExclusive(async () => {
-        await db.removeAsync({}, {multi: true});
-    }));
+    db.prepare('DELETE FROM session_store').run()
 }
 
 export async function waitForAuthPersistence(): Promise<void> {
-    while (pendingPersistOperations.size) {
-        const pending = [...pendingPersistOperations];
-        await Promise.allSettled(pending);
-    }
+    // SQLite writes are synchronous, no need to wait
 }

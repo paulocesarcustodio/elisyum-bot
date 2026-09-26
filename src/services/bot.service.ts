@@ -8,8 +8,13 @@ import { BOT_PREFIX } from "../constants.js"
 
 const CURRENT_DB_MIGRATION_VERSION = 3
 
+let botServiceInstance: BotService | null = null
+
 export class BotService {
     private pathJSON = path.resolve("storage/bot.json")
+    private bot!: Bot
+    private persistTimer: ReturnType<typeof setTimeout> | null = null
+    private persistScheduled = false
 
     private defaultBot : Bot = {
         started : 0,
@@ -21,6 +26,7 @@ export class BotService {
         db_migration_version: CURRENT_DB_MIGRATION_VERSION,
         autosticker: false,
         commands_pv: true,
+        semantic_commands: false,
         block_cmds: [],
         command_rate:{
             status: false,
@@ -30,126 +36,132 @@ export class BotService {
     }
 
     constructor(){
+        if (botServiceInstance) {
+            return botServiceInstance as unknown as BotService
+        }
+
         const storageFolderExists = fs.pathExistsSync(path.resolve("storage"))
         const jsonFileExists = fs.existsSync(this.pathJSON)
         
         if (!storageFolderExists) fs.mkdirSync(path.resolve("storage"), {recursive: true})
-        if (!jsonFileExists) this.initBot()
+        if (!jsonFileExists) {
+            this.initBot()
+        } else {
+            this.bot = JSON.parse(fs.readFileSync(this.pathJSON, {encoding: "utf-8"})) as Bot
+        }
+
+        const currentMigrationVersion = this.bot.db_migration_version ?? 0
+        const requiresMigration = currentMigrationVersion < CURRENT_DB_MIGRATION_VERSION
+        if (requiresMigration) {
+            this.bot.db_migrated = false
+            this.bot.db_migration_version = currentMigrationVersion
+        }
+
+        this.bot.prefix = BOT_PREFIX
+        botServiceInstance = this
     }
 
     private initBot(){
-        this.updateBot(this.defaultBot)
+        this.bot = { ...this.defaultBot }
+        this.persistNow()
+    }
+
+    private schedulePersist() {
+        if (this.persistScheduled) return
+        this.persistScheduled = true
+        this.persistTimer = setTimeout(() => {
+            this.persistNow()
+            this.persistScheduled = false
+            this.persistTimer = null
+        }, 5000)
+    }
+
+    private persistNow() {
+        if (this.persistTimer) {
+            clearTimeout(this.persistTimer)
+            this.persistTimer = null
+        }
+        this.persistScheduled = false
+        fs.writeFile(this.pathJSON, JSON.stringify(this.bot))
+    }
+
+    public persistOnExit() {
+        this.persistNow()
     }
 
     public migrateBot() {
-        const oldBotData =  this.getBot() as any
-        const newBotData : Bot = deepMerge(this.defaultBot, oldBotData)
-        this.deleteBotData()
-        this.updateBot(newBotData)
-    }
-
-    private updateBot(bot : Bot){
-        fs.writeFileSync(this.pathJSON, JSON.stringify(bot))
-    }
-
-    private deleteBotData(){
-        fs.writeFileSync(this.pathJSON, JSON.stringify({}))
+        this.bot = deepMerge(this.defaultBot, this.bot as any) as Bot
+        this.schedulePersist()
     }
 
     public startBot(hostNumber : string){
-        let bot = this.getBot()
-        bot.started = moment.now()
-        bot.host_number = normalizeWhatsappJid(hostNumber)
-        this.updateBot(bot)
+        this.bot.started = moment.now()
+        this.bot.host_number = normalizeWhatsappJid(hostNumber)
+        this.schedulePersist()
     }
 
     public getBot(){
-        const bot = JSON.parse(fs.readFileSync(this.pathJSON, {encoding: "utf-8"})) as Bot
-        const normalizedHostNumber = normalizeWhatsappJid(bot.host_number)
-        const currentMigrationVersion = bot.db_migration_version ?? 0
-        const requiresMigration = currentMigrationVersion < CURRENT_DB_MIGRATION_VERSION
-
-        // Forçar prefixo hardcoded
-        bot.prefix = BOT_PREFIX
-
-        if (bot.host_number !== normalizedHostNumber) {
-            bot.host_number = normalizedHostNumber
+        const normalizedHostNumber = normalizeWhatsappJid(this.bot.host_number)
+        if (this.bot.host_number !== normalizedHostNumber) {
+            this.bot.host_number = normalizedHostNumber
+            this.schedulePersist()
         }
-
-        if (requiresMigration) {
-            bot.db_migrated = false
-            bot.db_migration_version = currentMigrationVersion
-        }
-
-        if (bot.host_number !== normalizedHostNumber || requiresMigration) {
-            this.updateBot(bot)
-        }
-
-        return bot
+        return this.bot
     }
 
     public setNameBot(name: string){
-        let bot = this.getBot()
-        bot.name = name
-        this.updateBot(bot)
+        this.bot.name = name
+        this.schedulePersist()
     }
 
     public setDbMigrated(status: boolean) {
-        let bot = this.getBot()
-        bot.db_migrated = status
-        bot.db_migration_version = status ? CURRENT_DB_MIGRATION_VERSION : bot.db_migration_version ?? 0
-        this.updateBot(bot)
+        this.bot.db_migrated = status
+        this.bot.db_migration_version = status ? CURRENT_DB_MIGRATION_VERSION : this.bot.db_migration_version ?? 0
+        this.schedulePersist()
     }
     
-    // Prefixo é hardcoded, não pode ser alterado
     public setPrefix(prefix: string){
         console.warn('[BOT] ⚠️ Tentativa de alterar prefixo ignorada. Prefixo é hardcoded como "!"')
-        // Não faz nada - prefixo é hardcoded
     }
 
     public incrementExecutedCommands(){
-        let bot = this.getBot()
-        bot.executed_cmds++
-        this.updateBot(bot)
+        this.bot.executed_cmds++
+        this.schedulePersist()
     }
 
     public setAutosticker(status: boolean){
-        let bot = this.getBot()
-        bot.autosticker = status
-        this.updateBot(bot)
+        this.bot.autosticker = status
+        this.schedulePersist()
     }
 
     public setCommandsPv(status: boolean){
-        let bot = this.getBot()
-        bot.commands_pv = status
-        this.updateBot(bot)
+        this.bot.commands_pv = status
+        this.schedulePersist()
     }
 
     public async setCommandRate(status: boolean, maxCommandsMinute: number, blockTime: number){
-        let bot = this.getBot()
-        bot.command_rate.status = status
-        bot.command_rate.max_cmds_minute = maxCommandsMinute
-        bot.command_rate.block_time = blockTime
-        this.updateBot(bot)
+        this.bot.command_rate.status = status
+        this.bot.command_rate.max_cmds_minute = maxCommandsMinute
+        this.bot.command_rate.block_time = blockTime
+        this.schedulePersist()
     }
 
     public async setBlockedCommands(prefix: string, commands: string[], operation: 'add' | 'remove'){
-        let botInfo = this.getBot()
         const commandsWithoutPrefix = commands.map(command => removePrefix(prefix, command))
 
         if (operation == 'add'){
-            const blockCommands = commandsWithoutPrefix.filter(command => !botInfo.block_cmds.includes(command))
-            botInfo.block_cmds.push(...blockCommands)
-            this.updateBot(botInfo)
+            const blockCommands = commandsWithoutPrefix.filter(command => !this.bot.block_cmds.includes(command))
+            this.bot.block_cmds.push(...blockCommands)
+            this.schedulePersist()
             return blockCommands.map(command => prefix+command)
         } else {
-            const unblockCommands = commandsWithoutPrefix.filter(command => botInfo.block_cmds.includes(command))
+            const unblockCommands = commandsWithoutPrefix.filter(command => this.bot.block_cmds.includes(command))
 
             unblockCommands.forEach((command) => {
-                botInfo.block_cmds.splice(botInfo.block_cmds.indexOf(command), 1)
+                this.bot.block_cmds.splice(this.bot.block_cmds.indexOf(command), 1)
             })
 
-            this.updateBot(botInfo)
+            this.schedulePersist()
             return unblockCommands.map(command => prefix+command)
         }
     }

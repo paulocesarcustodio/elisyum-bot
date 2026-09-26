@@ -13,6 +13,14 @@ interface WhatsAppBubbleOptions {
 
 // Cache para emojis
 const emojiCache = new Map<string, Buffer>();
+const MAX_EMOJI_CACHE_ENTRIES = 128
+const avatarCache = new Map<string, { buffer: Buffer, expiresAt: number }>()
+const MAX_AVATAR_CACHE_ENTRIES = 128
+const MAX_AVATAR_CACHE_BYTES = 8 * 1024 * 1024
+const MAX_AVATAR_BYTES = 256 * 1024
+let avatarCacheBytes = 0
+const pendingEmojiDownloads = new Map<string, Promise<Buffer | null>>()
+const pendingAvatarDownloads = new Map<string, Promise<Buffer>>()
 
 /**
  * Converte string unicode para code points hexadecimais (para Twemoji)
@@ -44,15 +52,37 @@ function isEmoji(str: string) {
 /**
  * Baixa uma imagem de uma URL
  */
-async function downloadImage(url: string): Promise<Buffer> {
+async function downloadImage(url: string, timeoutMs = 8000, maxBytes = 2 * 1024 * 1024): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const protocol = url.startsWith('https') ? https : http
-        protocol.get(url, (response) => {
+        const req = protocol.get(url, (response) => {
+            if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                response.resume()
+                downloadImage(response.headers.location, timeoutMs, maxBytes).then(resolve, reject)
+                return
+            }
+            if (response.statusCode !== 200) {
+                response.resume()
+                reject(new Error(`Falha ao baixar imagem (HTTP ${response.statusCode})`))
+                return
+            }
             const data: Buffer[] = []
-            response.on('data', (chunk) => data.push(chunk))
+            let totalBytes = 0
+            response.on('data', (chunk: Buffer) => {
+                totalBytes += chunk.length
+                if (totalBytes > maxBytes) {
+                    req.destroy(new Error(`Imagem excede o limite de ${maxBytes} bytes`))
+                    return
+                }
+                data.push(chunk)
+            })
             response.on('end', () => resolve(Buffer.concat(data)))
             response.on('error', reject)
-        }).on('error', reject)
+        })
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(new Error(`Timeout ao baixar imagem: ${url.slice(0, 80)}`))
+        })
+        req.on('error', reject)
     })
 }
 
@@ -62,17 +92,50 @@ async function downloadImage(url: string): Promise<Buffer> {
 async function getEmojiBuffer(emoji: string): Promise<Buffer | null> {
     const codePoint = toCodePoint(emoji);
     if (emojiCache.has(codePoint)) return emojiCache.get(codePoint)!;
+    const pending = pendingEmojiDownloads.get(codePoint)
+    if (pending) return pending
+    if (pendingEmojiDownloads.size >= 8) return null
     
     // URL do Twemoji
     const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${codePoint}.png`;
-    try {
-        const buffer = await downloadImage(url);
+    const download = downloadImage(url, 1500, 256 * 1024).then(buffer => {
+        if (emojiCache.size >= MAX_EMOJI_CACHE_ENTRIES) {
+            const oldestKey = emojiCache.keys().next().value
+            if (oldestKey) emojiCache.delete(oldestKey)
+        }
         emojiCache.set(codePoint, buffer);
         return buffer;
-    } catch (e) {
-        // console.error(`Erro ao baixar emoji ${emoji} (${codePoint}):`, e);
-        return null;
+    }).catch(() => null).finally(() => pendingEmojiDownloads.delete(codePoint))
+    pendingEmojiDownloads.set(codePoint, download)
+    return download
+}
+
+async function getAvatarBuffer(url: string): Promise<Buffer> {
+    const cached = avatarCache.get(url)
+    if (cached && cached.expiresAt > Date.now()) return cached.buffer
+    if (cached) {
+        avatarCacheBytes -= cached.buffer.length
+        avatarCache.delete(url)
     }
+
+    const pending = pendingAvatarDownloads.get(url)
+    if (pending) return pending
+    if (pendingAvatarDownloads.size >= 16) throw new Error('Muitas fotos de perfil estão sendo processadas.')
+
+    const download = downloadImage(url, 3000, MAX_AVATAR_BYTES).then(buffer => {
+        while (avatarCache.size >= MAX_AVATAR_CACHE_ENTRIES || avatarCacheBytes + buffer.length > MAX_AVATAR_CACHE_BYTES) {
+            const oldestKey = avatarCache.keys().next().value
+            if (!oldestKey) break
+            const oldest = avatarCache.get(oldestKey)
+            if (oldest) avatarCacheBytes -= oldest.buffer.length
+            avatarCache.delete(oldestKey)
+        }
+        avatarCache.set(url, { buffer, expiresAt: Date.now() + 15 * 60 * 1000 })
+        avatarCacheBytes += buffer.length
+        return buffer
+    }).finally(() => pendingAvatarDownloads.delete(url))
+    pendingAvatarDownloads.set(url, download)
+    return download
 }
 
 /**
@@ -123,7 +186,7 @@ async function drawTextWithEmojis(ctx: any, text: string, x: number, y: number, 
             }
             
             // Desenha o emoji
-            const buffer = await getEmojiBuffer(segment);
+            const buffer = emojiCache.get(toCodePoint(segment)) ?? null
             if (buffer) {
                 try {
                     const img = await loadImage(buffer);
@@ -168,9 +231,30 @@ function getNameColor(name: string): string {
     return colors[Math.abs(hash) % colors.length];
 }
 
-/**
- * Cria uma imagem que simula uma mensagem do WhatsApp com avatar e balão
- */
+function extractEmojis(text: string): string[] {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' })
+    const segments = Array.from(segmenter.segment(text)).map(s => s.segment)
+    const emojiSet = new Set<string>()
+    for (const segment of segments) {
+        if (isEmoji(segment)) {
+            emojiSet.add(segment)
+        }
+    }
+    return Array.from(emojiSet)
+}
+
+async function preloadEmojis(texts: string[]): Promise<void> {
+    const allEmojis = new Set<string>()
+    for (const text of texts) {
+        for (const emoji of extractEmojis(text)) {
+            allEmojis.add(emoji)
+        }
+    }
+    const uncached = Array.from(allEmojis).filter(e => !emojiCache.has(toCodePoint(e))).slice(0, 8)
+    if (uncached.length === 0) return
+    await Promise.all(uncached.map(emoji => getEmojiBuffer(emoji).catch(() => null)))
+}
+
 /**
  * Cria uma imagem estilo "Card de Citação" moderno e elegante
  */
@@ -182,19 +266,19 @@ export async function createWhatsAppBubble({
 }: WhatsAppBubbleOptions): Promise<Buffer> {
     try {
         const canvasSize = 512
-        const cardWidth = 480 // Largura fixa do cartão (deixando margem lateral)
-        const cardPadding = 35 // Padding interno do cartão
-        const avatarSize = 100 // Avatar ampliado para 100px
-        const headerHeight = avatarSize // Altura reservada para o cabeçalho (avatar + nome)
-        
-        // Cores e Estilo
+        const cardWidth = 480
+        const cardPadding = 35
+        const avatarSize = 100
+        const headerHeight = avatarSize
+
+        const emojiPreload = preloadEmojis([text, authorName])
+
         const accentColor = getNameColor(authorName)
         const itemsColor = '#ffffff'
         const secondaryColor = '#b3b3b3'
-        const backgroundColor = '#151f2e' // Dark Blue Grey bem escuro
+        const backgroundColor = '#151f2e'
         const cardRadius = 35
 
-        // Configuração de Fonte Dinâmica
         let fontSize = 34
         let lineHeight = 46
         const len = text.length
@@ -215,85 +299,78 @@ export async function createWhatsAppBubble({
 
         const nameFontSize = 32
         const timeFontSize = 20
-        
-        // Canvas temporário para medição
-        const tempCanvas = createCanvas(canvasSize, 100)
-        const tempCtx = tempCanvas.getContext('2d')
-        
-        // Preparar linhas de texto
-        tempCtx.font = `${fontSize}px "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif`
-        
-        // Largura disponível para texto (Largura do cartão - padding duplo)
-        const maxTextWidth = cardWidth - (cardPadding * 2)
-        
-        const words = text.split(' ')
-        const lines: string[] = []
-        let currentLine = ''
 
-        for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word
-            const metrics = measureTextWithEmojis(tempCtx, testLine, fontSize)
-            
-            if (metrics.width > maxTextWidth) {
-                if (currentLine) {
-                    lines.push(currentLine)
-                    currentLine = word
-                } else {
-                    lines.push(word)
-                    currentLine = ''
+        const maxTextWidth = cardWidth - (cardPadding * 2)
+        const contentGap = 40
+        const footerGap = 50
+        const maxTextHeight = canvasSize - cardPadding * 2 - headerHeight - contentGap - footerGap - timeFontSize - 16
+        let lines: string[] = []
+        let tempCtx = createCanvas(canvasSize, 100).getContext('2d')
+
+        for (; fontSize >= 12; fontSize--) {
+            lineHeight = Math.ceil(fontSize * 1.3)
+            tempCtx.font = `${fontSize}px "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif`
+            const wrappedLines: string[] = []
+            let currentLine = ''
+
+            for (const word of text.split(' ')) {
+                let remainingWord = word
+                while (remainingWord) {
+                    const testLine = currentLine ? `${currentLine} ${remainingWord}` : remainingWord
+                    if (measureTextWithEmojis(tempCtx, testLine, fontSize).width <= maxTextWidth) {
+                        currentLine = testLine
+                        break
+                    }
+
+                    if (currentLine) {
+                        wrappedLines.push(currentLine)
+                        currentLine = ''
+                        continue
+                    }
+
+                    const wordChars = Array.from(remainingWord)
+                    let fittingWord = ''
+                    while (wordChars.length && measureTextWithEmojis(tempCtx, fittingWord + wordChars[0], fontSize).width <= maxTextWidth) {
+                        fittingWord += wordChars.shift()
+                    }
+                    if (!fittingWord) fittingWord = wordChars.shift() || ''
+                    wrappedLines.push(fittingWord)
+                    remainingWord = wordChars.join('')
                 }
-            } else {
-                currentLine = testLine
             }
+            if (currentLine) wrappedLines.push(currentLine)
+            lines = wrappedLines
+            if (lines.length * lineHeight <= maxTextHeight) break
         }
-        if (currentLine) lines.push(currentLine)
-        
-        // Calcular Altura do Cartão
-        const textBlockHeight = lines.length * lineHeight
-        // Aumentando espaçamentos para um visual mais "airy" e melhor uso do height
-        const contentGap = 40 // Mais espaço entre header e texto
-        const footerGap = 50 // Bastante espaço até o rodapé para "empurrar" a hora pro fundo
-        
-        // Layout:
-        // [Padding Top]
-        // [Header (Avatar + Nome)] -> height: headerHeight
-        // [Content Gap]
-        // [Text Block] -> height: textBlockHeight
-        // [Footer Gap (Min)] -> O rodapé será fixado no bottom, então esse gap é o mínimo garantido
-        // [Time] -> height: timeFontSize
-        // [Padding Bottom]
-        
-        // Altura mínima calculada
-        let calculatedHeight = cardPadding + headerHeight + contentGap + textBlockHeight + footerGap + timeFontSize + cardPadding
-        
-        // Altura final (pode ser maior se quisermos garantir um aspecto mínimo, mas vamos usar o calculado)
-        const cardHeight = calculatedHeight
-        
-        // Ajuste vertical para centralizar o cartão no canvas 512x512
+
+        const maxLines = Math.max(1, Math.floor(maxTextHeight / lineHeight))
+        if (lines.length > maxLines) {
+            lines = lines.slice(0, maxLines)
+            while (lines[maxLines - 1] && measureTextWithEmojis(tempCtx, `${lines[maxLines - 1]}...`, fontSize).width > maxTextWidth) {
+                lines[maxLines - 1] = Array.from(lines[maxLines - 1]).slice(0, -1).join('')
+            }
+            lines[maxLines - 1] = `${lines[maxLines - 1].trimEnd()}...`
+        }
+
+        const cardHeight = Math.min(canvasSize, cardPadding + headerHeight + contentGap + lines.length * lineHeight + footerGap + timeFontSize + cardPadding)
+
         const canvas = createCanvas(canvasSize, canvasSize)
         const ctx = canvas.getContext('2d')
-        
-        // Centralizar cartão
+
         const cardX = (canvasSize - cardWidth) / 2
-        const cardY = Math.max(0, (canvasSize - cardHeight) / 2) // Evita Y negativo
-        
-        // === DESENHAR CARTÃO ===
-        
-        // Sombra Moderna
-        ctx.shadowColor = accentColor + '66' // Hex + alpha (40%)
+        const cardY = Math.max(0, (canvasSize - cardHeight) / 2)
+
+        ctx.shadowColor = accentColor + '66'
         ctx.shadowBlur = 40
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 10
-        
-        // Fundo do Cartão
+
         ctx.fillStyle = backgroundColor
-        // Usar roundRect se disponível (Canvas/Node mais recentes) ou função manual
         if (typeof ctx.roundRect === 'function') {
             ctx.beginPath()
             ctx.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius)
             ctx.fill()
         } else {
-            // Fallback para retângulos arredondados manuais
             ctx.beginPath()
             ctx.moveTo(cardX + cardRadius, cardY)
             ctx.lineTo(cardX + cardWidth - cardRadius, cardY)
@@ -307,54 +384,44 @@ export async function createWhatsAppBubble({
             ctx.closePath()
             ctx.fill()
         }
-        
-        // Reseta sombra para elementos internos
+
         ctx.shadowBlur = 0
         ctx.shadowColor = 'transparent'
         ctx.shadowOffsetY = 0
-        
-        // === DETALHES VISUAIS ===
-        
-        // Marca D'água de Aspas (Gigante e Sutil no fundo) - Fim do cartão
+
         ctx.save()
         ctx.fillStyle = '#ffffff'
         ctx.globalAlpha = 0.03
         ctx.font = 'bold 240px "Times New Roman", serif'
         ctx.textAlign = 'right'
         ctx.textBaseline = 'bottom'
-        // ctx.fillText('”', cardX + cardWidth - 20, cardY + cardHeight + 40)
         ctx.fillText('”', cardX + cardWidth - 20, cardY + cardHeight + 20)
         ctx.globalAlpha = 1.0
         ctx.restore()
 
-        // === HEADER (Avatar + Nome) ===
         const contentStartX = cardX + cardPadding
         const headerY = cardY + cardPadding
-        
-        // Avatar
+
         const avatarStartX = contentStartX
         const avatarStatsY = headerY
-        
-        // Desenhar Avatar (Circular com borda)
+
         ctx.save()
         ctx.beginPath()
         ctx.arc(avatarStartX + avatarSize/2, avatarStatsY + avatarSize/2, avatarSize/2, 0, Math.PI * 2)
         ctx.closePath()
-        
-        // Borda do Avatar
+
         ctx.strokeStyle = accentColor
         ctx.lineWidth = 3
         ctx.stroke()
-        
+
         ctx.clip()
-        
+
         if (avatarUrl) {
             try {
-                const avatarBuffer = await downloadImage(avatarUrl)
+                const avatarBuffer = await getAvatarBuffer(avatarUrl)
                 const avatarImg = await loadImage(avatarBuffer)
                 ctx.drawImage(avatarImg, avatarStartX, avatarStatsY, avatarSize, avatarSize)
             } catch (e) {
-                // Fallback Avatar
                 ctx.fillStyle = accentColor
                 ctx.fillRect(avatarStartX, avatarStatsY, avatarSize, avatarSize)
                 ctx.fillStyle = '#ffffff'
@@ -364,7 +431,6 @@ export async function createWhatsAppBubble({
                 ctx.fillText(authorName.charAt(0).toUpperCase(), avatarStartX + avatarSize/2, avatarStatsY + avatarSize/2)
             }
         } else {
-            // Fallback Avatar
             ctx.fillStyle = accentColor
             ctx.fillRect(avatarStartX, avatarStatsY, avatarSize, avatarSize)
             ctx.fillStyle = '#ffffff'
@@ -374,45 +440,46 @@ export async function createWhatsAppBubble({
             ctx.fillText(authorName.charAt(0).toUpperCase(), avatarStartX + avatarSize/2, avatarStatsY + avatarSize/2)
         }
         ctx.restore()
-        
-        // Nome do Autor
+
+        await Promise.race([
+            emojiPreload,
+            new Promise<void>(resolve => {
+                const timer = setTimeout(resolve, 500)
+                timer.unref()
+            })
+        ])
         const nameX = avatarStartX + avatarSize + 20
         const nameY = avatarStatsY + (avatarSize / 2)
-        
-        ctx.fillStyle = accentColor // Cor do brilho/accent também para o nome
+
+        ctx.fillStyle = accentColor
         ctx.font = `bold ${nameFontSize}px "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif`
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
-        
+
         await drawTextWithEmojis(ctx, authorName, nameX, nameY, nameFontSize)
 
-        // Linha decorativa abaixo do nome (opcional, ou cargo se tivesse)
-        
-        // === TEXTO DA CITAÇÃO ===
         const textStartX = contentStartX
         let textY = headerY + headerHeight + contentGap
-        
+
         ctx.fillStyle = itemsColor
         ctx.font = `${fontSize}px "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif`
-        ctx.textBaseline = 'top' // Reset timeline
-        
+        ctx.textBaseline = 'top'
+
         for (const line of lines) {
             await drawTextWithEmojis(ctx, line, textStartX, textY, fontSize)
             textY += lineHeight
         }
-        
-        // === RODAPÉ (Data/Hora) ===
-        // Fixado absolutamente no bottom do cartão
-        const footerBottomY = cardHeight - cardPadding // Y da linha de base inferior
-        
+
+        const footerBottomY = cardHeight - cardPadding
+
         if (time) {
             ctx.fillStyle = secondaryColor
             ctx.font = `${timeFontSize}px "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif`
             ctx.textAlign = 'right'
-            ctx.textBaseline = 'bottom' // Alinhar pela base
+            ctx.textBaseline = 'bottom'
             ctx.fillText(time, cardX + cardWidth - cardPadding, cardY + footerBottomY)
         }
-        
+
         return canvas.toBuffer('image/png')
     } catch (err) {
         showConsoleLibraryError(err, 'createWhatsAppBubble')

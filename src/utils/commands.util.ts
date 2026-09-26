@@ -51,6 +51,19 @@ export function getCommandsByCategory(prefix: string, category: CategoryCommand)
     }
 }
 
+export function getCommandRegistry() {
+    return [
+        ...Object.entries(infoCommands).map(([name, command]) => ({name, category: 'info' as const, ...command})),
+        ...Object.entries(utilityCommands).map(([name, command]) => ({name, category: 'utility' as const, ...command})),
+        ...Object.entries(groupCommands).map(([name, command]) => ({name, category: 'group' as const, ...command})),
+        ...Object.entries(adminCommands).map(([name, command]) => ({name, category: 'admin' as const, ...command}))
+    ]
+}
+
+export function getCommandDefinition(commandName: string) {
+    return getCommandRegistry().find(command => command.name === resolveCommandAlias(commandName))
+}
+
 export function getCommandCategory(prefix: string, command: string){
     if (!command.startsWith(prefix)) {
         return null

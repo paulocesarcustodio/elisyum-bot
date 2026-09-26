@@ -4,6 +4,8 @@ import * as downloadUtil from '../utils/download.util.js'
 import * as convertUtil from '../utils/convert.util.js'
 import { GroupController } from "../controllers/group.controller.js"
 import { performCacheMaintenance } from '../helpers/ask.cache.helper.js'
+import fs from 'node:fs'
+import path from 'node:path'
 
 export class SchedulerService {
     private client: WASocket
@@ -27,9 +29,10 @@ export class SchedulerService {
             timezone: 'America/Sao_Paulo'
         })
 
-        // Limpeza diária do cache de perguntas às 3:00 da manhã
+        // Limpeza diária às 3:00 da manhã
         cron.schedule('0 3 * * *', async () => {
             performCacheMaintenance()
+            this.cleanTempFiles()
         }, {
             timezone: 'America/Sao_Paulo'
         })
@@ -113,6 +116,35 @@ export class SchedulerService {
 
         } catch (error) {
             console.error('[Scheduler] ❌ Erro ao buscar/enviar vídeo Kasino:', error)
+        }
+    }
+
+    /**
+     * Remove arquivos temporários com mais de 1 hora
+     */
+    private cleanTempFiles() {
+        const dirs = ['/tmp/lbot-whatsapp', '/tmp/lbot-whatsapp-workers']
+        const oneHourAgo = Date.now() - 3600000
+
+        for (const dir of dirs) {
+            try {
+                if (!fs.existsSync(dir)) continue
+                const files = fs.readdirSync(dir)
+                let removed = 0
+                for (const file of files) {
+                    const filePath = path.join(dir, file)
+                    try {
+                        const stat = fs.statSync(filePath)
+                        if (stat.isFile() && stat.mtimeMs < oneHourAgo) {
+                            fs.unlinkSync(filePath)
+                            removed++
+                        }
+                    } catch {}
+                }
+                if (removed > 0) console.log(`[Scheduler] 🧹 Limpos ${removed} arquivos temporários em ${dir}`)
+            } catch (err) {
+                console.warn(`[Scheduler] ⚠️ Erro ao limpar ${dir}:`, err)
+            }
         }
     }
 

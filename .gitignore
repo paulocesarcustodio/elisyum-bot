@@ -25,3 +25,15 @@ node_modules.bun
 bun.lockb
 bun.lock
 codex-scripts/
+
+# Local runtime data and generated files
+.tsbuildinfo
+storage/
+storage-preflight.*.json
+web/.env*
+web/.next/
+web/node_modules/
+whisper-service/.venv/
+whisper-service/cache/
+**/__pycache__/
+*.pyc

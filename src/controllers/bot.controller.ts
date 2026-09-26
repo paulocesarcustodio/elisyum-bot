@@ -7,6 +7,10 @@ export class BotController {
         this.botService = new BotService()
     }
 
+    public persistOnExit(){
+        return this.botService.persistOnExit()
+    }
+
     public startBot(hostNumber : string){
         return this.botService.startBot(hostNumber)
     }

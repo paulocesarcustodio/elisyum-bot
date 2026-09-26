@@ -1,4 +1,3 @@
-import ffmpeg from 'fluent-ffmpeg'
 import fs from 'fs-extra'
 import crypto from 'node:crypto'
 import webp from "node-webpmux"
@@ -7,10 +6,16 @@ import {fileTypeFromBuffer} from 'file-type'
 import { Jimp } from 'jimp'
 import { StickerOptions, StickerType } from "../interfaces/library.interface.js"
 import botTexts from '../helpers/bot.texts.helper.js'
+import {ffmpegPool} from './worker-pool.util.js'
+
+const { writeFile, readFile, unlink } = fs.promises
 
 export async function createSticker(mediaBuffer : Buffer, {pack = 'Ξ ʟ ʏ s ɪ ᴜ ᴍ  ɮ ᴏ ᴛ™', author = 'Elisyum Stickers', fps = 9, type = 'resize'}: StickerOptions){
     try {
         const bufferSticker = await stickerCreation(mediaBuffer, {pack, author, fps, type})
+        if (bufferSticker.length > 1024 * 1024) {
+            throw new Error('A figurinha gerada ultrapassou o limite de 1 MB do WhatsApp.')
+        }
 
         return bufferSticker
     } catch(err){
@@ -22,6 +27,9 @@ export async function createSticker(mediaBuffer : Buffer, {pack = 'Ξ ʟ ʏ s ɪ
 export async function renameSticker(stickerBuffer: Buffer, pack: string, author: string){
     try {
         const stickerBufferModified = await addExif(stickerBuffer, pack, author)
+        if (stickerBufferModified.length > 1024 * 1024) {
+            throw new Error('A figurinha com metadados ultrapassou o limite de 1 MB do WhatsApp.')
+        }
 
         return stickerBufferModified
     } catch(err){
@@ -32,22 +40,16 @@ export async function renameSticker(stickerBuffer: Buffer, pack: string, author:
 
 export async function stickerToImage(stickerBuffer: Buffer){
     try {
-        const inputWebpPath = getTempPath('webp')
-        const outputPngPath = getTempPath('png')
-        fs.writeFileSync(inputWebpPath, stickerBuffer)
-
-        await new Promise <void>((resolve, reject) => {
-            ffmpeg(inputWebpPath)
-            .save(outputPngPath)
-            .on('end', () => resolve())
-            .on('error', (err: Error) => reject(err))
+        const outputBuffer = await ffmpegPool.exec({
+            inputBuffer: stickerBuffer,
+            inputExt: 'webp',
+            outputExt: 'png',
+            args: [],
+            timeout: 15000,
+            maxOutputBytes: 16 * 1024 * 1024
         })
 
-        const imageBuffer = fs.readFileSync(outputPngPath)
-        fs.unlinkSync(inputWebpPath)
-        fs.unlinkSync(outputPngPath)
-
-        return imageBuffer
+        return outputBuffer
     } catch(err){
         showConsoleLibraryError(err, 'stickerToImage')
         throw new Error(botTexts.library_error)
@@ -60,10 +62,13 @@ async function stickerCreation(mediaBuffer : Buffer, {author, pack, fps, type} :
 
         if(!bufferData) {
             throw new Error("Unable to retrieve data from sent media.")
-        } 
+        }
+        if (bufferData.mime !== 'image/webp' && mediaBuffer.length > 20 * 1024 * 1024) {
+            throw new Error('Mídia excede o limite de 20 MB para criação de figurinha.')
+        }
 
         const mime = bufferData.mime
-        const isAnimated = mime.startsWith('video') || mime.includes('gif') 
+        const isAnimated = mime.startsWith('video') || mime.includes('gif')
 
         if (mime == 'image/webp') mediaBuffer = await pngConvertion(mediaBuffer)
 
@@ -73,7 +78,7 @@ async function stickerCreation(mediaBuffer : Buffer, {author, pack, fps, type} :
         return stickerBuffer
     } catch(err){
         throw err
-    }   
+    }
 }
 
 async function addExif(buffer: Buffer, pack: string, author: string){
@@ -97,25 +102,15 @@ async function addExif(buffer: Buffer, pack: string, author: string){
 
 async function pngConvertion(mediaBuffer : Buffer){
     try {
-        const inputMediaPath = getTempPath('webp')
-        const outputMediaPath = getTempPath('png')
-        fs.writeFileSync(inputMediaPath, mediaBuffer)
-        
-        await new Promise <void>((resolve, reject) => {
-            ffmpeg(inputMediaPath)
-            .save(outputMediaPath)
-            .on('end', () => resolve())
-            .on('error', (err: Error) => reject(err))
-        }).catch((err: any)=>{
-            fs.unlinkSync(inputMediaPath)
-            throw err
+        const outputBuffer = await ffmpegPool.exec({
+            inputBuffer: mediaBuffer,
+            inputExt: 'webp',
+            outputExt: 'png',
+            args: [],
+            timeout: 15000
         })
 
-        const pngBuffer = fs.readFileSync(outputMediaPath)
-        fs.unlinkSync(outputMediaPath)
-        fs.unlinkSync(inputMediaPath)
-
-        return pngBuffer
+        return outputBuffer
     } catch(err) {
         throw err
     }
@@ -123,54 +118,68 @@ async function pngConvertion(mediaBuffer : Buffer){
 
 async function webpConvertion(mediaBuffer : Buffer, isAnimated: boolean, fps: number, type : StickerType){
     try {
-        let inputMediaPath
-        let options
-        let outputMediaPath = getTempPath('webp')
+        let inputExt: string
+        let inputBuffer = mediaBuffer
+        let args: string[]
 
-        if(isAnimated){
-            inputMediaPath = getTempPath('mp4')
-            options = [
-                "-vcodec libwebp",
-                "-filter:v",
-                `fps=fps=${fps}`,
-                "-lossless 0",
-                "-compression_level 4",
-                "-q:v 10",
-                "-loop 1",
-                "-preset picture",
-                "-an",
-                "-vsync 0",
-                "-s 512:512"
+        if (isAnimated) {
+            inputExt = 'mp4'
+            args = [
+                '-vcodec', 'libwebp',
+                '-filter:v', `fps=fps=${fps}`,
+                '-lossless', '0',
+                '-compression_level', '4',
+                '-q:v', '10',
+                '-loop', '1',
+                '-preset', 'picture',
+                '-an',
+                '-vsync', '0',
+                '-s', '512:512'
             ]
-        } else{
-            inputMediaPath = getTempPath('png')
-            mediaBuffer = await editImage(mediaBuffer, type)
-            options = [
-                "-vcodec libwebp",
-                "-loop 0",
-                "-lossless 1",
-                "-q:v 100"
-            ]
+        } else {
+            inputExt = 'png'
+            if (type === 'circle') {
+                inputBuffer = await editImage(mediaBuffer, type)
+                args = [
+                    '-vcodec', 'libwebp',
+                    '-loop', '0',
+                    '-lossless', '0',
+                    '-q:v', '80',
+                    '-preset', 'picture'
+                ]
+            } else if (type === 'contain') {
+                args = [
+                    '-vcodec', 'libwebp',
+                    '-loop', '0',
+                    '-lossless', '0',
+                    '-q:v', '80',
+                    '-preset', 'picture',
+                    '-filter:v', 'scale=512:512:force_original_aspect_ratio=1,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black'
+                ]
+            } else {
+                args = [
+                    '-vcodec', 'libwebp',
+                    '-loop', '0',
+                    '-lossless', '0',
+                    '-q:v', '80',
+                    '-preset', 'picture',
+                    '-filter:v', 'scale=512:512'
+                ]
+            }
         }
 
-        fs.writeFileSync(inputMediaPath, mediaBuffer)
+        const timeout = isAnimated ? 30000 : 15000
 
-        await new Promise <void>((resolve, reject) => {
-            ffmpeg(inputMediaPath)
-            .outputOptions(options)
-            .save(outputMediaPath)
-            .on('end', () => resolve())
-            .on('error', (err: Error) => reject(err))
-        }).catch((err: any)=>{
-            fs.unlinkSync(inputMediaPath)
-            throw err
+        const outputBuffer = await ffmpegPool.exec({
+            inputBuffer,
+            inputExt,
+            outputExt: 'webp',
+            args,
+            timeout,
+            maxOutputBytes: 4 * 1024 * 1024
         })
 
-        const webpBuffer = fs.readFileSync(outputMediaPath)
-        fs.unlinkSync(outputMediaPath)
-        fs.unlinkSync(inputMediaPath)
-
-        return webpBuffer
+        return outputBuffer
     } catch(err){
         throw err
     }
@@ -179,15 +188,9 @@ async function webpConvertion(mediaBuffer : Buffer, isAnimated: boolean, fps: nu
 async function editImage(imageBuffer: Buffer, type: StickerType){
     try{
         const image = await Jimp.read(imageBuffer)
-    
-        if (type === 'resize'){
-            image.resize({ w: 512, h: 512 })
-        } else if (type === 'contain'){
-            image.contain({ w: 512, h: 512 })
-        } else if(type === 'circle'){
-            image.resize({ w: 512, h: 512 })
-            image.circle()
-        }
+
+        image.resize({ w: 512, h: 512 })
+        image.circle()
 
         return image.getBuffer('image/png')
     } catch(err){

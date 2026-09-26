@@ -2,25 +2,6 @@ import { Contact } from "@whiskeysockets/baileys"
 import { normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { contactsDb } from "../database/db.js"
 
-export function getContactsStore(): Record<string, Partial<Contact>> {
-    // Retorna todos os contatos do banco como um objeto (para compatibilidade)
-    const contacts = contactsDb.getAll()
-    const result: Record<string, Partial<Contact>> = {}
-    
-    for (const contact of contacts) {
-        result[contact.jid] = {
-            id: contact.jid,
-            name: contact.name || undefined,
-            notify: contact.notify || undefined,
-            verifiedName: contact.verified_name || undefined,
-            phoneNumber: contact.phone_number || undefined,
-            lid: contact.lid || undefined
-        }
-    }
-    
-    return result
-}
-
 export function updateContactInStore(contact: Partial<Contact>) {
     if (!contact.id) return
 
@@ -58,7 +39,8 @@ export function updateContactInStore(contact: Partial<Contact>) {
             notify: contact.notify,
             verifiedName: contact.verifiedName,
             phoneNumber: contact.phoneNumber,
-            lid: contact.lid
+            lid: contact.lid,
+            imgUrl: contact.imgUrl
         })
     }
 }
@@ -74,6 +56,11 @@ export function getContactFromStore(jid: string): Partial<Contact> | undefined {
         contact = contactsDb.get(jid)
     }
 
+    if (!contact && normalizedJid) {
+        const [, user] = normalizedJid.split('@')
+        if (user) contact = contactsDb.get(user)
+    }
+
     if (!contact) return undefined
 
     return {
@@ -82,7 +69,8 @@ export function getContactFromStore(jid: string): Partial<Contact> | undefined {
         notify: contact.notify || undefined,
         verifiedName: contact.verified_name || undefined,
         phoneNumber: contact.phone_number || undefined,
-        lid: contact.lid || undefined
+        lid: contact.lid || undefined,
+        imgUrl: contact.avatar_url || undefined
     }
 }
 

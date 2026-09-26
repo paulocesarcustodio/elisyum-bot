@@ -9,6 +9,20 @@ import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
 import { findSimilarCommand } from "./command.fuzzy.helper.js";
 import { askGemini } from "../utils/ai.util.js";
+import { routeSemanticCommand } from './semantic-command.helper.js'
+import { traceVoice } from './voice-trace.helper.js'
+
+function normalizeRepeatedPrefix(botInfo: Bot, message: Message): boolean {
+    let remaining = message.command
+    let prefixCount = 0
+
+    while (remaining.startsWith(botInfo.prefix)) {
+        prefixCount++
+        remaining = remaining.slice(botInfo.prefix.length)
+    }
+
+    return prefixCount >= 2
+}
 
 function prepareAutoDownload(botInfo: Bot, message: Message, url: string) {
     message.command = `${botInfo.prefix}d`
@@ -18,6 +32,7 @@ function prepareAutoDownload(botInfo: Bot, message: Message, url: string) {
 }
 
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
+    if (normalizeRepeatedPrefix(botInfo, message)) return false
     let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && botInfo.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
@@ -31,11 +46,13 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         return false
     }
 
-    //Atualize o nome do usuário
-    await procs.updateUserName(message)
+    //Paraleliza: atualiza nome + verifica owner register + verifica PV allowed
+    const [ownerRegistered] = await Promise.all([
+        procs.isOwnerRegister(client, botInfo, message),
+        procs.updateUserName(message)
+    ])
 
-    //Verifica se é um registro de dono, se for retorne.
-    if (await procs.isOwnerRegister(client, botInfo, message)) {
+    if (ownerRegistered) {
         return false
     }
 
@@ -52,6 +69,14 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         isCommand = true
     }
 
+    if (!isCommand && !isAutosticker && !autoDownloadUrl) {
+        const semantic = await routeSemanticCommand(client, botInfo, message, null)
+        if (semantic.status === 'handled') {
+            if (!semantic.invoke) return false
+            isCommand = true
+        }
+    }
+
     if (isCommand || isAutosticker){
         //Se a taxa de comandos estiver ativado e o usuário estiver limitado, retorne.
         if (await procs.isUserLimitedByCommandRate(client, botInfo, message)) {
@@ -63,11 +88,11 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
             return false
         }
 
-        //Incrementa contagem de comandos do usuário
-        await procs.incrementUserCommandsCount(message)
-
-        //Incrementa contagem de comandos do bot
-        procs.incrementBotCommandsCount()
+        //Incrementa contagem de comandos do usuário e do bot em paralelo
+        await Promise.all([
+            procs.incrementUserCommandsCount(message),
+            Promise.resolve(procs.incrementBotCommandsCount())
+        ])
 
         callCommand = true
     } else {
@@ -113,6 +138,7 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 }
 
 export async function handleGroupMessage(client: WASocket, group: Group, botInfo: Bot, message: Message){
+    if (normalizeRepeatedPrefix(botInfo, message)) return false
     let isCommand = commandExist(botInfo.prefix, message.command)
     const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
@@ -121,48 +147,38 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
         : null
     let callCommand : boolean
 
-    //Atualize o nome do usuário
-    await procs.updateUserName(message)
+    //Paraleliza: updateUserName + deleteMessageIfMutedMember
+    const [mutedMemberDeleted] = await Promise.all([
+        procs.deleteMessageIfMutedMember(client, group, botInfo, message),
+        procs.updateUserName(message)
+    ])
 
-    if (await procs.deleteMessageIfMutedMember(client, group, botInfo, message)) {
+    if (mutedMemberDeleted) {
+        traceVoice('blocked_muted_member', message)
         return false
     }
 
-    //Se o grupo estiver restrito para admins e o bot não for um admin, retorne.
-    if (await procs.isBotLimitedByGroupRestricted(group, botInfo)) {
-        return false
-    }
+    //Paraleliza cheques de restricao, antilink, word filter, antiflood e owner register
+    const [groupRestricted, antiLinkDetected, wordFilterDetected, antiFloodDetected, ownerRegistered] = await Promise.all([
+        procs.isBotLimitedByGroupRestricted(group, botInfo),
+        procs.isDetectedByAntiLink(client, botInfo, group, message),
+        procs.isDetectedByWordFilter(client, botInfo, group, message),
+        procs.isDetectedByAntiFlood(client, botInfo, group, message),
+        procs.isOwnerRegister(client, botInfo, message)
+    ])
 
-    //Se o antilink estiver ativado, e for detectado um link na mensagem, retorne.
-    if (await procs.isDetectedByAntiLink(client, botInfo, group, message)) {
-        return false
-    }
-
-    //Se uma palavra do filtro for detectada, retorne.
-    if (await procs.isDetectedByWordFilter(client, botInfo, group, message)) {
-        return false
-    }
-
-    //Se o Anti-FLOOD estiver ativado, e for detectada como FLOOD, retorne.
-    if (await procs.isDetectedByAntiFlood(client, botInfo, group, message)) {
-        return false
-    }
-
-    //Verifica se é um registro de dono, se for retorne.
-    if (await procs.isOwnerRegister(client, botInfo, message)) {
-        return false
-    }
+    if (groupRestricted) { traceVoice('blocked_group_restricted', message); return false }
+    if (antiLinkDetected) { traceVoice('blocked_antilink', message); return false }
+    if (wordFilterDetected) { traceVoice('blocked_word_filter', message); return false }
+    if (antiFloodDetected) { traceVoice('blocked_antiflood', message); return false }
+    if (ownerRegistered) { traceVoice('owner_registered', message); return false }
 
     //Incrementa a contagem do participante.
     await procs.incrementParticipantActivity(message, isCommand || !!autoDownloadUrl)
 
-    //Se o grupo estiver mutado e o participante não for um admin, retorne.
-    if (procs.isIgnoredByGroupMuted(group, message)) {
-        return false
-    }
-
     //Verifica se o usuário está bloqueado, se estiver retorna.
     if (await procs.isUserBlocked(client, message)) {
+        traceVoice('blocked_user', message)
         return false
     }
 
@@ -172,6 +188,16 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     if (autoDownloadUrl) {
         prepareAutoDownload(botInfo, message, autoDownloadUrl)
         isCommand = true
+    }
+
+    if (!isCommand && !isAutosticker && !autoDownloadUrl) {
+        traceVoice('semantic_entered', message)
+        const semantic = await routeSemanticCommand(client, botInfo, message, group)
+        traceVoice('semantic_result', message, semantic.status === 'handled' ? `invoke=${semantic.invoke}` : 'not_applicable')
+        if (semantic.status === 'handled') {
+            if (!semantic.invoke) return false
+            isCommand = true
+        }
     }
 
     if (isCommand || isAutosticker){
@@ -190,14 +216,12 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
             return false
         }
 
-        //Incrementa contagem de comandos do usuário
-        await procs.incrementUserCommandsCount(message)
-
-        //Incrementa contagem de comandos do bot
-        procs.incrementBotCommandsCount()
-
-        //Incrementa contagem de comandos do grupo
-        await procs.incrementGroupCommandsCount(group)
+        //Incrementa contagens em paralelo
+        await Promise.all([
+            procs.incrementUserCommandsCount(message),
+            Promise.resolve(procs.incrementBotCommandsCount()),
+            procs.incrementGroupCommandsCount(group)
+        ])
 
         callCommand = true
     } else {

@@ -22,8 +22,6 @@ export async function grupoCommand(client: WASocket, botInfo: Bot, message: Mess
         replyText += groupCommands.grupo.msgs.reply_resource_title
         //Bem-vindo
         replyText += (group.welcome.status) ? groupCommands.grupo.msgs.reply_item_welcome_on : groupCommands.grupo.msgs.reply_item_welcome_off
-        //Mutar
-        replyText += (group.muted) ? groupCommands.grupo.msgs.reply_item_mute_on : groupCommands.grupo.msgs.reply_item_mute_off
         //Auto-Sticker
         replyText += (group.autosticker) ? groupCommands.grupo.msgs.reply_item_autosticker_on : groupCommands.grupo.msgs.reply_item_autosticker_off
         //Anti-Link
@@ -485,14 +483,6 @@ export async function donoCommand(client: WASocket, botInfo: Bot, message: Messa
     }
     
     const replyText = buildText(groupCommands.dono.msgs.reply, waUtil.removeWhatsappSuffix(group.owner))
-    await waUtil.replyText(client, group.id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function mutarCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-
-    let replyText = group.muted ? groupCommands.mutar.msgs.reply_off : groupCommands.mutar.msgs.reply_on
-    await groupController.setMuted(group.id, !group.muted)
     await waUtil.replyText(client, group.id, replyText, message.wa_message, {expiration: message.expiration})
 }
 

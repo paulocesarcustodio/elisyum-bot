@@ -67,6 +67,12 @@ export interface InstagramMedia {
     }[]
 }
 
+export interface SpotifyInfo {
+    title: string
+    artist: string
+    url: string
+}
+
 export interface YTInfo {
     id_video: string,
     title: string,

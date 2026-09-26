@@ -90,10 +90,6 @@ export function formatSeconds(seconds : number){
   return moment(seconds * 1000).format('mm:ss')
 }
 
-export function currentDate(){
-  return moment(Date.now()).format('DD/MM/YYYY HH:mm:ss')
-}
-
 export function getResponseTime(timestamp: number){
   let responseTime = ((moment.now()/1000) - timestamp).toFixed(2)
   return responseTime
@@ -112,25 +108,12 @@ export function showCommandConsole(isGroup : boolean, categoryName: string, comm
   }
 }
 
-export function uppercaseFirst(text: string){
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 export function removeBold(text: string){
   return text.replace(/\*/gm, "").trim()
 }
 
 export function removeFormatting(text: string){
   return text.replace(/(_)|(\*)|(~)|(```)/g, "").trim()
-}
-
-export function randomDelay(ms_min : number, ms_max : number){
-  return new Promise <void> ((resolve, reject)=>{
-    let randomDelayMs = Math.floor(Math.random() * (ms_max - ms_min + 1)) + ms_min
-    setTimeout(async ()=>{
-      resolve()
-    }, randomDelayMs)
-  })
 }
 
 export function showConsoleError(err: any, error_type : string){
@@ -185,15 +168,24 @@ export function getTextOrQuotedText(message: Message): string {
   if (message.args.length) {
     return message.text_command
   }
-  
-  // Se não há argumentos mas há mensagem respondida, tenta extrair URL dela
+
+  if (message.semanticTranscript && message.semanticSource === 'audio' && !message.isQuoted) return message.text_command || message.semanticTranscript
+  // Sem texto no comando, comandos de sticker/mídia consomem o objeto citado diretamente.
   if (message.isQuoted && message.quotedMessage) {
-    const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
-    const urls = extractUrls(quotedText)
-    if (urls.length > 0) {
-      return urls[0] // Retorna a primeira URL encontrada
+    if ((message.quotedMessage.type === 'videoMessage' || message.quotedMessage.type === 'audioMessage') && message.quotedMessage.media?.url) {
+      return message.quotedMessage.media.url
     }
+    if (message.quotedMessage.body || message.quotedMessage.caption) {
+      if (message.semanticTranscript && message.semanticSource === 'audio') {
+        return message.text_command || message.semanticTranscript
+      }
+      const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
+      const urls = extractUrls(quotedText)
+      if (urls.length > 0) return urls[0]
+    }
+    if (message.semanticTranscript && message.media?.url) return message.media.url
   }
+  if (message.semanticTranscript) return message.text_command || message.semanticTranscript
   
   return message.text_command
 }
@@ -201,7 +193,7 @@ export function getTextOrQuotedText(message: Message): string {
 /**
  * Detecta a plataforma de uma URL
  */
-export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'unknown' {
+export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'spotify' | 'tiktok' | 'unknown' {
   const urlLower = url.toLowerCase()
   
   if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
@@ -210,10 +202,12 @@ export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook
     return 'instagram'
   } else if (urlLower.includes('facebook.com') || urlLower.includes('fb.watch') || urlLower.includes('fb.com')) {
     return 'facebook'
-  } else if (urlLower.includes('tiktok.com') || urlLower.includes('vt.tiktok.com')) {
-    return 'tiktok'
   } else if (urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
     return 'twitter'
+  } else if (urlLower.includes('open.spotify.com') || urlLower.includes('spotify.link')) {
+    return 'spotify'
+  } else if (urlLower.includes('tiktok.com')) {
+    return 'tiktok'
   }
   
   return 'unknown'
@@ -223,5 +217,3 @@ export function getFirstSupportedDownloadUrl(text: string): string | null {
   const urls = extractUrls(text)
   return urls.find(url => detectPlatform(url) !== 'unknown') || null
 }
-
-

@@ -60,10 +60,6 @@ export function isIgnoredByPvAllowed(botInfo: Bot, message: Message){
     return (!message.isBotOwner && !botInfo.commands_pv)
 }
 
-export function isIgnoredByGroupMuted(group: Group, message: Message){
-    return (group.muted && !message.isGroupAdmin)
-}
-
 export async function isBotLimitedByGroupRestricted(group: Group, botInfo: Bot){
     const isBotGroupAdmin = await groupController.isParticipantAdmin(group.id, botInfo.host_number)
     return (group.restricted && !isBotGroupAdmin)
