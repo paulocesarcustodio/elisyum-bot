@@ -17,9 +17,9 @@ Esses pacotes são ferramentas e bibliotecas; o PostgreSQL usado pelo bot é com
 
 No Proxmox, reserve **12 vCPU, 24 GiB de RAM, 2 GiB de swap e 100 GiB de disco em SSD**. Na tela de memória, 24 GiB correspondem a 24576 MiB. Para um disco atual de 30 GiB, acrescente 70 GiB se o campo pedir o incremento. Esses recursos são configurados no Proxmox; o setup dentro do container não altera o host.
 
-O setup instala **Qwen3.5-4B Q4_K_M** e **Whisper medium int8**, com revisões e SHA-256 fixados em `scripts/runtime-manifest.json`. Qwen usa CPU, 4 threads, contexto de 6144 tokens, um slot e raciocínio desativado. Whisper usa CPU, 4 threads e uma transcrição por vez. Os prazos máximos de resposta são 60 segundos para classificação e 120 segundos para transcrição; não são estimativas de latência. Áudios de comando continuam limitados a 15 segundos.
+O setup instala **Qwen3.5-2B Q4_K_M** e **Whisper large-v3-turbo int8**, com revisões e SHA-256 fixados em `scripts/runtime-manifest.json`. Qwen usa CPU, 4 threads, contexto de 6144 tokens, um slot e raciocínio desativado. Whisper usa CPU, 6 threads e uma transcrição por vez. Os prazos máximos de resposta são 60 segundos para classificação e 120 segundos para transcrição; não são estimativas de latência. Áudios de comando continuam limitados a 15 segundos.
 
-Os novos pesos e configurações ocupam aproximadamente **4,3 GB** (4,0 GiB); banco, dependências, mídia temporária e backups usam o restante do disco. Os arquivos antigos de modelos são preservados na atualização. Após o download, a inferência funciona offline. A capacidade e a velocidade devem ser medidas com a carga real do servidor.
+Os novos pesos e configurações ocupam aproximadamente **2,9 GB** (2,7 GiB); banco, dependências, mídia temporária e backups usam o restante do disco. Os arquivos antigos de modelos são preservados na atualização. Após o download, a inferência funciona offline. A capacidade e a velocidade devem ser medidas com a carga real do servidor.
 
 ## Primeira instalação
 

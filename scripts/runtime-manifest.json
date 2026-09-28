@@ -17,46 +17,51 @@
   "python": "3.12.3",
   "models": {
     "qwen": {
-      "repository": "unsloth/Qwen3.5-4B-GGUF",
-      "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+      "repository": "unsloth/Qwen3.5-2B-GGUF",
+      "revision": "f6d5376be1edb4d416d56da11e5397a961aca8ae",
       "files": [
         {
-          "name": "Qwen3.5-4B-Q4_K_M.gguf",
-          "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
-          "size": 2740937888
+          "name": "Qwen3.5-2B-Q4_K_M.gguf",
+          "sha256": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+          "size": 1280835840
         }
       ],
-      "modelName": "qwen3.5-4b-local",
+      "modelName": "qwen3.5-2b-local",
       "threads": 4,
       "contextSize": 6144,
       "timeoutMs": 60000
     },
     "whisper": {
-      "repository": "Systran/faster-whisper-medium",
-      "revision": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+      "repository": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+      "revision": "0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf",
       "files": [
         {
           "name": "config.json",
-          "sha256": "3622a2ddc41ec0e0fd4e68c13c6830f03b90c38d89aaad184de02c8c642cf807",
-          "size": 2257
+          "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+          "size": 2263
+        },
+        {
+          "name": "preprocessor_config.json",
+          "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+          "size": 340
         },
         {
           "name": "tokenizer.json",
-          "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
-          "size": 2203239
+          "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+          "size": 2710337
         },
         {
           "name": "model.bin",
-          "sha256": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae",
-          "size": 1527906378
+          "sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da",
+          "size": 1617884929
         },
         {
-          "name": "vocabulary.txt",
-          "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
-          "size": 459861
+          "name": "vocabulary.json",
+          "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+          "size": 1068114
         }
       ],
-      "cpuThreads": 4,
+      "cpuThreads": 6,
       "computeType": "int8",
       "maxConcurrent": 1,
       "timeoutMs": 120000

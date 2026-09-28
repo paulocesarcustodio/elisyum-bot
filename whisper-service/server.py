@@ -7,13 +7,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from faster_whisper import WhisperModel
 
-MODEL_NAME = os.environ.get("WHISPER_MODEL", "medium")
+MODEL_NAME = os.environ.get("WHISPER_MODEL", "large-v3-turbo")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "pt")
 MAX_AUDIO_BYTES = int(os.environ.get("WHISPER_MAX_AUDIO_BYTES", str(8 * 1024 * 1024)))
 MAX_CONCURRENT = int(os.environ.get("WHISPER_MAX_CONCURRENT", "1"))
-CPU_THREADS = int(os.environ.get("WHISPER_CPU_THREADS", "4"))
+CPU_THREADS = int(os.environ.get("WHISPER_CPU_THREADS", "6"))
 INTRA_THREADS = int(os.environ.get("WHISPER_INTRA_THREADS", "1"))
 MAX_DURATION_SECONDS = int(os.environ.get("WHISPER_MAX_DURATION_SECONDS", "15"))
 INITIAL_PROMPT = os.environ.get("WHISPER_INITIAL_PROMPT", "Bot, Elisyum, menu, comandos, figurinha, grupo.")

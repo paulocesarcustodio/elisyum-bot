@@ -25,7 +25,7 @@ bash scripts/setup/install.sh --start
 
 O mesmo comando serve para preparar uma máquina nova e atualizar uma instalação PostgreSQL existente após `git pull`. Ele para o runtime, prepara Bun 1.4.0 e PostgreSQL locais, instala os pacotes pelos lockfiles, baixa os modelos com verificação de SHA-256, prepara banco e permissões, aplica migrações, compila bot e painel e inicia os processos no terminal. Ctrl+C encerra tudo.
 
-O perfil padrão usa **Qwen3.5-4B Q4_K_M + Whisper medium int8 em CPU**. Reserve 24 GiB de RAM, 12 vCPU e 100 GiB de SSD no container; veja os detalhes em [configuração recomendada](INSTALL.md#configuração-recomendada-para-cpu).
+O perfil padrão usa **Qwen3.5-2B Q4_K_M + Whisper large-v3-turbo int8 em CPU**. Reserve 24 GiB de RAM, 12 vCPU e 100 GiB de SSD no container; veja os detalhes em [configuração recomendada](INSTALL.md#configuração-recomendada-para-cpu).
 
 Para apenas preparar, omita `--start`. Para verificar os pré-requisitos sem parar processos ou instalar nada:
 
