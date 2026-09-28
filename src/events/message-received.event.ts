@@ -1,3 +1,4 @@
+import { currentOperation } from '../application/operation-context.js'
 import {getContentType, WASocket, WAMessage, MessageUpsertType} from '@whiskeysockets/baileys'
 import { showConsoleError} from '../utils/general.util.js'
 import { Bot } from '../interfaces/bot.interface.js'
@@ -65,6 +66,7 @@ async function processSingleMessage(
         }
         return
     }
+    message.operationId = currentOperation()?.id
     traceVoice('formatted', message, group ? 'group_found' : 'group_missing')
     if (!isGroupMsg) {
         const needCallCommand = await handlePrivateMessage(client, botInfo, message)
@@ -95,11 +97,12 @@ export async function messageReceived (client: WASocket, messages : {messages: W
             await Promise.all(
                 batch.map(waMessage =>
                     processSingleMessage(client, waMessage, botInfo, messageCache, viewOnceCache, messagesType, requestId, groupCache, userController, groupController)
-                        .catch(err => showConsoleError(err, "MESSAGES.UPSERT"))
+                        .catch(err => {if(currentOperation())throw err;showConsoleError(err, "MESSAGES.UPSERT")})
                 )
             )
         }
     } catch(err: any){
+        if(currentOperation())throw err
         showConsoleError(err, "MESSAGES.UPSERT")
     }
 }

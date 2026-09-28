@@ -12,109 +12,15 @@ import moment from "moment";
 import * as waUtil from "../utils/whatsapp.util.js";
 import botTexts from "../helpers/bot.texts.helper.js";
 import adminCommands from "./admin.list.commands.js";
-import { commandExist, getCommandsByCategory } from "../utils/commands.util.js";
-import { CategoryCommand } from "../interfaces/command.interface.js";
-import { SchedulerService } from "../services/scheduler.service.js";
 
 export async function adminCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     await waUtil.replyText(client, message.chat_id, adminMenu(botInfo), message.wa_message, {expiration: message.expiration})
 }
 
-export async function sairCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    let currentGroups = await groupController.getAllGroups()
-    let chosenGroupNumber = Number(message.text_command)
-    const indexGroup = chosenGroupNumber - 1
-
-    if (!chosenGroupNumber || !currentGroups[indexGroup]) {
-        throw new Error(adminCommands.sair.msgs.error)
-    }
-
-    const replyText = buildText(adminCommands.sair.msgs.reply, currentGroups[indexGroup].name, chosenGroupNumber)
-    await waUtil.leaveGroup(client, currentGroups[indexGroup].id)
-
-    if (message.isGroupMsg && currentGroups[indexGroup].id == message.chat_id) {
-        await waUtil.sendText(client, message.sender, replyText)
-    } else {
-        await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-    }
-}
-
-export async function gruposCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-    const currentGroups = await groupController.getAllGroups()
-    let replyText = buildText(adminCommands.grupos.msgs.reply_title, currentGroups.length)
-
-    if (!currentGroups.length) {
-        throw new Error(adminCommands.grupos.msgs.error)
-    }
-
-    for (let group of currentGroups){
-        const groupNumber = currentGroups.indexOf(group) + 1
-        const adminsGroup = await groupController.getAdmins(group.id)
-        const participantsGroup = await groupController.getParticipants(group.id)
-        const isBotGroupAdmin = await groupController.isParticipantAdmin(group.id, botInfo.host_number)
-        const linkGroupCommand = isBotGroupAdmin ? `${botInfo.prefix}linkgrupo ${groupNumber}` : '----'
-        replyText += buildText(adminCommands.grupos.msgs.reply_item, groupNumber, group.name, participantsGroup.length, adminsGroup.length,  isBotGroupAdmin ? "Sim" : "Não",  linkGroupCommand, groupNumber)
-    }
-
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function sairgruposCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-    const currentGroups = await groupController.getAllGroups()
-    const replyText = buildText(adminCommands.sairgrupos.msgs.reply, currentGroups.length)
-
-    currentGroups.forEach(async (group) =>{
-        await waUtil.leaveGroup(client, group.id)
-    })
-
-    if (message.isGroupMsg) {
-        await waUtil.sendText(client, message.sender, replyText)
-    } else {
-        await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration}) 
-    }
-}
-
-export async function linkgrupoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-
-    if(!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    let currentGroups = await groupController.getAllGroups()
-    let chosenGroupNumber = Number(message.text_command)
-    const indexGroup = chosenGroupNumber - 1
-
-    if(!chosenGroupNumber || !currentGroups[indexGroup]) {
-        throw new Error(adminCommands.linkgrupo.msgs.error_not_found)
-    } else if(!await groupController.isParticipantAdmin(currentGroups[indexGroup].id, botInfo.host_number)) {
-        throw new Error(adminCommands.linkgrupo.msgs.error_bot_not_admin)
-    }
-
-    const inviteLink = await waUtil.getGroupInviteLink(client, currentGroups[indexGroup].id)
-    const replyTextAdmin = buildText(adminCommands.linkgrupo.msgs.reply_admin, currentGroups[indexGroup].name, chosenGroupNumber, inviteLink)
-
-    if(message.isGroupMsg){
-        const replyText = adminCommands.linkgrupo.msgs.reply_group
-        await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-        await waUtil.sendText(client, message.sender, replyTextAdmin)
-    } else {
-        await waUtil.replyText(client, message.chat_id, replyTextAdmin, message.wa_message, {expiration: message.expiration})
-    }
-}
-
 export async function comandospvCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const botController = new BotController()
     const replyText = botInfo.commands_pv ? adminCommands.comandospv.msgs.reply_off : adminCommands.comandospv.msgs.reply_on
-    botController.setCommandsPv(!botInfo.commands_pv)
+    await botController.setCommandsPv(!botInfo.commands_pv)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
 
@@ -130,11 +36,12 @@ export async function taxacomandosCommand(client: WASocket, botInfo: Bot, messag
         let max_commands_minute = Number(message.args[0])
         let block_time = Number(message.args[1])
     
-        if (!block_time) {
+        if (message.args[1] === undefined) {
             block_time = 60
-        } else if(block_time < 10) {
+        } else if (!Number.isFinite(block_time) || block_time < 10) {
             throw new Error(adminCommands.taxacomandos.msgs.error_block_time_invalid)
-        } else if (!max_commands_minute || max_commands_minute < 3) {
+        }
+        if (!Number.isInteger(max_commands_minute) || max_commands_minute < 3) {
             throw new Error(adminCommands.taxacomandos.msgs.error_max_commands_invalid)
         }
 
@@ -146,188 +53,6 @@ export async function taxacomandosCommand(client: WASocket, botInfo: Bot, messag
     }
 
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function autostickerpvCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-    const replyText = botInfo.autosticker ? adminCommands.autostickerpv.msgs.reply_off : adminCommands.autostickerpv.msgs.reply_on
-    botController.setAutosticker(!botInfo.autosticker)
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
-export async function bcmdglobalCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-    const { prefix } = botInfo
-    let commands = message.args
-    let validCommands : string[] = []
-    let blockResponse = adminCommands.bcmdglobal.msgs.reply_title
-    let categories = ['sticker', 'utility', 'download', 'misc']
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    if (commands[0] == 'variado') {
-        commands[0] = 'misc'
-    } else if (commands[0] == 'utilidade') {
-        commands[0] = 'utility'
-    } 
-    
-    if (categories.includes(commands[0])) {
-        commands = getCommandsByCategory(prefix, commands[0] as CategoryCommand)
-    }
-    
-    for(let command of commands){
-        if (commandExist(prefix, command, 'utility')){
-            if (botInfo.block_cmds.includes(waUtil.removePrefix(prefix, command))){
-                blockResponse += buildText(adminCommands.bcmdglobal.msgs.reply_item_already_blocked, command)
-            } else {
-                validCommands.push(command)
-                blockResponse += buildText(adminCommands.bcmdglobal.msgs.reply_item_blocked, command)
-            }
-        } else if (commandExist(prefix, command, 'group') || commandExist(prefix, command, 'admin') || commandExist(prefix, command, 'info') ){
-            blockResponse += buildText(adminCommands.bcmdglobal.msgs.reply_item_error, command)
-        } else {
-            blockResponse += buildText(adminCommands.bcmdglobal.msgs.reply_item_not_exist, command)
-        }
-    }
-
-    botController.setBlockedCommands(prefix, validCommands, 'add')
-    await waUtil.replyText(client, message.chat_id, blockResponse, message.wa_message, {expiration: message.expiration})
-}
-
-export async function dcmdglobalCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-    const { prefix } = botInfo
-    let commands = message.args
-    let validCommands : string[] = []
-    let unblockResponse = adminCommands.dcmdglobal.msgs.reply_title
-    let categories : CategoryCommand[] | string[] = ['all', 'sticker', 'utility', 'download', 'misc']
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    if (commands[0] == 'todos') {
-        commands[0] = 'all'
-    } else if (commands[0] == 'utilidade') {
-        commands[0] = 'utility'
-    } else if (commands[0] == 'variado') {
-        commands[0] = 'misc'
-    } 
-    
-    if (categories.includes(commands[0])){
-        if (commands[0] === 'all') {
-            commands = botInfo.block_cmds.map(command => prefix+command)
-        } else {
-            commands = getCommandsByCategory(prefix, commands[0] as CategoryCommand)
-        }
-    }
-
-    for (let command of commands) {
-        if (botInfo.block_cmds.includes(waUtil.removePrefix(prefix, command))) {
-            validCommands.push(command)
-            unblockResponse += buildText(adminCommands.dcmdglobal.msgs.reply_item_unblocked, command)
-        } else {
-            unblockResponse += buildText(adminCommands.dcmdglobal.msgs.reply_item_not_blocked, command)
-        }
-    }
-
-    botController.setBlockedCommands(prefix, validCommands, 'remove')
-    await waUtil.replyText(client, message.chat_id, unblockResponse, message.wa_message, {expiration: message.expiration})
-}
-
-export async function entrargrupoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const linkGroup = message.text_command
-    const isValidLink = linkGroup.match(/(https:\/\/chat.whatsapp.com)/gi)
-
-    if (!isValidLink) {
-        throw new Error(adminCommands.entrargrupo.msgs.error_link_invalid)
-    }
-
-    const linkId = linkGroup.replace(/(https:\/\/chat.whatsapp.com\/)/gi, '')
-    const groupResponse =  await waUtil.joinGroupInviteLink(client, linkId).catch(() => {
-        throw new Error(adminCommands.entrargrupo.msgs.error_group)
-    })
-
-    if(!groupResponse) {
-        await waUtil.replyText(client, message.chat_id, adminCommands.entrargrupo.msgs.reply_pending, message.wa_message, {expiration: message.expiration})
-    }
-
-    await waUtil.replyText(client, message.chat_id, adminCommands.entrargrupo.msgs.reply, message.wa_message, {expiration: message.expiration})
-}
-
-export async function bcgruposCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const groupController = new GroupController()
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const currentGroups = await groupController.getAllGroups()
-    const waitReply = buildText(adminCommands.bcgrupos.msgs.wait, currentGroups.length)
-    await waUtil.replyText(client, message.chat_id, waitReply, message.wa_message, {expiration: message.expiration})
-
-    currentGroups.forEach(async (group) => {
-        if (!group.restricted){
-            await new Promise<void>((resolve)=>{
-                setTimeout(async ()=>{
-                    const announceMessage = buildText(adminCommands.bcgrupos.msgs.message, botInfo.name, message.text_command)
-                    await waUtil.sendText(client, group.id, announceMessage, {expiration: group.expiration}).catch(() => {
-                        //Ignora se não for possível enviar a mensagem para esse grupo
-                    })
-                    resolve()
-                }, 1000)
-            })
-        }
-    })
-
-    await waUtil.replyText(client, message.chat_id, adminCommands.bcgrupos.msgs.reply, message.wa_message, {expiration: message.expiration})
-}
-
-export async function fotobotCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    if(message.type != 'imageMessage' && message.quotedMessage?.type != 'imageMessage') {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const messageData = (message.isQuoted) ? message.quotedMessage?.wa_message : message.wa_message
-
-    if(!messageData) {
-        throw new Error(adminCommands.fotobot.msgs.error_message)
-    }
-
-    let imageBuffer = await waUtil.downloadMessageAsBuffer(client, messageData)
-    await waUtil.updateProfilePic(client, botInfo.host_number, imageBuffer)
-    await waUtil.replyText(client, message.chat_id, adminCommands.fotobot.msgs.reply, message.wa_message, {expiration: message.expiration})
-}
-
-export async function nomebotCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    botController.setName(message.text_command)
-    await waUtil.replyText(client, message.chat_id, adminCommands.nomebot.msgs.reply, message.wa_message, {expiration: message.expiration})
-}
-
-export async function prefixoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const botController = new BotController()
-    const supportedPrefixes = ["!", "#", ".", "*"]
-
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    } else if (!supportedPrefixes.includes(message.text_command)) {
-        throw new Error(adminCommands.prefixo.msgs.error_not_supported)
-    }
-
-    botController.setPrefix(message.text_command)
-    await waUtil.replyText(client, message.chat_id, adminCommands.prefixo.msgs.reply, message.wa_message, {expiration: message.expiration})
 }
 
 export async function listablockCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
@@ -408,16 +133,6 @@ export async function desbloquearCommand(client: WASocket, botInfo: Bot, message
     }
 }
 
-export async function recadoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    if(!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    await waUtil.updateProfileStatus(client, message.text_command)
-    const replyText = buildText(adminCommands.recado.msgs.reply, message.text_command)
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
-
 export async function usuarioCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const userController = new UserController()
     let targetUserId : string
@@ -443,12 +158,6 @@ export async function usuarioCommand(client: WASocket, botInfo: Bot, message: Me
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
 
-export async function desligarCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    await waUtil.replyText(client, message.chat_id, adminCommands.desligar.msgs.reply, message.wa_message, {expiration: message.expiration}).then(async()=>{
-        waUtil.shutdownBot(client)
-    })
-}
-
 export async function pingCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
     const userController = new UserController()
     const groupController = new GroupController()
@@ -463,22 +172,3 @@ export async function pingCommand(client: WASocket, botInfo: Bot, message: Messa
     const replyText = buildText(adminCommands.ping.msgs.reply, systemName, cpuName, ramUsed, ramTotal, replyTime, currentUsers.length, currentGroups.length, botStarted)
     await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
 }
-
-export async function testkasinoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    await waUtil.replyText(client, message.chat_id, adminCommands.testkasino.msgs.reply, message.wa_message, {expiration: message.expiration})
-    
-    try {
-        const scheduler = new SchedulerService(client)
-        await scheduler.testKasinoVideo()
-        
-        const groupController = new GroupController()
-        const currentGroups = await groupController.getAllGroups()
-        const successText = buildText(adminCommands.testkasino.msgs.success, currentGroups.length)
-        await waUtil.replyText(client, message.chat_id, successText, message.wa_message, {expiration: message.expiration})
-    } catch (error) {
-        console.error('[testkasinoCommand] Erro:', error)
-        await waUtil.replyText(client, message.chat_id, adminCommands.testkasino.msgs.error, message.wa_message, {expiration: message.expiration})
-    }
-}
-
-

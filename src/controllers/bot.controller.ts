@@ -7,6 +7,10 @@ export class BotController {
         this.botService = new BotService()
     }
 
+    public initialize(){
+        return this.botService.initialize()
+    }
+
     public persistOnExit(){
         return this.botService.persistOnExit()
     }
@@ -23,24 +27,12 @@ export class BotController {
         return this.botService.getBot()
     }
 
-    public setName(name: string){
-        return this.botService.setNameBot(name)
-    }
-
-    public setPrefix(prefix: string){
-        return this.botService.setPrefix(prefix)
-    }
-
     public setDbMigrated(status: boolean) {
         return this.botService.setDbMigrated(status)
     }    
 
     public incrementExecutedCommands(){
         return this.botService.incrementExecutedCommands()
-    }
-
-    public setAutosticker(status: boolean){
-        return this.botService.setAutosticker(status)
     }
 
     public setCommandsPv(status: boolean){
@@ -51,7 +43,4 @@ export class BotController {
         return this.botService.setCommandRate(status, maxCommandsMinute, blockTime)
     }
 
-    public async setBlockedCommands(prefix: string, commands: string[], operation: 'add' | 'remove'){
-        return this.botService.setBlockedCommands(prefix, commands, operation)
-    }
 }

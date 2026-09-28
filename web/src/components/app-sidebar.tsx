@@ -1,7 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Music, Users, LogOut } from "lucide-react"
+import { Music, Users, LogOut, Activity } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import {
   Sidebar,
@@ -20,12 +21,15 @@ import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/dashboard", label: "Áudios", icon: Music },
-  { href: "/dashboard/users", label: "Usuários", icon: Users },
+  { href: "/dashboard/users", label: "Usuários", icon: Users, admin:true },
+  { href: "/dashboard/operations", label: "Operações", icon: Activity, admin:true },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [isAdmin,setIsAdmin]=useState(false)
+  useEffect(()=>{void authClient.getSession().then(({data})=>setIsAdmin((data?.user as {role?:string}|undefined)?.role==='admin'))},[])
 
   return (
     <Sidebar collapsible="icon">
@@ -47,7 +51,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
+            {navItems.filter(item=>!item.admin || isAdmin).map((item) => {
               const isActive = pathname === item.href
               return (
                 <SidebarMenuItem key={item.href}>

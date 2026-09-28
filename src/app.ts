@@ -1,27 +1,20 @@
 import moment from "moment-timezone"
 moment.tz.setDefault('America/Sao_Paulo')
-import { botUpdater } from './helpers/bot.updater.helper.js'
-import connect from './socket.js'
-import ffmpeg from "fluent-ffmpeg"
+import { SchedulerService } from './services/scheduler.service.js'
+import { stopJobs } from './infrastructure/jobs.js'
+import { db } from './database/client.js'
+import connect, {closeGateway} from './socket.js'
 import { buildText, getCurrentBotVersion } from "./utils/general.util.js"
 import botTexts from "./helpers/bot.texts.helper.js"
 import { waitForAuthPersistence } from './helpers/session.auth.helper.js'
 import { BotController } from './controllers/bot.controller.js'
-import { ffmpegPool } from './utils/worker-pool.util.js'
-import('@ffmpeg-installer/ffmpeg').then((ffmpegInstaller)=>{
-    ffmpeg.setFfmpegPath(ffmpegInstaller.path)
-}).catch(()=>{})
 
 async function init(){
+    process.env.ELYSIUM_ROLE ||= "gateway"
     console.log(buildText(botTexts.starting, getCurrentBotVersion()))
-    let hasBotUpdated = await botUpdater()
-    
-    if (!hasBotUpdated) {
-        await ffmpegPool.initialize().catch((err) => {
-            console.error('[app] ⚠️ Falha ao inicializar worker pool (será iniciado sob demanda):', err)
-        })
-        connect()
-    }
+    await new BotController().initialize()
+    await new SchedulerService().init()
+    await connect()
 }
 
 let isShuttingDown = false
@@ -34,14 +27,19 @@ async function shutdown(signal: string){
     isShuttingDown = true
     console.log(`[app] Recebido ${signal}. Aguardando persistência da autenticação...`)
 
+    let exitCode=0
     try {
+        await stopJobs()
+        await closeGateway()
         await waitForAuthPersistence()
     } catch (error) {
-        console.error('[app] Erro ao finalizar persistência da autenticação:', error)
+        exitCode=1
+        console.error('[app] Erro ao finalizar persistência da autenticação:', (error as Error).message)
     } finally {
         const botController = new BotController()
-        botController.persistOnExit()
-        process.exit(0)
+        try{await botController.persistOnExit()}catch(error){exitCode=1;console.error('[app] Persistência final:',(error as Error).message)}
+        try{await db.close()}catch{exitCode=1}
+        process.exit(exitCode)
     }
 }
 
@@ -54,8 +52,7 @@ process.once('SIGTERM', () => {
 })
 
 // Execução principal
-init()
-
+init().catch(error=>{console.error("[Startup]",error.message);process.exit(1)})
 
 
 

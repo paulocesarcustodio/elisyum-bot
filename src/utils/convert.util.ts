@@ -3,14 +3,10 @@ import axios from 'axios'
 import {getTempPath, showConsoleLibraryError} from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 import {ffmpegPool} from './worker-pool.util.js'
-import {spawnSync} from 'child_process'
-
-function getVideoDuration(filePath: string): number {
-  const result = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', filePath], {timeout: 5000, encoding: 'utf-8'})
-  if (result.status === 0 && result.stdout) {
-    return parseFloat(result.stdout.trim()) || 0
-  }
-  return 0
+import {probeFile} from './worker-pool.util.js'
+async function getVideoDuration(filePath:string):Promise<number>{
+    const data=await probeFile(filePath)
+    return Number(data.format?.duration) || 0
 }
 
 export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buffer | string, onProgress?: (percent: number) => void){
@@ -56,7 +52,7 @@ export async function convertMp4ToMp3 (sourceType: 'buffer' | 'url',  video: Buf
     }
 }
 
-export async function convertVideoToWhatsApp(sourceType: 'buffer' | 'url',  video: Buffer | string){
+export async function convertVideoToWhatsApp(sourceType: 'buffer' | 'url', video: Buffer | string, onProgress?: (percent:number)=>void){
     try {
         let inputBuffer: Buffer | undefined
         let inputExt = 'mp4'
@@ -80,6 +76,7 @@ export async function convertVideoToWhatsApp(sourceType: 'buffer' | 'url',  vide
             inputBuffer,
             inputExt,
             outputExt: 'mp4',
+            onProgress,
             args: [
                 '-c:v', 'libx264',
                 '-profile:v', 'baseline',
@@ -211,7 +208,7 @@ export async function compressVideoToLimit(videoBuffer: Buffer, maxSizeBytes: nu
         const inputPath = getTempPath('mp4')
         fs.writeFileSync(inputPath, videoBuffer)
 
-        let duration = getVideoDuration(inputPath)
+        let duration = await getVideoDuration(inputPath)
         if (duration <= 0) {
             console.warn('[compressVideo] ⚠️ Não foi possível obter a duração, assumindo 30s')
             duration = 30

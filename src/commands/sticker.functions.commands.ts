@@ -79,7 +79,7 @@ function createMentionNameResolver(client: WASocket, group: Group | undefined, u
             return user.name.trim()
         }
 
-        const contact = getContactFromStore(normalizedMentionedJid) || getContactFromStore(mentionedJid)
+        const contact = (await getContactFromStore(normalizedMentionedJid)) || (await getContactFromStore(mentionedJid))
         const contactName = contact?.notify || contact?.name || contact?.verifiedName
 
         if (contactName?.trim()) {
@@ -108,7 +108,7 @@ async function fetchProfilePicCached(client: WASocket, sender: string, senderAlt
     const cached = profilePictureCache.get<string | null>(normalizedSender)
     if (cached !== undefined) return cached || undefined
 
-    const contact = getContactFromStore(normalizedSender) || getContactFromStore(sender)
+    const contact = (await getContactFromStore(normalizedSender)) || (await getContactFromStore(sender))
     const candidates = [...new Set([
         normalizedSender,
         sender,
@@ -274,7 +274,7 @@ async function resolveAuthorName(client: WASocket, message: Message, group: Grou
     }
 
     if (authorName === 'Membro do grupo') {
-        const contact = getContactFromStore(quotedSender)
+        const contact = (await getContactFromStore(quotedSender))
         const contactName = contact?.notify || contact?.name || contact?.verifiedName
         if (contactName?.trim()) {
             authorName = contactName.trim()

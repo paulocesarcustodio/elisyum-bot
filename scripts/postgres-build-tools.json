@@ -1,0 +1,22 @@
+[
+  {
+    "name": "m4_1.4.19-4build1_amd64.deb",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/m/m4/m4_1.4.19-4build1_amd64.deb",
+    "sha256": "30ea715845a1863abd55d11e47ab91513130bf347852d4cdeae69e9d98fa795c"
+  },
+  {
+    "name": "libfl2_2.6.4-8.2build1_amd64.deb",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/f/flex/libfl2_2.6.4-8.2build1_amd64.deb",
+    "sha256": "098db71e672ded6e8194eec7132a2ca31dee49022848c7b0f77ce912d99cb445"
+  },
+  {
+    "name": "bison_2%3a3.8.2+dfsg-1ubuntu0.24.04.1_amd64.deb",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/b/bison/bison_3.8.2+dfsg-1ubuntu0.24.04.1_amd64.deb",
+    "sha256": "9d75084d1293f68f3c1a2ee677dea5baa4e010bac2d4c455d8e23177e97aa353"
+  },
+  {
+    "name": "flex_2.6.4-8.2build1_amd64.deb",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/f/flex/flex_2.6.4-8.2build1_amd64.deb",
+    "sha256": "c5604f55827b50e3f568b4731b7799f86b147454c867be02bc141d9d8ce561ff"
+  }
+]

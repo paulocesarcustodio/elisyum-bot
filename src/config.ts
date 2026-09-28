@@ -1,3 +1,5 @@
+import { storedTransportMessage } from './infrastructure/incoming-messages.js'
+import { cachedGroup } from './infrastructure/group-metadata.js'
 import { pino } from 'pino'
 import { isJidBroadcast, AuthenticationState, WAVersion, UserFacingSocketConfig, Browsers } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
@@ -14,9 +16,10 @@ export default function configSocket (state : AuthenticationState, retryCache : 
         logger: pino({level: 'silent'}),
         browser: Browsers.ubuntu('Elisyum Bot'),
         shouldIgnoreJid: jid => isJidBroadcast(jid) || jid?.endsWith('@newsletter'),
+        cachedGroupMetadata: async jid => cachedGroup(jid),
         getMessage: async (key) => {
             const message = (key.id) ? getMessageFromCache(key.id, messageCache) : undefined
-            return message
+            return message || (key.id && key.remoteJid ? await storedTransportMessage(key.remoteJid,key.id) : undefined)
         }
     }
 

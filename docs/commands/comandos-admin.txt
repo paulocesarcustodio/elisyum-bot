@@ -1,474 +1,66 @@
-COMANDOS DO BOT ELISYUM
-================================================================================
-
-
-### INFORMAÇÃO
---------------------------------------------------------------------------------
-
-COMANDO: !erros
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!erros* - Exibe estatísticas de erros e top comandos com maior taxa de falha.
-PERMISSÃO: Dono do Bot
-
-
-### GRUPO
---------------------------------------------------------------------------------
-
-COMANDO: !grupo
-CATEGORIA: GRUPO
-USO:
-  • *!grupo* - Exibe os dados atuais do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !fotogrupo
-CATEGORIA: GRUPO
-USO:
-  • Envie/responda uma *imagem* com *!fotogrupo* - Altera a foto do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !aviso
-CATEGORIA: GRUPO
-USO:
-  • Responda alguém com *!aviso* - Adiciona um aviso ao membro respondido.
-  • Marque alguém com *!aviso* - Adiciona um aviso ao membro marcado.
-DETALHES: OBS: Se o membro chegar a 3 avisos ele é adicionado automaticamente a lista negra do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !silenciar
-CATEGORIA: GRUPO
-USO:
-  • Responda alguém com *!silenciar* - Alterna o silêncio do membro respondido.
-  • Marque alguém com *!silenciar* - Alterna o silêncio do membro marcado.
-DETALHES: OBS: Use novamente para desmutar o membro.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmaviso
-CATEGORIA: GRUPO
-USO:
-  • Responda alguém com *!rmaviso* - Remove um aviso do membro respondido.
-  • Marque alguém com *!rmaviso* - Remove um aviso do membro marcado.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !zeraravisos
-CATEGORIA: GRUPO
-USO:
-  • *!zeraravisos* - Remove todos os avisos dos membros do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !addfiltros
-CATEGORIA: GRUPO
-USO:
-  • *!addfiltros* batata uva - Adiciona as palavras *batata* e *uva* no filtro de palavras.
-DETALHES: OBS: Se algum membro enviar uma mensagem contendo uma palavra do filtro, a mensagem dele será deletada automaticamente.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmfiltros
-CATEGORIA: GRUPO
-USO:
-  • *!rmfiltros* batata uva - Remove as palavras *batata* e *uva* do filtro de palavras.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !addlista
-CATEGORIA: GRUPO
-USO:
-  • Responda alguém com *!addlista* - Adiciona o numero de quem foi respondido a lista negra e bane em seguida.
-  • Marque alguém com *!addlista* - Adiciona o numero de quem foi marcado a lista negra e bane em seguida.
-  • *!addlista* +55219xxxx-xxxx - Adiciona o número digitado a lista negra do grupo e bane em seguida.
-DETALHES: .
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmlista
-CATEGORIA: GRUPO
-USO:
-  • Digite *!rmlista 1* - Remove o usuário selecionado da lista negra.
-  • *!rmlista* +55219xxxx-xxxx - Remove o número digitado da lista negra do grupo.
-DETALHES: Você também pode remover da lista negra da seguinte forma: OBS: Para ver o ID dos usuários é necessário checar no comando *{$p}listanegra*
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !listanegra
-CATEGORIA: GRUPO
-USO:
-  • *!listanegra* - Exibe a lista negra do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !add
-CATEGORIA: GRUPO
-USO:
-  • *!add* +55219xxxx-xxxx - Digite o numero com o código do país para adicionar a pessoa.
-  • *!add* +55219xxxx-xxxx, +55119xxxx-xxxx - Digite os numeros com o código do país (adiciona mais de uma pessoa no grupo).
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !ban
-CATEGORIA: GRUPO
-USO:
-  • *!ban* @membro - Para banir um membro marcando ele.
-  • Responder alguém com *!ban* - Bane o membro que você respondeu.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !promover
-CATEGORIA: GRUPO
-USO:
-  • *!promover* @membro - Promove o membro mencionado a *administrador*.
-  • Responder com *!promover* - Promove o usuário respondido a *administrador*.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rebaixar
-CATEGORIA: GRUPO
-USO:
-  • *!rebaixar* @admin - Rebaixa o administrador mencionado a *membro*.
-  • Responder com *!rebaixar* - Rebaixa o administrador respondido a *membro*.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !mt
-CATEGORIA: GRUPO
-USO:
-  • *!mt* - Marca todos os *membros/admin* do grupo.
-  • *!mt* mensagem - Marca todos os *membros/admin* do grupo com uma mensagem.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !mm
-CATEGORIA: GRUPO
-USO:
-  • *!mm* - Marca todos os *MEMBROS* do grupo.
-  • *!mm* mensagem - Marca todos os *MEMBROS* do grupo com uma mensagem.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !adms
-CATEGORIA: GRUPO
-USO:
-  • Responder com *!adms* - Marca todos os *ADMINISTRADORES* em uma postagem.
-  • *!adms* - Marca os *ADMINISTRADORES* do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !dono
-CATEGORIA: GRUPO
-USO:
-  • *!dono* - Exibe quem é dono do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !mutar
-CATEGORIA: GRUPO
-USO:
-  • *!mutar* - Liga/desliga a execução de comandos dos membros.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !link
-CATEGORIA: GRUPO
-USO:
-  • *!link* - Exibe o link do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rlink
-CATEGORIA: GRUPO
-USO:
-  • *!rlink* - Redefine o link do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !restrito
-CATEGORIA: GRUPO
-USO:
-  • *!restrito* - Abre/fecha o grupo apenas para administradores conversarem.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !autoresp
-CATEGORIA: GRUPO
-USO:
-  • *!autoresp* - Liga/desliga a resposta automática no grupo.
-DETALHES: OBS: Configure as respostas automáticas com os comandos *{$p}addresp* e *{$p}rmresp*, e veja a configuração atual com o comando *{$p}respostas*
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !addresp
-CATEGORIA: GRUPO
-USO:
-  • *!addresp* !batata Vejo que você digitou !batata - Adiciona uma resposta automática para a palavra *!batata*.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmresp
-CATEGORIA: GRUPO
-USO:
-  • *!rmresp* !batata - Remove a resposta automática para a palavra *!batata*.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !respostas
-CATEGORIA: GRUPO
-USO:
-  • *!respostas* - Exibe todas as respostas automáticas configuradas.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !antilink
-CATEGORIA: GRUPO
-USO:
-  • *!antilink* - Liga/desliga o Anti-LINK no grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !addexlink
-CATEGORIA: GRUPO
-USO:
-  • *!addexlink* google.com youtube.com - Adiciona links serem exceções do Anti-LINK.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmexlink
-CATEGORIA: GRUPO
-USO:
-  • *!rmexlink* google.com youtube.com - Remove links das exceções do Anti-LINK.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !autosticker
-CATEGORIA: GRUPO
-USO:
-  • *!autosticker* - Liga/desliga a criação automatica de stickers sem precisar de comandos.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !bemvindo
-CATEGORIA: GRUPO
-USO:
-  • *!bemvindo*  - Liga/desliga a mensagem de bem-vindo para novos membros.
-  • *!bemvindo* mensagem - Liga a mensagem de bem-vindo com uma mensagem da sua escolha.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !antifake
-CATEGORIA: GRUPO
-USO:
-  • *!antifake* - Liga/desliga o Anti-FAKE no grupo.
-DETALHES: OBS: A ativação do anti-fake bane pessoas com DDI do exterior (que não sejam 55 - Brasil).
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !addexfake
-CATEGORIA: GRUPO
-USO:
-  • *!addexfake 1, 64, +1 282 254 224* - Adiciona prefixos e/ou números para serem exceções do Anti-FAKE.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !rmexfake
-CATEGORIA: GRUPO
-USO:
-  • *!rmexfake 1, 64, +1 282 254 224* - Remove prefixos e/ou números das exceções do Anti-FAKE.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !antiflood
-CATEGORIA: GRUPO
-USO:
-  • *!antiflood*  - Liga/desliga o Anti-FLOOD no grupo.
-  • *!antiflood* 5 15  - Maxímo de mensagens fica 5 mensagens a cada 15 segundos.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !apg
-CATEGORIA: GRUPO
-USO:
-  • Responder com *!apg* - Apaga a mensagem que foi respondida com esse comando.
-DETALHES: OBS: O bot precisa ser administrador.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !topativos
-CATEGORIA: GRUPO
-USO:
-  • *!topativos* - Marca os 10 membros com mais mensagens do grupo.
-  • *!topativos* 15 - Marca os 15 membros com mais mensagens do grupo.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !membro
-CATEGORIA: GRUPO
-USO:
-  • *!membro* @membro - Mostra os dados do membro mencionado.
-  • Responder com *!membro* - Mostra os dados do membro que você respondeu.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !inativos
-CATEGORIA: GRUPO
-USO:
-  • *!inativos* 5 - Marca todos os membros com menos de 5 mensagens.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !bcmd
-CATEGORIA: GRUPO
-USO:
-  • *!bcmd* !s !sgif !play - Bloqueia no grupo os comandos !s, !sgif e !play (você pode escolher os comandos a sua necessidade).
-  • *!bcmd* sticker - Bloqueia todos os comandos da categoria STICKER.
-  • *!bcmd* utilidade - Bloqueia todos os comandos da categoria UTILIDADE.
-  • *!bcmd* download - Bloqueia todos os comandos da categoria DOWNLOAD.
-  • *!bcmd* variado - Bloqueia todos os comandos da categoria VARIADO.
-DETALHES: OBS: Você não pode bloquear comandos de administrador.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-COMANDO: !dcmd
-CATEGORIA: GRUPO
-USO:
-  • *!dcmd* !s !sgif !play - Desbloqueia no grupo os comandos !s, !sgif e !play.
-  • *!dcmd* todos - Desbloqueia todos os comandos.
-  • *!dcmd* sticker - Desbloqueia todos os comandos da categoria STICKER.
-  • *!dcmd* utilidade - Desbloqueia todos os comandos da categoria UTILIDADE.
-  • *!dcmd* download - Desbloqueia todos os comandos da categoria DOWNLOAD.
-  • *!dcmd* variado - Desbloqueia todos os comandos da categoria VARIADO.
-DETALHES: OBS: Verifique os comandos que estão bloqueados com *{$p}status*.
-PERMISSÃO: Admin do Grupo ou Dono do Bot
-
-
-### ADMINISTRAÇÃO
---------------------------------------------------------------------------------
-
-COMANDO: !admin
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!admin* - Exibe o menu de administração do bot.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !grupos
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!grupos* - Mostra os grupos atuais que o bot está e suas informações.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !sair
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • Digite *!sair 1* - Faz o bot sair do grupo selecionado.
-DETALHES: OBS: Para ver o número dos grupos é necessário checar no comando *{$p}grupos*
-PERMISSÃO: Dono do Bot
-
-COMANDO: !sairgrupos
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!sairgrupos* - Sai de todos os grupos.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !linkgrupo
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!linkgrupo* 1 - Exibe o link do grupo selecionado.
-DETALHES: OBS: Para ver o número dos grupos é necessário checar no comando *{$p}grupos*
-PERMISSÃO: Dono do Bot
-
-COMANDO: !comandospv
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!comandospv* - Liga/desliga os comandos em MENSAGENS PRIVADAS.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !taxacomandos
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!taxacomandos* 5 - Ativa a taxa limite de comandos para 5 comandos a cada minuto por usuário, com 60 segundos de bloqueio.
-  • *!taxacomandos* 10 80 - Ativa a taxa limite de comandos para 10 comandos a cada minuto por usuário, com 80 segundos de bloqueio.
-DETALHES: OBS: Digite *{$p}taxacomandos* novamente para desativar a taxa limite de comandos.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !autostickerpv
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!autostickerpv* - Liga/desliga a criação automatica de stickers sem precisar de comandos no privado.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !bcmdglobal
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!bcmdglobal* !s !sgif !play - Bloqueia  os comandos !s, !sgif e !play (você pode escolher os comandos a sua necessidade).
-  • *!bcmdglobal* sticker - Bloqueia todos os comandos da categoria STICKER.
-  • *!bcmdglobal* utilidade - Bloqueia todos os comandos da categoria UTILIDADE.
-  • *!bcmdglobal* download - Bloqueia todos os comandos da categoria DOWNLOAD.
-  • *!bcmdglobal* variado - Bloqueia todos os comandos da categoria VARIADO.
-DETALHES: OBS: Você não pode bloquear comandos de administrador.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !dcmdglobal
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!dcmdglobal* !s !sgif !play - Desbloqueia  os comandos !s, !sgif e !play.
-  • *!dcmdglobal* todos - Desbloqueia todos os comandos.
-  • *!dcmdglobal* sticker - Desbloqueia todos os comandos da categoria STICKER.
-  • *!dcmdglobal* utilidade - Desbloqueia todos os comandos da categoria UTILIDADE.
-  • *!dcmdglobal* download - Desbloqueia todos os comandos da categoria DOWNLOAD.
-  • *!dcmdglobal* variado - Desbloqueia todos os comandos da categoria VARIADO.
-DETALHES: OBS: Verifique os comandos que estão bloqueados com {$p}infocompleta.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !entrargrupo
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!entrargrupo* link - Entra em um grupo por link de convite.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !bcgrupos
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!bcgrupos* mensagem - Envia uma mensagem para todos os *GRUPOS*.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !fotobot
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • Envie/responda uma *imagem* com *!fotobot* - Altera a foto do BOT.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !nomebot
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!nomebot* Teste123 - Muda o nome do *BOT* para *Teste123* e atualiza os menus com o novo nome.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !prefixo
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!prefixo* .  - Muda o prefixo dos *COMANDOS* para *.* e atualiza os menus e comandos com o novo prefixo.
-DETALHES: Suporta os seguintes prefixos: *!*  *#*  *.*  ***
-PERMISSÃO: Dono do Bot
-
-COMANDO: !listablock
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!listablock* - Exibe a lista de usuários bloqueados pelo bot.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !bloquear
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!bloquear* @membro - Para o bot bloquear o membro mencionado.
-  • *!bloquear* +55 (xx) xxxxx-xxxx - Para o bot bloquear o número digitado.
-  • Responder alguém com *!bloquear* - Para o bot bloquear o membro que você respondeu.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !desbloquear
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • Digite *!desbloquear 1* - Desbloqueia o usuário selecionado da lista negra.
-  • *!desbloquear* @membro - Para o bot desbloquear o membro mencionado.
-  • *!desbloquear* +55 (xx) xxxxx-xxxx - Para o bot desbloquear o número digitado.
-  • Responder alguém com *!desbloquear* - Para o bot desbloquear o usuário que você respondeu.
-DETALHES: Você também pode desbloquear usuários das seguintes formas: OBS: Para ver o ID dos usuários é necessário checar no comando *{$p}listablock*
-PERMISSÃO: Dono do Bot
-
-COMANDO: !recado
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!recado* texto - Muda o texto do recado/status do bot.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !usuario
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!usuario* @usuario - Mostra os dados gerais do usuário mencionado.
-  • Responder com *!usuario* - Mostra os dados gerais do usuário respondido.
-  • *!usuario* 55219xxxxxxxx - Mostra os dados gerais do usuário com esse número.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !desligar
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!desligar* - Desliga o bot.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !ping
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!ping* - Exibe as informações do sistema do BOT e o tempo de resposta dele.
-PERMISSÃO: Dono do Bot
-
-COMANDO: !testkasino
-CATEGORIA: ADMINISTRAÇÃO
-USO:
-  • *!testkasino* - Testa o envio do vídeo Kasino no Sabadaço para todos os grupos.
-PERMISSÃO: Dono do Bot
-
-
-================================================================================
-Total de comandos: 66
+GUIA DE COMANDOS DO ELISYUM BOT
+Gerado pelo catálogo usado na execução. Linguagem natural exige a palavra “bot”.
+
+!admin — Mostrar o menu de administração do bot.
+Permissão: owner.
+Ex: *!admin* - Exibe o menu de administração do bot.
+
+
+!comandospv — Ativar ou desativar comandos em conversas privadas.
+Permissão: owner.
+Ex: *!comandospv* - Liga/desliga os comandos em MENSAGENS PRIVADAS.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!taxacomandos — Configurar limite de comandos por usuário.
+Permissão: owner.
+Ex: *!taxacomandos* 5 - Ativa a taxa limite de comandos para 5 comandos a cada minuto por usuário, com 60 segundos de bloqueio.
+Ex: *!taxacomandos* 10 80 - Ativa a taxa limite de comandos para 10 comandos a cada minuto por usuário, com 80 segundos de bloqueio.
+
+*Obs*: Digite *!taxacomandos* novamente para desativar a taxa limite de comandos.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!listablock — Listar os usuários bloqueados pelo bot.
+Permissão: owner.
+Ex: *!listablock* - Exibe a lista de usuários bloqueados pelo bot.
+
+
+!bloquear — Bloquear uma pessoa no bot.
+Permissão: owner.
+Ex: *!bloquear* @membro - Para o bot bloquear o membro mencionado.
+
+Ex: *!bloquear* +55 (xx) xxxxx-xxxx - Para o bot bloquear o número digitado.
+
+Ex: Responder alguém com *!bloquear* - Para o bot bloquear o membro que você respondeu.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!desbloquear — Desbloquear uma pessoa no bot.
+Permissão: owner.
+Ex: Digite *!desbloquear 1* - Desbloqueia o usuário selecionado da lista negra.
+
+*Obs*: Para ver o ID dos usuários é necessário checar no comando *!listablock*
+
+Você também pode desbloquear usuários das seguintes formas:
+
+Ex: *!desbloquear* @membro - Para o bot desbloquear o membro mencionado.
+
+Ex: *!desbloquear* +55 (xx) xxxxx-xxxx - Para o bot desbloquear o número digitado.
+
+Ex: Responder alguém com *!desbloquear* - Para o bot desbloquear o usuário que você respondeu.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!usuario — Consultar dados de outro usuário do bot.
+Permissão: owner.
+Ex: *!usuario* @usuario - Mostra os dados gerais do usuário mencionado.
+
+Ex: Responder com *!usuario* - Mostra os dados gerais do usuário respondido.
+
+Ex: *!usuario* 55219xxxxxxxx - Mostra os dados gerais do usuário com esse número.
+
+
+!ping — Medir tempo de resposta e desempenho do bot.
+Permissão: owner.
+Ex: *!ping* - Exibe as informações do sistema do BOT e o tempo de resposta dele.

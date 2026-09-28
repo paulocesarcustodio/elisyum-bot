@@ -1,25 +1,21 @@
+import { requireSession } from '@/lib/access';
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { user, account } from "@/db/schema";
-import { eq, like, or, desc, asc, count } from "drizzle-orm";
+import { eq, like, or, desc, asc, count } from "@/db/expressions";
 import { hashPassword } from "@better-auth/utils/password";
 
-const API_URL = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-
 async function getValidSession(request: NextRequest) {
-  const res = await fetch(`${API_URL}/api/auth/get-session`, {
-    headers: { cookie: request.headers.get("cookie") || "" },
-  });
-  if (!res.ok) return null;
-  const session = await res.json();
-  if (!session?.user) return null;
-  return session;
+  try { return await requireSession(request); } catch { return null; }
 }
 
 export async function GET(request: NextRequest) {
   const session = await getValidSession(request);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso restrito à administração.' }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -56,7 +52,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to list users" },
+      { error: "Não foi possível listar usuários" },
       { status: 500 }
     );
   }
@@ -67,9 +63,14 @@ export async function POST(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso restrito à administração.' }, { status: 403 });
+  }
 
   try {
     const body = await request.json();
+    if(body.role !== undefined && !['user','admin'].includes(body.role))return NextResponse.json({error:'Perfil inválido.'},{status:400});
+    if(body.password && (typeof body.password !== 'string' || body.password.length < 10 || body.password.length > 128))return NextResponse.json({error:'A senha deve ter de 10 a 128 caracteres.'},{status:400});
     const { name, email, password, role } = body;
 
     if (!name || !email) {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
     const userId = crypto.randomUUID();
 
     await db.insert(user).values({
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ user: created }, { status: 201 });
   } catch (err: any) {
-    const message = err.message?.includes("UNIQUE") ? "Email já está em uso" : err.message || "Failed to create user";
+    const message = err.message?.includes("UNIQUE") ? "Email já está em uso" : "Não foi possível criar o usuário";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

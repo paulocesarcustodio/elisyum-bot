@@ -1,117 +1,25 @@
+import type { CategoryCommand } from '../interfaces/command.interface.js'
+import { commandCatalog, findCommand } from '../application/command-catalog.js'
+import botTexts from '../helpers/bot.texts.helper.js'
+import { buildText } from './general.util.js'
 
-import { Bot } from "../interfaces/bot.interface.js"
-import {CategoryCommand, Commands } from "../interfaces/command.interface.js"
-import infoCommands from "../commands/info.list.commands.js"
-import utilityCommands from "../commands/utility.list.commands.js"
-import groupCommands from "../commands/group.list.commands.js"
-import adminCommands from "../commands/admin.list.commands.js"
-import botTexts from "../helpers/bot.texts.helper.js"
-import { removePrefix } from "./whatsapp.util.js"
-import { buildText } from "./general.util.js"
-import { resolveCommandAlias } from "./command.aliases.util.js"
-
-const COMMAND_CATEGORIES = ['info', 'utility', 'group', 'admin']
-
-export function commandExist(prefix: string, command: string, category? : CategoryCommand){
-    if (!command.startsWith(prefix)) {
-        return false
-    }
-
-    const commandName = resolveCommandAlias(removePrefix(prefix, command))
-    const resolvedCommand = prefix + commandName
-
-    if (!category) {
-        return getCommands(prefix).includes(resolvedCommand)
-    } else {
-        return getCommandsByCategory(prefix, category).includes(resolvedCommand)
-    }
+export function commandExist(prefix: string, command: string, category?: CategoryCommand) {
+    if (!command.startsWith(prefix)) return false
+    const definition = findCommand(command.slice(prefix.length))
+    return !!definition && (!category || definition.category === category)
 }
-
-export function getCommands(prefix: string){
-    const commands = [
-        ...Object.keys(utilityCommands),
-        ...Object.keys(infoCommands),
-        ...Object.keys(groupCommands),
-        ...Object.keys(adminCommands),
-    ].map(command => prefix+command)
-    
-    return commands
+export function getCommands(prefix: string) {
+    return commandCatalog().map(command => prefix + command.name)
 }
-
-export function getCommandsByCategory(prefix: string, category: CategoryCommand){
-    switch(category){
-        case 'info':
-            return Object.keys(infoCommands).map(command => prefix+command)
-        case 'utility':
-            return Object.keys(utilityCommands).map(command => prefix+command)
-        case 'group':
-            return Object.keys(groupCommands).map(command => prefix+command)
-        case 'admin':
-            return Object.keys(adminCommands).map(command => prefix+command)
-    }
+export function getCommandsByCategory(prefix: string, category: CategoryCommand) {
+    return commandCatalog().filter(command => command.category === category).map(command => prefix + command.name)
 }
-
-export function getCommandRegistry() {
-    return [
-        ...Object.entries(infoCommands).map(([name, command]) => ({name, category: 'info' as const, ...command})),
-        ...Object.entries(utilityCommands).map(([name, command]) => ({name, category: 'utility' as const, ...command})),
-        ...Object.entries(groupCommands).map(([name, command]) => ({name, category: 'group' as const, ...command})),
-        ...Object.entries(adminCommands).map(([name, command]) => ({name, category: 'admin' as const, ...command}))
-    ]
+export const getCommandRegistry = commandCatalog
+export const getCommandDefinition = findCommand
+export function getCommandCategory(prefix: string, command: string) {
+    return command.startsWith(prefix) ? findCommand(command.slice(prefix.length))?.category ?? null : null
 }
-
-export function getCommandDefinition(commandName: string) {
-    return getCommandRegistry().find(command => command.name === resolveCommandAlias(commandName))
-}
-
-export function getCommandCategory(prefix: string, command: string){
-    if (!command.startsWith(prefix)) {
-        return null
-    }
-
-    let foundCategory : CategoryCommand | null = null
-    const categories = COMMAND_CATEGORIES as CategoryCommand[]
-    const commandName = removePrefix(prefix, command)
-    
-    // Verifica se existe alias
-    const resolvedCommand = resolveCommandAlias(commandName)
-    const resolvedFullCommand = prefix + resolvedCommand
-
-    for (let category of categories){
-        if (getCommandsByCategory(prefix, category).includes(resolvedFullCommand)) {
-            foundCategory = category as CategoryCommand
-        }
-    }
-
-    return foundCategory
-}
-
-export function getCommandGuide(prefix: string, command: string){
-    const commandCategory = getCommandCategory(prefix, command)
-    const {guide_header_text, no_guide_found} = botTexts
-    let guide_text : string
-    const resolvedCommand = resolveCommandAlias(removePrefix(prefix, command))
-
-    switch(commandCategory){
-        case 'info':
-            const info = infoCommands as Commands
-            guide_text = guide_header_text + info[resolvedCommand].guide
-            break
-        case 'utility':
-            const utility = utilityCommands as Commands
-            guide_text = guide_header_text + utility[resolvedCommand].guide
-            break
-        case 'group':
-            const group = groupCommands as Commands
-            guide_text = guide_header_text + group[resolvedCommand].guide
-            break
-        case 'admin':
-            const admin = adminCommands as Commands
-            guide_text = guide_header_text + admin[resolvedCommand].guide
-            break
-        default:
-            guide_text = no_guide_found
-    }
-
-    return buildText(guide_text)
+export function getCommandGuide(prefix: string, command: string) {
+    const definition = command.startsWith(prefix) ? findCommand(command.slice(prefix.length)) : undefined
+    return buildText(definition ? botTexts.guide_header_text + definition.guide : botTexts.no_guide_found).replaceAll('!comando', prefix + 'comando')
 }

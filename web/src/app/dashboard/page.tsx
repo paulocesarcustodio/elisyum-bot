@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { type ColumnDef } from "@tanstack/react-table";
 import { authClient } from "@/lib/auth-client";
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { LucidePencil } from "@/components/icons/lucide/pencil";
@@ -23,7 +27,7 @@ type Audio = {
   id: number;
   ownerJid: string;
   audioName: string;
-  filePath: string;
+  canEdit: boolean;
   mimeType: string;
   seconds: number | null;
   ptt: number;
@@ -82,6 +86,8 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadError,setUploadError]=useState('');
+  const [job,setJob]=useState<{id:string;status:string;progress:number;error?:string|null}|null>(null);
   const [renameModal, setRenameModal] = useState<{ name: string; newName: string } | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -112,27 +118,58 @@ export default function DashboardPage() {
     setLoading(false);
   }
 
-  async function handleUpload(e: React.FormEvent) {
-    e.preventDefault();
-    const file = fileRef.current?.files?.[0];
-    if (!file || !uploadName) return;
+  useEffect(()=>{
+    if(!session)return;
+    const id=localStorage.getItem(`audio-upload:${session.user.id}`);
+    if(id){setJob({id,status:'queued',progress:0});setUploading(true);}
+  },[session]);
 
-    setUploading(true);
-    const form = new FormData();
-    form.set("file", file);
-    form.set("name", uploadName);
-
-    const res = await fetch("/api/audio", { method: "POST", body: form });
-    if (res.ok) {
-      fileRef.current!.value = "";
-      setUploadName("");
-      setPage(1);
-      fetchAudios();
-    } else {
-      const err = await res.json();
-      alert(err.error || "Erro ao upload");
+  useEffect(()=>{
+    if(!job?.id)return;
+    let cancelled=false;
+    let timer:ReturnType<typeof setTimeout>;
+    async function poll(){
+      try{
+        const response=await fetch(`/api/jobs/${job!.id}`);
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error || 'Não foi possível consultar o processamento.');
+        if(cancelled)return;
+        setJob(data);
+        if(['completed','failed','cancelled','expired'].includes(data.status)){
+          setUploading(false);
+          if(session)localStorage.removeItem(`audio-upload:${session.user.id}`);
+          if(data.status==='completed'){setPage(1);await fetchAudios();}
+          return;
+        }
+        timer=setTimeout(poll,1000);
+      }catch(error){if(!cancelled){setUploadError((error as Error).message);setUploading(false);}}
     }
-    setUploading(false);
+    void poll();
+    return ()=>{cancelled=true;clearTimeout(timer);};
+  },[job?.id]);
+
+  async function handleUpload(e:React.FormEvent){
+    e.preventDefault();
+    const file=fileRef.current?.files?.[0];
+    if(!file || !uploadName)return;
+    setUploadError('');
+    if(file.size>24*1024*1024){setUploadError('O arquivo deve ter no máximo 24 MB.');return;}
+    setUploading(true);
+    try{
+      const form=new FormData();form.set('file',file);form.set('name',uploadName);
+      const response=await fetch('/api/audio',{method:'POST',body:form});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error || 'Não foi possível enviar o áudio.');
+      localStorage.setItem(`audio-upload:${session.user.id}`,data.jobId);
+      setJob({id:data.jobId,status:'queued',progress:0});
+      fileRef.current!.value='';setUploadName('');
+    }catch(error){setUploadError((error as Error).message);setUploading(false);}
+  }
+
+  async function cancelUpload(){
+    if(!job)return;
+    const response=await fetch(`/api/jobs/${job.id}`,{method:'DELETE'});
+    if(!response.ok)setUploadError('Não foi possível cancelar o processamento.');
   }
 
   async function handleDelete(name: string) {
@@ -192,6 +229,7 @@ export default function DashboardPage() {
       meta: { headerClassName: "w-[1%] whitespace-nowrap", cellClassName: "w-[1%] whitespace-nowrap" } as Record<string, string>,
       cell: ({ row }) => {
         const audio = row.original;
+        if(!audio.canEdit)return null;
         return (
           <div className="flex gap-1 items-center justify-end">
             <button
@@ -226,26 +264,30 @@ export default function DashboardPage() {
       style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}
     >
 
-      <form onSubmit={handleUpload} className="flex gap-2 mb-4 flex-wrap">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="audio/ogg,audio/opus,audio/mpeg"
-          required
-          className="flex-1 min-w-[200px] px-3 py-2 rounded-md border bg-card text-foreground text-sm"
-        />
-        <input
-          type="text"
-          placeholder="Nome do áudio"
-          value={uploadName}
-          onChange={e => setUploadName(e.target.value)}
-          required
-          className="flex-1 min-w-[150px] px-3 py-2 rounded-md border bg-card text-foreground text-sm"
-        />
-        <Button type="submit" disabled={uploading}>
-          {uploading ? "Enviando..." : "Upload"}
-        </Button>
+      <form onSubmit={handleUpload} className="mb-4">
+        <FieldGroup className="md:grid md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <Field>
+            <FieldLabel htmlFor="audio-file">Arquivo de áudio</FieldLabel>
+            <Input id="audio-file" ref={fileRef} type="file" accept="audio/*" required disabled={uploading} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="audio-name">Nome do áudio</FieldLabel>
+            <Input id="audio-name" value={uploadName} onChange={e=>setUploadName(e.target.value)} maxLength={100} required disabled={uploading} />
+          </Field>
+          <Button type="submit" disabled={uploading}>{uploading?'Processando…':'Enviar áudio'}</Button>
+        </FieldGroup>
       </form>
+      {uploadError && <Alert variant="destructive" className="mb-4"><AlertTitle>Não foi possível concluir</AlertTitle><AlertDescription>{uploadError}</AlertDescription></Alert>}
+      {job && <Alert variant={['failed','expired'].includes(job.status)?'destructive':'default'} className="mb-4">
+        <AlertTitle>{{queued:'Áudio na fila',running:'Preparando o áudio',completed:'Áudio salvo',failed:'Falha no processamento',cancelled:'Envio cancelado',expired:'Tempo de processamento esgotado'}[job.status] || job.status}</AlertTitle>
+        <AlertDescription className="w-full">
+          {['queued','running'].includes(job.status)?<>
+            <p>Você pode continuar usando o painel enquanto o áudio é preparado.</p>
+            <Progress value={job.progress} aria-label="Progresso do áudio" />
+            <Button type="button" variant="outline" size="sm" onClick={cancelUpload}>Cancelar</Button>
+          </>:<p>{job.error || (job.status==='completed'?'O áudio já está disponível na biblioteca.':'Você pode enviar outro arquivo.')}</p>}
+        </AlertDescription>
+      </Alert>}
 
       <input
         type="text"

@@ -1,3 +1,4 @@
+import {mediaProcessor,shouldQueueWork} from '../infrastructure/media-client.js'
 import { createCanvas, loadImage } from 'canvas'
 import { showConsoleLibraryError } from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
@@ -264,6 +265,7 @@ export async function createWhatsAppBubble({
     avatarUrl,
     time
 }: WhatsAppBubbleOptions): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('image.quote',[{text,authorName,avatarUrl,time}],{timeoutMs:30_000})
     try {
         const canvasSize = 512
         const cardWidth = 480

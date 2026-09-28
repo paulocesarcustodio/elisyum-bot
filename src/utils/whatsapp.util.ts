@@ -246,14 +246,6 @@ export function readMessage(client: WASocket, chatId: string, sender: string, me
     return client.sendReceipt(chatId, sender, [messageId], 'read')
 }
 
-export function updateProfilePic(client: WASocket, chatId: string , image: Buffer){
-    return client.updateProfilePicture(chatId, image)
-}
-
-export function updateProfileStatus(client: WASocket, text: string){
-    return client.updateProfileStatus(text)
-}
-
 export function shutdownBot(client: WASocket){
     return client.end(new Error("admin_command"))
 }
@@ -475,28 +467,6 @@ export async function replyWithMentions (client: WASocket, chatId: string, text:
     return client.sendMessage(chatId, {text , mentions}, {quoted, ephemeralExpiration: options?.expiration})
 }
 
-export function joinGroupInviteLink (client: WASocket, linkGroup : string){
-    return client.groupAcceptInvite(linkGroup)
-}
-
-export function revokeGroupInvite (client: WASocket, groupId: string){
-    return client.groupRevokeInvite(groupId)
-}
-
-export async function getGroupInviteLink (client: WASocket, groupId: string){
-    let inviteCode = await client.groupInviteCode(groupId)
-    return inviteCode ? `https://chat.whatsapp.com/${inviteCode}` : undefined
-}
-
-export function leaveGroup (client: WASocket, groupId: string){
-    return client.groupLeave(groupId)
-}
-
-export function updateGroupRestriction(client: WASocket, groupId: string, status: boolean){
-    let config : "announcement" | "not_announcement" = status ? "announcement" : "not_announcement"
-    return client.groupSettingUpdate(groupId, config)
-}
-
 export async function getAllGroups(client: WASocket){ 
     let groups = await client.groupFetchAllParticipating()
     let groupsInfo : GroupMetadata[] = []
@@ -567,6 +537,10 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
 
     if (!message_id || !t || !sender || !chat_id ) return
 
+    const owner = await getCachedOwner()
+    const ownerId = normalizeWhatsappJid(owner?.id)
+    const isOwner = !!ownerId && [sender, normalizedSenderAlt].includes(ownerId)
+
     let formattedMessage : Message = {
         message_id,
         sender,
@@ -589,8 +563,8 @@ export async function formatWAMessage(m: WAMessage, group: Group|null, hostId: s
         isQuoted,
         isGroupMsg,
         isGroupAdmin: (sender && group) ? await getGroupController().isParticipantAdmin(group.id, sender) : false,
-        isBotAdmin: sender ? await getCachedOwner().then(owner => owner ? sender === normalizeWhatsappJid(owner.id) : false) : false,
-        isBotOwner: sender ? await getCachedOwner().then(owner => owner ? sender === normalizeWhatsappJid(owner.id) : false) : false,
+        isBotAdmin: isOwner,
+        isBotOwner: isOwner,
         isBotMessage: m.key.fromMe ?? false,
         isBroadcast: m.key.remoteJid == "status@broadcast",
         isMedia: type != "conversation" && type != "extendedTextMessage",

@@ -1,0 +1,1 @@
+ALTER TABLE "media_jobs" ADD COLUMN "attempt" integer DEFAULT 0 NOT NULL;

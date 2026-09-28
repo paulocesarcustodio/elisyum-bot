@@ -1,3 +1,5 @@
+> **Execução local atual:** PostgreSQL, bot, painel e modelos são controlados por `python3 scripts/local-runtime.py start`. Consulte [operação local](docs/operacao-local.md) e [implantação da arquitetura](docs/implantacao-arquitetura-2026-09-27.md) antes dos procedimentos legados abaixo.
+
 <p align="center">
 <img src="https://i.ibb.co/F4ZHtvCT/elisyum-logo.jpg" width="350" height="350"/>
 </p>
@@ -9,135 +11,35 @@
 [![Documentação](https://img.shields.io/badge/Docs-Completa-blue?style=for-the-badge)](docs/guides/INSTALLATION.md)
 [![License](https://img.shields.io/badge/License-GPL--3.0-red?style=for-the-badge)](LICENSE)
 
-### 🚀 Instale agora com um único comando!
+### Instalação e atualização local
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
-```
+Ambiente validado: **Ubuntu 24.04 x86-64, Python 3.12**, incluindo WSL2. Os pré-requisitos do sistema estão no [guia de instalação](INSTALL.md).
 
 </div>
 
-<br>
-<h2 align="center"> 🔄 Notas de atualização: <a href="docs/releases/CHANGELOG.md">AQUI</a></h2>
-
-<br>
-
-## 🚨 REQUERIMENTOS
-- Conhecimento básico de informática. <br>
-- Um **número de celular conectado ao WhatsApp** para conectar o bot. <br>
-- Um **computador com sistema Windows/Linux** ou um **smartphone Android** para executar a aplicação.<br>
-
-<br>
-
-## 💿 Instalação
-
-### 🚀 Instalação com Um Comando (Linux/macOS)
+Após clonar o repositório, execute:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/paulocesarcustodio/elisyum-bot/main/scripts/setup/install.sh | bash
+bash scripts/setup/install.sh --start
 ```
 
-**Após a instalação:**
+O mesmo comando serve para preparar uma máquina nova e atualizar uma instalação PostgreSQL existente após `git pull`. Ele para o runtime, prepara Bun 1.4.0 e PostgreSQL locais, instala os pacotes pelos lockfiles, baixa os modelos com verificação de SHA-256, prepara banco e permissões, aplica migrações, compila bot e painel e inicia os processos no terminal. Ctrl+C encerra tudo.
+
+O perfil padrão usa **Qwen3.5-4B Q4_K_M + Whisper medium int8 em CPU**. Reserve 24 GiB de RAM, 12 vCPU e 100 GiB de SSD no container; veja os detalhes em [configuração recomendada](INSTALL.md#configuração-recomendada-para-cpu).
+
+Para apenas preparar, omita `--start`. Para verificar os pré-requisitos sem parar processos ou instalar nada:
+
 ```bash
-# Opção 1: Use o script run.sh (não precisa recarregar shell!)
-cd elisyum-bot
-nano .env          # Configure suas variáveis
-./run.sh           # Inicia com CLI colorida ✨
-
-# Opção 2: Recarregue o shell e use bun
-source ~/.bashrc
-cd elisyum-bot
-nano .env
-bun start          # Também usa CLI colorida! 🎨
-bun run start:fresh # Limpa a sessão e inicia para conectar outro número
+bash scripts/setup/install.sh --check
 ```
 
-**Instalação local com CLI bonita:**
-```bash
-git clone https://github.com/paulocesarcustodio/elisyum-bot.git
-cd elisyum-bot
-bun setup.js       # Setup com interface colorida
-bun start          # Inicia com banner bonito
-bun run session:clear # Limpa a sessão sem iniciar
-```
+`bun setup.js` e `bun run setup` usam o mesmo instalador. Não é necessário ter Bun previamente: a entrada Bash baixa a versão fixada para dentro do projeto. Nenhum serviço do sistema é criado e o instalador não altera o shell do usuário.
 
-O script instala automaticamente:
-- ✅ Clona o repositório
-- ✅ Bun runtime
-- ✅ FFmpeg
-- ✅ Dependências do Canvas (Linux)
-- ✅ Todas as dependências npm
-- ✅ SQLite (integrado no Bun)
-- ✅ Compila o TypeScript
+Na primeira conexão, faça o pareamento do WhatsApp pelo terminal. O painel fica em <http://localhost:3000>; a primeira conta administrativa precisa ser definida pelo proprietário. Configurações, sessão e banco existentes são preservados. O Git transporta o código; para levar os dados a outra máquina, use o [procedimento de backup e restauração](docs/operacao-local.md#backup-e-restauração).
 
-📖 **Guia completo**: [docs/guides/INSTALLATION.md](docs/guides/INSTALLATION.md)
+Instalações antigas com `storage/bot.db` exigem migração explícita de um snapshot antes da inicialização. O setup identifica esse caso e interrompe sem apagar dados. A instalação atual não suporta os antigos atalhos de limpeza de sessão.
 
----
-
-### 🖥️ Instalação Manual (Windows/Linux)
-
-Antes da instalação você tem que instalar os programas abaixo, no Windows é só instalar pelo link indicado e no Linux você tem que pesquisar qual é o comando para instalar na sua distribuição.
-- Git 64-bit - [DOWNLOAD](https://git-scm.com/downloads/win)<br>
-- Bun (>= 1.0) - [DOWNLOAD](https://bun.sh/)<br>
-  - **Windows/Linux/macOS**: `curl -fsSL https://bun.sh/install | bash`<br>
-- FFmpeg - [DOWNLOAD](https://ffmpeg.org/download.html) (necessário para conversão de áudio/vídeo)<br>
-  - **Windows**: Baixe o build e adicione ao PATH do sistema
-  - **Linux/Ubuntu/Debian**: `sudo apt install ffmpeg`
-  - **Linux/Fedora**: `sudo dnf install ffmpeg`
-  - **macOS**: `brew install ffmpeg`<br><br>
-
-Faça o download do **.zip** da última versão lançada [AQUI](https://github.com/victorsouzaleal/lbot-whatsapp/releases/latest), extraia o **.zip** e abra o **terminal/prompt de comando** dentro do local extraído.
-
-<br>
-
-**TODOS OS COMANDOS ABAIXO DEVEM SER EXECUTADOS NO TERMINAL/PROMPT DE COMANDO DENTRO DA PASTA EXTRAÍDA DO BOT!!** 
-
-<br>
-
-> ℹ️ Este projeto utiliza **Bun** como runtime e gerenciador de pacotes oficial. Execute `bun install` sempre que atualizar o repositório.
-
-<br>
-
-Após instalar o **Bun**, você só precisa iniciar o bot com o comando abaixo:
-```bash
-bun start
-```
-
-Para trocar o número conectado ao bot sem apagar seus áudios ou o `bot.db`:
-```bash
-bun start -- --clear-session
-# ou apenas limpar e sair
-bun run session:clear
-```
-
-<br>
-
-É normal demorar na primeira vez será feito o download de todas as dependências, se tudo der certo será perguntado se você quer se conectar com **QR Code** ou **Código de Pareamento**, faça a sua escolha e se conecte com o aplicativo do WhatsApp. 
-
-<br>
-
-### 📱 Smartphone (Android)
-
-Faça a instalação do .apk mais atual do Termux: [AQUI](https://github.com/termux/termux-app/releases/download/v0.118.2/termux-app_v0.118.2+github-debug_universal.apk).
-
-Abra o **Termux** comece usando este comando para fazer o download e instalação do bot, isso pode demorar algum tempo até instalar tudo.
-```bash
-pkg install wget -y && wget -O - tinyurl.com/lbot-termux | bash && cd ~/LBOT && bun start
-```
-<br>
-
-É normal demorar na primeira vez será feito o download de todas as dependências, se tudo der certo será perguntado se você quer se conectar com **QR Code** ou **Código de Pareamento**, faça a sua escolha e se conecte com o aplicativo do WhatsApp. 
-
-<br>
-<br>
-
-Caso você feche o Termux e queira iniciar o bot novamente faça o comando abaixo:
-```bash
-cd ~/LBOT && bun start
-```
-
-<br>
-<br>
+[Instalação completa](INSTALL.md) · [Operação local](docs/operacao-local.md) · [Notas de atualização](docs/releases/CHANGELOG.md)
 
 ## 🗂️ Estrutura do projeto
 
@@ -161,7 +63,7 @@ Seu bot já deve estar iniciando normalmente após o passo anterior, use os coma
 **!menu** - Dá acesso ao **menu principal**.<br>
 **!admin** - Dá acesso ao **menu de administrador**.
 
-Para downloads, você também pode simplesmente enviar um link suportado no chat que o bot faz o download automaticamente.
+Para downloads, basta enviar um link suportado no privado ou em um grupo: ele aciona `d` automaticamente, respeitando permissões e limites. Essa é a exceção à palavra de ativação “bot”; os demais pedidos em linguagem natural continuam exigindo-a.
 
 <br>
 
@@ -187,7 +89,7 @@ Se você for administrador do grupo envie **!menu 5** dentro de um grupo para te
 Diversos comandos para criação de figurinhas
 
 ### 📥 Downloads 
-Downloads automáticos ao detectar links suportados e comandos como `!d`, `!p` e `!mp3` para mídias das principais redes sociais: X, YouTube, Instagram, TikTok...
+Downloads automáticos ao detectar links suportados e comandos como `!d`, `!p` e `!mp3` para mídias das principais redes sociais: X, YouTube, Instagram, Facebook, TikTok e Pinterest (Pins públicos de imagem ou vídeo, incluindo links `pin.it`).
 
 ### ⚒️ Utilidades Gerais
 Diversos comandos de utilidades como `!a` para áudios salvos, encurtar link, editar áudio, obter letra de música, etc...
@@ -232,36 +134,6 @@ Diversos para administrar o bot e ter controle sobre ele.
 * A minha mãe e o meu pai que me fizeram com muito amor
 * [`WhiskeySockets/Baileys`](https://github.com/WhiskeySockets/Baileys) - Por disponibilizar a biblioteca Baileys e dar suporte no Discord principalmente a nós brasileiros.
 
-## 🚀 Webhook Deploy
+## Deploy legado
 
-O projeto inclui um servidor webhook (`webhook-deploy.js`) para automatizar deploys a partir de pushes no GitHub.
-
-### Configuração
-
-1. Configure as variáveis de ambiente:
-   ```bash
-   WEBHOOK_PORT=3001          # Porta do servidor webhook
-   WEBHOOK_SECRET=your-secret # Secret do webhook do GitHub
-   DEPLOY_PATH=/path/to/bot   # Caminho do projeto no servidor
-   ```
-
-2. Configure o webhook no GitHub:
-   - Vá em Settings > Webhooks > Add webhook
-   - URL: `http://SEU_IP:3001/webhook` (use a porta configurada em `WEBHOOK_PORT`)
-   - Content type: `application/json`
-   - Secret: o mesmo configurado em `WEBHOOK_SECRET`
-   - Events: Apenas o evento push
-
-3. Inicie o servidor webhook:
-   ```bash
-   bun webhook-deploy.js
-   ```
-
-### Funcionamento
-
-O webhook escuta por pushes na branch `main` e executa automaticamente:
-- `git pull origin main`
-- `bun install --frozen-lockfile`
-- `bun run preflight:storage`
-- `bun run build`
-- `systemctl restart lbot` (reinicia o serviço do bot)
+`webhook-deploy.js` e o `deploy.sh` da raiz pertencem à implantação antiga com systemd. Não fazem parte do runtime local atual. Para instalar ou atualizar esta arquitetura, use `bash scripts/setup/install.sh --start`; consulte [INSTALL.md](INSTALL.md).

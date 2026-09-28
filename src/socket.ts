@@ -1,5 +1,5 @@
 
-import makeWASocket, { fetchLatestBaileysVersion, type WAVersion, WASocket } from '@whiskeysockets/baileys'
+import makeWASocket, { WASocket } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 import configSocket from './config.js'
 import { BotController } from './controllers/bot.controller.js'
@@ -17,8 +17,11 @@ import { executeEventQueue, queueEvent } from './helpers/events.queue.helper.js'
 import { checkAndNotifyPatchNotes } from './helpers/patch-notes.helper.js'
 import botTexts from './helpers/bot.texts.helper.js'
 import { askQuestion, colorText } from './utils/general.util.js'
-import { useSQLiteAuthState } from './helpers/session.auth.helper.js'
-import { SchedulerService } from './services/scheduler.service.js'
+import { usePostgresAuthState } from './helpers/session.auth.helper.js'
+import { GatewayLease } from './infrastructure/gateway-lease.js'
+import { acceptIncoming, startIncomingConsumer } from './infrastructure/incoming-messages.js'
+import { IdentityService } from './services/identity.service.js'
+import { invalidateGroup } from './infrastructure/group-metadata.js'
 import { setBoundedCache } from './utils/cache.util.js'
 
 //Cache de tentativa de envios
@@ -36,19 +39,26 @@ const BASE_RECONNECT_DELAY_MS = 10_000
 const MAX_RECONNECT_DELAY_MS = 300_000
 let isSyncingOnStart = false
 let activeClient: WASocket | undefined
+let gatewayLease:GatewayLease | undefined
+let gatewayReady=false
+let stopping=false
+let reconnectTimer:ReturnType<typeof setTimeout> | undefined
+export async function closeGateway(){
+    stopping=true;gatewayReady=false
+    if(reconnectTimer)clearTimeout(reconnectTimer)
+    await gatewayLease?.close()
+}
+
 
 export default async function connect(){
-    const { state, saveCreds } = await useSQLiteAuthState()
-    let version: WAVersion | undefined
-
-    try {
-        const latestVersion = await fetchLatestBaileysVersion()
-        version = latestVersion.version
-    } catch (error) {
-        console.warn('[socket] Não foi possível obter a versão mais recente do WA Web. Usando a versão interna do Baileys.', error)
-    }
-
-    const client : WASocket = makeWASocket(configSocket(state, retryCache, version, messagesCache))
+    if(stopping)return
+    if(!gatewayLease){gatewayLease=new GatewayLease();await gatewayLease.acquire()}
+    await gatewayLease.assertActive()
+    const { state, saveCreds } = await usePostgresAuthState()
+    // The pinned Baileys release supplies the tested WhatsApp protocol version.
+    const rawClient = makeWASocket(configSocket(state,retryCache,undefined,messagesCache))
+    const client:WASocket = gatewayLease.wrap(rawClient)
+    gatewayReady=false
     let connectionType : string | null = null
     let isBotReady = false
     let reconnectScheduled = false
@@ -56,6 +66,7 @@ export default async function connect(){
 
     //Eventos
     client.ev.process(async(events)=>{
+      try {
         if (activeClient !== client) return
         const botInfo = new BotController().getBot()
 
@@ -63,6 +74,16 @@ export default async function connect(){
         if (events['creds.update']){
             await saveCreds()
         }
+
+        // Persist notifications before any slow startup/group synchronization.
+        if(events['messages.upsert']){
+            const incoming=events['messages.upsert']
+            const {newsletterMessages,otherMessages}=partitionNewsletterMessages(incoming.messages || [])
+            for(const message of otherMessages)await acceptIncoming(message,incoming.type,incoming.requestId)
+            if(newsletterMessages.length)await logNewsletterMessages(client,{...incoming,messages:newsletterMessages})
+        }
+        const mapping=(events as Record<string,unknown>)['lid-mapping.update'] as {lid:string;pn:string} | undefined
+        if(mapping?.lid && mapping?.pn)await new IdentityService().resolve(mapping.lid,[mapping.pn],'baileys-lid-mapping')
 
         //Status da conexão
         if (events['connection.update']){
@@ -72,6 +93,7 @@ export default async function connect(){
 
             if (connection === 'close') {
                 isBotReady = false
+                gatewayReady = false
                 needReconnect = await connectionClose(connectionState)
             } else if (!receivedPendingNotifications) {
                 if (qr) {
@@ -93,7 +115,7 @@ export default async function connect(){
             } else if (!isBotReady) {
                 reconnectAttempts = 0
                 await client.waitForSocketOpen()
-                connectionOpen(client)
+                await connectionOpen(client)
                 if (!isSyncingOnStart) {
                     isSyncingOnStart = true
                     try {
@@ -103,12 +125,13 @@ export default async function connect(){
                     }
                 }
                 isBotReady = true
+                gatewayReady = true
+                await startIncomingConsumer(()=>gatewayReady && !stopping && !!gatewayLease?.isActive(),async(message,requestId)=>{
+                    if(!activeClient)throw new Error('Conexão indisponível.')
+                    await messageReceived(activeClient,{messages:[message],requestId,type:'notify'},new BotController().getBot(),messagesCache,viewOnceCache)
+                })
                 await executeEventQueue(client, eventsCache)
                 console.log(colorText(botTexts.server_started))
-                
-                // Inicializa o scheduler de tarefas agendadas
-                const scheduler = new SchedulerService(client)
-                scheduler.init()
                 
                 // Verifica e envia patch notes se houver nova versão
                 setTimeout(() => {
@@ -128,41 +151,21 @@ export default async function connect(){
                 const totalDelay = delay + jitter
                 console.log(colorText(`[RECONEXÃO] Tentativa ${reconnectAttempts} — aguardando ${totalDelay/1000}s...`))
 
-                await new Promise(r => setTimeout(r, totalDelay))
-                while (activeClient === client) {
-                    try {
-                        await connect()
-                        break
-                    } catch (error) {
-                        console.error('[RECONEXÃO] Falha ao criar conexão:', error)
-                        await new Promise(r => setTimeout(r, MAX_RECONNECT_DELAY_MS))
+                const reconnect=async()=>{
+                    if(stopping || activeClient!==client || !gatewayLease?.isActive())return
+                    try{await connect()}catch(error){
+                        console.error('[RECONEXÃO]',(error as Error).message)
+                        reconnectTimer=setTimeout(()=>void reconnect(),MAX_RECONNECT_DELAY_MS)
                     }
                 }
-            }
-        }
-
-        // Receber mensagem
-        if (events['messages.upsert']){
-            const message = events['messages.upsert']
-            const { newsletterMessages, otherMessages } = partitionNewsletterMessages(message.messages || [])
-
-            if (newsletterMessages.length){
-                await logNewsletterMessages(client, {
-                    messages: newsletterMessages,
-                    type: message.type,
-                    requestId: message.requestId
-                })
-            }
-
-            if (otherMessages.length){
-                const regularMessages = { ...message, messages: otherMessages }
-                if (isBotReady) await messageReceived(client, regularMessages, botInfo, messagesCache, viewOnceCache)
+                reconnectTimer=setTimeout(()=>void reconnect(),totalDelay)
             }
         }
 
         // Atualização de participantes no grupo
         if (events['group-participants.update']){
             const rawParticipantsUpdate = events['group-participants.update']
+            invalidateGroup(rawParticipantsUpdate.id)
             const participantsUpdate: ParticipantsUpdateEvent = {
                 ...rawParticipantsUpdate,
                 participants: rawParticipantsUpdate.participants ?? []
@@ -183,6 +186,7 @@ export default async function connect(){
         // Atualização parcial de dados do grupo
         if (events['groups.update']){
             const groups = events['groups.update']
+            groups.forEach(group=>{if(group.id)invalidateGroup(group.id)})
 
             if (groups.length == 1 && groups[0].participants == undefined){
                 if (isBotReady) await partialGroupUpdate(groups[0])
@@ -210,6 +214,11 @@ export default async function connect(){
         if (newsletterMetaUpdates){
             await logNewslettersUpdate(newsletterMetaUpdates)
         }
+      } catch(error){
+        console.error('[Gateway evento]',(error as Error).message)
+        gatewayReady=false
+        client.end(new Error('gateway_event_failed'))
+      }
     })
     activeClient = client
 }

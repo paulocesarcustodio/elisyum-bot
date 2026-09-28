@@ -1,0 +1,919 @@
+{
+  "corpusSha256": "17fa51c4d6b3e26cb26cd8df0fb6077e8718c09dd45d231ca20e3d796aed865e",
+  "model": "Qwen3.5-2B-Q4_K_M",
+  "llamaBuild": "b11222",
+  "selected": "openjev",
+  "directEligible": false,
+  "summaries": {
+    "openjev": {
+      "total": 26,
+      "commandCorrect": 20,
+      "completeCorrect": 13,
+      "medianMs": 384,
+      "p95Ms": 470
+    },
+    "direct": {
+      "total": 26,
+      "commandCorrect": 23,
+      "completeCorrect": 17,
+      "medianMs": 1667,
+      "p95Ms": 2143
+    }
+  },
+  "results": [
+    {
+      "parser": "openjev",
+      "text": "bot, abre a relação de comandos disponíveis",
+      "expected": "menu",
+      "actual": "menu",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 428,
+      "result": {
+        "command": "menu",
+        "args": [],
+        "targetText": "relaçã comandos disponíveis",
+        "needsClarification": false,
+        "latencyMs": 428.25541499999997
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, quero ouvir a canção Trem das Onze",
+      "expected": "play",
+      "actual": "play",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 395,
+      "result": {
+        "command": "play",
+        "args": [
+          "ouvir a canção Trem das Onze"
+        ],
+        "targetText": "Trem das Onze",
+        "needsClarification": false,
+        "latencyMs": 395.229773
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, traga o clipe de Aquarela do Brasil",
+      "expected": "d",
+      "actual": "d",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 412,
+      "result": {
+        "command": "d",
+        "args": [
+          "traga o clipe de Aquarela do Brasil"
+        ],
+        "targetText": "clipe Aquarela Brasil",
+        "needsClarification": false,
+        "latencyMs": 411.9328130000001
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, procure fotografias de cachoeiras",
+      "expected": "img",
+      "actual": "img",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 382,
+      "result": {
+        "command": "img",
+        "args": [
+          "procure fotografias de cachoeiras"
+        ],
+        "targetText": "procure fotografias cachoeiras",
+        "needsClarification": false,
+        "latencyMs": 381.6322460000001
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, tire só o som do vídeo que respondi",
+      "expected": "mp3",
+      "actual": "mp3",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 379,
+      "result": {
+        "command": "mp3",
+        "args": [
+          "tire só o do vídeo que respondi"
+        ],
+        "targetText": "vídeo que respondi",
+        "needsClarification": false,
+        "latencyMs": 378.60544100000016
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, transforme a foto respondida em sticker",
+      "expected": "s",
+      "actual": "s",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 342,
+      "result": {
+        "command": "s",
+        "args": [],
+        "targetText": "foto respondida em",
+        "needsClarification": false,
+        "latencyMs": 341.83163300000024
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, preciso desta figurinha como foto normal",
+      "expected": "simg",
+      "actual": "simg",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 393,
+      "result": {
+        "command": "simg",
+        "args": [],
+        "targetText": "como foto normal",
+        "needsClarification": false,
+        "latencyMs": 393.1346959999996
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, guarde o áudio respondido como campainha",
+      "expected": "save",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 349,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 348.5882319999996
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, reproduza o áudio salvo campainha",
+      "expected": "audio",
+      "actual": "audio",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 390,
+      "result": {
+        "command": "audio",
+        "args": [
+          "reproduza o áudio salvo campainha"
+        ],
+        "targetText": "áudio salvo campainha",
+        "needsClarification": false,
+        "latencyMs": 390.1811510000002
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, exiba a biblioteca de sons salvos",
+      "expected": "audios",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 396,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 396.18782999999985
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, remova o som salvo campainha",
+      "expected": "delete",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 392,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 391.72150799999963
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, impeça a Paula de falar neste grupo",
+      "expected": "silenciar",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": true,
+      "targetCorrect": false,
+      "latencyMs": 350,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 349.65110000000004
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, promova a pessoa da mensagem respondida",
+      "expected": "promover",
+      "actual": "promover",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 403,
+      "result": {
+        "command": "promover",
+        "args": [],
+        "targetText": "promova mensagem respondida",
+        "needsClarification": false,
+        "latencyMs": 403.3435980000004
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, retire o cargo de administrador do Carlos",
+      "expected": "rebaixar",
+      "actual": "rebaixar",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": false,
+      "latencyMs": 470,
+      "result": {
+        "command": "rebaixar",
+        "args": [],
+        "targetText": "retire cargo Carlos",
+        "needsClarification": false,
+        "latencyMs": 470.01894399999946
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, apague a mensagem que eu respondi",
+      "expected": "apg",
+      "actual": "apg",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 322,
+      "result": {
+        "command": "apg",
+        "args": [],
+        "targetText": "que eu respondi",
+        "needsClarification": false,
+        "latencyMs": 321.90117699999973
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, coloque o Bruno na lista negra",
+      "expected": "addlista",
+      "actual": "addlista",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": false,
+      "latencyMs": 384,
+      "result": {
+        "command": "addlista",
+        "args": [
+          "coloque o Bruno na lista negra"
+        ],
+        "targetText": "na lista negra",
+        "needsClarification": false,
+        "latencyMs": 383.87626199999977
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, quais pessoas estão na lista negra?",
+      "expected": "listanegra",
+      "actual": "listanegra",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 461,
+      "result": {
+        "command": "listanegra",
+        "args": [],
+        "targetText": "na lista negra?",
+        "needsClarification": false,
+        "latencyMs": 461.41406800000004
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, como eu uso os comandos de áudio?",
+      "expected": "ask",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 404,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 403.93895599999996
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, não toque música agora",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 0.13572999999996682
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, nunca remova ninguém daqui",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 0.061529999999947904
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, ontem pediram para silenciar a Paula",
+      "expected": null,
+      "actual": "silenciar",
+      "commandCorrect": false,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 475,
+      "result": {
+        "command": "silenciar",
+        "args": [],
+        "targetText": "ontem pediram Paula",
+        "needsClarification": false,
+        "latencyMs": 475.12390399999913
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, boa noite e até amanhã",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 367,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 366.5134909999997
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "faça uma figurinha com essa foto",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 0.006970000000364962
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, faça aquilo com aquela pessoa",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 359,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 358.85695400000077
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, quero uma transferência de dinheiro",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 366,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 365.88821199999984
+      }
+    },
+    {
+      "parser": "openjev",
+      "text": "bot, baixe uma coisa qualquer",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 366,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 366.3707910000012
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, abre a relação de comandos disponíveis",
+      "expected": "menu",
+      "actual": "menu",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1637,
+      "result": {
+        "command": "menu",
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1637.3494279999995
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, quero ouvir a canção Trem das Onze",
+      "expected": "play",
+      "actual": "play",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 2120,
+      "result": {
+        "command": "play",
+        "args": [
+          "Trem das Onze"
+        ],
+        "targetText": "Trem das Onze",
+        "needsClarification": false,
+        "latencyMs": 2119.8930689999997
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, traga o clipe de Aquarela do Brasil",
+      "expected": "d",
+      "actual": "d",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 2366,
+      "result": {
+        "command": "d",
+        "args": [
+          "Aquarela do Brasil"
+        ],
+        "targetText": "Aquarela do Brasil",
+        "needsClarification": false,
+        "latencyMs": 2366.1580639999993
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, procure fotografias de cachoeiras",
+      "expected": "img",
+      "actual": "img",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1297,
+      "result": {
+        "command": "img",
+        "args": [
+          "cachoeiras"
+        ],
+        "targetText": "cachoeiras",
+        "needsClarification": false,
+        "latencyMs": 1297.4453099999992
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, tire só o som do vídeo que respondi",
+      "expected": "mp3",
+      "actual": "mp3",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 2009,
+      "result": {
+        "command": "mp3",
+        "args": [
+          "vídeo que respondi"
+        ],
+        "needsClarification": false,
+        "latencyMs": 2009.088195999997
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, transforme a foto respondida em sticker",
+      "expected": "s",
+      "actual": "s",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 2135,
+      "result": {
+        "command": "s",
+        "args": [
+          "transforme a foto respondida em sticker"
+        ],
+        "needsClarification": false,
+        "latencyMs": 2135.031117999999
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, preciso desta figurinha como foto normal",
+      "expected": "simg",
+      "actual": "simg",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 1323,
+      "result": {
+        "command": "simg",
+        "args": [
+          "figurinha"
+        ],
+        "targetText": "figurinha",
+        "needsClarification": false,
+        "latencyMs": 1323.4755929999992
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, guarde o áudio respondido como campainha",
+      "expected": "save",
+      "actual": "save",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1973,
+      "result": {
+        "command": "save",
+        "args": [
+          "campainha"
+        ],
+        "needsClarification": false,
+        "latencyMs": 1972.828125
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, reproduza o áudio salvo campainha",
+      "expected": "audio",
+      "actual": "audio",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1942,
+      "result": {
+        "command": "audio",
+        "args": [
+          "campainha"
+        ],
+        "targetText": "campainha",
+        "needsClarification": false,
+        "latencyMs": 1941.5311679999977
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, exiba a biblioteca de sons salvos",
+      "expected": "audios",
+      "actual": "audios",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1686,
+      "result": {
+        "command": "audios",
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1685.6676879999977
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, remova o som salvo campainha",
+      "expected": "delete",
+      "actual": null,
+      "commandCorrect": false,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 1660,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1660.091840000001
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, impeça a Paula de falar neste grupo",
+      "expected": "silenciar",
+      "actual": "ban",
+      "commandCorrect": false,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 1769,
+      "result": {
+        "command": "ban",
+        "args": [
+          "Paula"
+        ],
+        "targetText": "Paula",
+        "needsClarification": false,
+        "latencyMs": 1768.721322999998
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, promova a pessoa da mensagem respondida",
+      "expected": "promover",
+      "actual": "promover",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 2143,
+      "result": {
+        "command": "promover",
+        "args": [
+          "solicitante administrador"
+        ],
+        "targetText": "solicitante administrador",
+        "needsClarification": false,
+        "latencyMs": 2142.685327000003
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, retire o cargo de administrador do Carlos",
+      "expected": "rebaixar",
+      "actual": "rebaixar",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 1308,
+      "result": {
+        "command": "rebaixar",
+        "args": [
+          "Carlos"
+        ],
+        "targetText": "Carlos",
+        "needsClarification": false,
+        "latencyMs": 1308.2796940000044
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, apague a mensagem que eu respondi",
+      "expected": "apg",
+      "actual": "apg",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1406,
+      "result": {
+        "command": "apg",
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1406.2089760000017
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, coloque o Bruno na lista negra",
+      "expected": "addlista",
+      "actual": "addlista",
+      "commandCorrect": true,
+      "argsCorrect": false,
+      "targetCorrect": true,
+      "latencyMs": 1982,
+      "result": {
+        "command": "addlista",
+        "args": [
+          "Bruno"
+        ],
+        "targetText": "Bruno",
+        "needsClarification": false,
+        "latencyMs": 1982.0653909999965
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, quais pessoas estão na lista negra?",
+      "expected": "listanegra",
+      "actual": "listanegra",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1708,
+      "result": {
+        "command": "listanegra",
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1707.8039140000037
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, como eu uso os comandos de áudio?",
+      "expected": "ask",
+      "actual": "ask",
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1637,
+      "result": {
+        "command": "ask",
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1637.2038240000038
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, não toque música agora",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 0.10568000000057509
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, nunca remova ninguém daqui",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 0.0045699999973294325
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, ontem pediram para silenciar a Paula",
+      "expected": null,
+      "actual": "silenciar",
+      "commandCorrect": false,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1949,
+      "result": {
+        "command": "silenciar",
+        "args": [
+          "Paula"
+        ],
+        "targetText": "Paula",
+        "needsClarification": false,
+        "latencyMs": 1949.3840449999989
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, boa noite e até amanhã",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1651,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 1651.1356489999962
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "faça uma figurinha com essa foto",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 0,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": false,
+        "latencyMs": 0.005040000003646128
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, faça aquilo com aquela pessoa",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1660,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 1660.330971999996
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, quero uma transferência de dinheiro",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1667,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 1667.0464219999994
+      }
+    },
+    {
+      "parser": "direct",
+      "text": "bot, baixe uma coisa qualquer",
+      "expected": null,
+      "actual": null,
+      "commandCorrect": true,
+      "argsCorrect": true,
+      "targetCorrect": true,
+      "latencyMs": 1622,
+      "result": {
+        "command": null,
+        "args": [],
+        "needsClarification": true,
+        "latencyMs": 1621.5379410000023
+      }
+    }
+  ]
+}

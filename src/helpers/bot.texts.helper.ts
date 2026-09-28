@@ -29,7 +29,6 @@ const botTexts = {
     command_rate_limited_message : "Você está impossibilitado de mandar comandos por *{$1}* segundos, pega leve cara.",
     group_blocked_command: "O comando *{$1}* está temporariamente bloqueado neste grupo pelo administrador.",
     globally_blocked_command: "O comando *{$1}* está indisponível no momento por ordem do administrador, tente novamente mais tarde.",
-    detected_link: "🤖 Ei @{$1}, o ANTI-LINK está ativado e um possível link foi detectado na sua mensagem, ela foi apagada por segurança.",
     group_welcome_message: "👋 Olá, @{$1}\n"+
     "Seja bem vindo(a) ao grupo *{$2}*\n\n"+
     "{$3}"+
@@ -40,14 +39,7 @@ const botTexts = {
     blacklist_ban_message : "✅ Entendido, +{$1} será banido.\n\n"+
     "*Tipo*: LISTA NEGRA\n"+
     "*Quem baniu*: {$2}",
-    antifake_ban_message : "✅ Entendido, +{$1} será banido.\n\n"+
-    "*Motivo*: ANTI-FAKE\n"+
-    "*Quem baniu*: {$2}",
-    antiflood_ban_messages : "✅ Entendido, +{$1} será banido.\n\n"+
-    "*Motivo*: ANTI-FLOOD\n"+
-    "*Quem baniu*: {$2}",
     sync_blacklist: '✅ Foram banidos {$1} membros na sincronização da LISTA-NEGRA',
-    sync_antifake: '✅ Foram banidos {$1} membros na sincronização do ANTI-FAKE',
     owner_registered: '✓ Número do DONO configurado.',
     owner_not_found: 'O número do DONO ainda não foi configurado, digite !admin para cadastrar seu número como dono do bot.',
     migrating_database: '! O banco de dados está sendo migrado, por favor aguarde...',

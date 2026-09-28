@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { askCacheDb } from '../database/db.js'
+import { REMOVED_COMMAND_NAMES } from '../commands/removed.commands.js'
 
 /**
  * Normaliza pergunta para aumentar hit rate do cache
@@ -20,12 +21,14 @@ function normalizeQuestion(question: string): string {
 }
 
 /**
- * Gera hash SHA-256 da pergunta normalizada
+ * Invalida respostas de catálogos antigos quando comandos são removidos.
  */
 export function generateQuestionHash(question: string): string {
   const normalized = normalizeQuestion(question)
   return crypto
     .createHash('sha256')
+    .update(REMOVED_COMMAND_NAMES.join(','))
+    .update('\0')
     .update(normalized)
     .digest('hex')
 }
@@ -51,7 +54,7 @@ export async function getCachedAnswer(
   const questionHash = generateQuestionHash(question)
   
   // Consulta principal
-  const mainQuery = Promise.resolve(askCacheDb.get(questionHash, userType))
+  const mainQuery = askCacheDb.get(questionHash, userType)
   
   // Consultas paralelas para variações (caso a pergunta tenha pequenas diferenças)
   const variations = [
@@ -65,7 +68,7 @@ export async function getCachedAnswer(
     .filter(v => v !== question) // Remove duplicatas
     .map(v => {
       const hash = generateQuestionHash(v)
-      return Promise.resolve(askCacheDb.get(hash, userType))
+      return askCacheDb.get(hash, userType)
     })
   
   // Executa todas as queries em paralelo
@@ -86,29 +89,29 @@ export async function getCachedAnswer(
 /**
  * Salva resposta no cache
  */
-export function setCachedAnswer(
+export async function setCachedAnswer(
   question: string, 
   answer: string, 
   isBotOwner: boolean, 
   isGroupAdmin: boolean
-): void {
+): Promise<void> {
   const userType = getUserType(isBotOwner, isGroupAdmin)
   const questionHash = generateQuestionHash(question)
   
-  askCacheDb.set(questionHash, question, answer, userType)
+  ;(await askCacheDb.set(questionHash, question, answer, userType))
   console.log(`[ASK-CACHE] 💾 Salvou resposta: "${question.substring(0, 50)}..." (${userType})`)
 }
 
 /**
  * Executa manutenção do cache (limpeza + limite)
  */
-export function performCacheMaintenance(): void {
+export async function performCacheMaintenance(): Promise<void> {
   console.log('[ASK-CACHE] 🔧 Iniciando manutenção do cache...')
   
-  const oldEntriesRemoved = askCacheDb.cleanOld()
-  const limitEntriesRemoved = askCacheDb.enforceLimit(500)
+  const oldEntriesRemoved = (await askCacheDb.cleanOld())
+  const limitEntriesRemoved = (await askCacheDb.enforceLimit(500))
   
-  const stats = askCacheDb.stats()
+  const stats = (await askCacheDb.stats())
   console.log(`[ASK-CACHE] ✅ Manutenção concluída:`)
   console.log(`  - Entradas antigas removidas: ${oldEntriesRemoved}`)
   console.log(`  - Entradas por limite removidas: ${limitEntriesRemoved}`)

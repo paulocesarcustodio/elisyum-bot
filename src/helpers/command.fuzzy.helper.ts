@@ -1,8 +1,6 @@
+import { commandCatalog } from '../application/command-catalog.js'
 import Fuse from 'fuse.js'
-import infoCommands from '../commands/info.list.commands.js'
-import utilityCommands from '../commands/utility.list.commands.js'
-import groupCommands from '../commands/group.list.commands.js'
-import adminCommands from '../commands/admin.list.commands.js'
+import { isRemovedCommand } from '../commands/removed.commands.js'
 
 interface CommandItem {
     name: string
@@ -13,29 +11,7 @@ interface CommandItem {
  * Obtém lista de todos os comandos disponíveis
  */
 function getAllCommands(): CommandItem[] {
-    const commands: CommandItem[] = []
-    
-    // Info commands
-    Object.keys(infoCommands).forEach(name => {
-        commands.push({ name, category: 'info' })
-    })
-    
-    // Utility commands
-    Object.keys(utilityCommands).forEach(name => {
-        commands.push({ name, category: 'utility' })
-    })
-    
-    // Group commands
-    Object.keys(groupCommands).forEach(name => {
-        commands.push({ name, category: 'group' })
-    })
-    
-    // Admin commands
-    Object.keys(adminCommands).forEach(name => {
-        commands.push({ name, category: 'admin' })
-    })
-    
-    return commands
+    return commandCatalog().map(({name, category}) => ({name, category}))
 }
 
 /**
@@ -62,6 +38,7 @@ function calculateSimilarity(str1: string, str2: string): number {
  * @returns Comando mais similar encontrado ou null
  */
 export function findSimilarCommand(commandName: string, threshold: number = 0.5): CommandItem | null {
+    if (isRemovedCommand(commandName)) return null
     console.log(`[FUZZY] 🔍 Buscando similar para: "${commandName}"`)
     
     const allCommands = getAllCommands()

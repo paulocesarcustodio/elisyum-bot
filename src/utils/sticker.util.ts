@@ -1,3 +1,4 @@
+import { mediaProcessor,shouldQueueWork } from '../infrastructure/media-client.js'
 import fs from 'fs-extra'
 import crypto from 'node:crypto'
 import webp from "node-webpmux"
@@ -11,6 +12,7 @@ import {ffmpegPool} from './worker-pool.util.js'
 const { writeFile, readFile, unlink } = fs.promises
 
 export async function createSticker(mediaBuffer : Buffer, {pack = 'Ξ ʟ ʏ s ɪ ᴜ ᴍ  ɮ ᴏ ᴛ™', author = 'Elisyum Stickers', fps = 9, type = 'resize'}: StickerOptions){
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('sticker.create',[mediaBuffer,{pack,author,fps,type}],{timeoutMs:120_000})
     try {
         const bufferSticker = await stickerCreation(mediaBuffer, {pack, author, fps, type})
         if (bufferSticker.length > 1024 * 1024) {
@@ -39,6 +41,7 @@ export async function renameSticker(stickerBuffer: Buffer, pack: string, author:
 }
 
 export async function stickerToImage(stickerBuffer: Buffer){
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('sticker.image',[stickerBuffer],{timeoutMs:30_000})
     try {
         const outputBuffer = await ffmpegPool.exec({
             inputBuffer: stickerBuffer,

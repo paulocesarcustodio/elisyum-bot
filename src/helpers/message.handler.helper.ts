@@ -9,7 +9,7 @@ import botTexts from "./bot.texts.helper.js";
 import * as procs from './message.procedures.helper.js'
 import { findSimilarCommand } from "./command.fuzzy.helper.js";
 import { askGemini } from "../utils/ai.util.js";
-import { routeSemanticCommand } from './semantic-command.helper.js'
+import { routeSemanticCommand, hasActivationSignal } from './semantic-command.helper.js'
 import { traceVoice } from './voice-trace.helper.js'
 
 function normalizeRepeatedPrefix(botInfo: Bot, message: Message): boolean {
@@ -24,21 +24,27 @@ function normalizeRepeatedPrefix(botInfo: Bot, message: Message): boolean {
     return prefixCount >= 2
 }
 
-function prepareAutoDownload(botInfo: Bot, message: Message, url: string) {
+function autoDownloadUrl(botInfo: Bot, message: Message): string | null {
+    // Only pasted links bypass the wake word. Explicit commands and addressed
+    // requests keep their original intent (e.g. !play or "bot baixe a música").
+    if (message.isBotMessage || message.type === 'audioMessage' || message.semanticSource === 'audio'
+        || message.command.startsWith(botInfo.prefix) || hasActivationSignal(message, botInfo)) return null
+    return getFirstSupportedDownloadUrl(message.caption || message.body || '')
+}
+
+function prepareAutoDownload(botInfo: Bot, message: Message, url: string): void {
     message.command = `${botInfo.prefix}d`
     message.args = [url]
     message.text_command = url
     message.isAutoDownload = true
+    message.semanticSource = 'text'
 }
 
 export async function handlePrivateMessage(client: WASocket, botInfo: Bot, message: Message){
     if (normalizeRepeatedPrefix(botInfo, message)) return false
     let isCommand = commandExist(botInfo.prefix, message.command)
-    const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && botInfo.autosticker)
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
-    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
-        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
-        : null
+    const downloadUrl = autoDownloadUrl(botInfo, message)
     let callCommand : boolean
 
     //Verifica se o usuário está bloqueado, se estiver retorna.
@@ -64,12 +70,12 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
 
-    if (autoDownloadUrl) {
-        prepareAutoDownload(botInfo, message, autoDownloadUrl)
+    if (downloadUrl) {
+        prepareAutoDownload(botInfo, message, downloadUrl)
         isCommand = true
     }
 
-    if (!isCommand && !isAutosticker && !autoDownloadUrl) {
+    if (!isCommand) {
         const semantic = await routeSemanticCommand(client, botInfo, message, null)
         if (semantic.status === 'handled') {
             if (!semantic.invoke) return false
@@ -77,12 +83,7 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
         }
     }
 
-    if (isCommand || isAutosticker){
-        //Se a taxa de comandos estiver ativado e o usuário estiver limitado, retorne.
-        if (await procs.isUserLimitedByCommandRate(client, botInfo, message)) {
-            return false
-        }
-
+    if (isCommand){
         //Se o comando estiver bloqueado globalmente, retorne.
         if (await procs.isCommandBlockedGlobally(client, botInfo, message)) {
             return false
@@ -140,11 +141,9 @@ export async function handlePrivateMessage(client: WASocket, botInfo: Bot, messa
 export async function handleGroupMessage(client: WASocket, group: Group, botInfo: Bot, message: Message){
     if (normalizeRepeatedPrefix(botInfo, message)) return false
     let isCommand = commandExist(botInfo.prefix, message.command)
-    const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker)
+    const isAutosticker = ((message.type === 'videoMessage' || message.type === "imageMessage") && group?.autosticker && hasActivationSignal(message, botInfo))
     const hasUnknownPrefixedCommand = !isCommand && message.command.startsWith(botInfo.prefix)
-    const autoDownloadUrl = (!isCommand && !isAutosticker && !message.isBotMessage)
-        ? getFirstSupportedDownloadUrl(message.caption || message.body || '')
-        : null
+    const downloadUrl = autoDownloadUrl(botInfo, message)
     let callCommand : boolean
 
     //Paraleliza: updateUserName + deleteMessageIfMutedMember
@@ -158,23 +157,17 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
         return false
     }
 
-    //Paraleliza cheques de restricao, antilink, word filter, antiflood e owner register
-    const [groupRestricted, antiLinkDetected, wordFilterDetected, antiFloodDetected, ownerRegistered] = await Promise.all([
+    // Verifica restrição do grupo e cadastro do dono em paralelo.
+    const [groupRestricted, ownerRegistered] = await Promise.all([
         procs.isBotLimitedByGroupRestricted(group, botInfo),
-        procs.isDetectedByAntiLink(client, botInfo, group, message),
-        procs.isDetectedByWordFilter(client, botInfo, group, message),
-        procs.isDetectedByAntiFlood(client, botInfo, group, message),
         procs.isOwnerRegister(client, botInfo, message)
     ])
 
     if (groupRestricted) { traceVoice('blocked_group_restricted', message); return false }
-    if (antiLinkDetected) { traceVoice('blocked_antilink', message); return false }
-    if (wordFilterDetected) { traceVoice('blocked_word_filter', message); return false }
-    if (antiFloodDetected) { traceVoice('blocked_antiflood', message); return false }
     if (ownerRegistered) { traceVoice('owner_registered', message); return false }
 
     //Incrementa a contagem do participante.
-    await procs.incrementParticipantActivity(message, isCommand || !!autoDownloadUrl)
+    await procs.incrementParticipantActivity(message, isCommand || downloadUrl !== null)
 
     //Verifica se o usuário está bloqueado, se estiver retorna.
     if (await procs.isUserBlocked(client, message)) {
@@ -185,12 +178,12 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     //Leia a mensagem do usuário
     await procs.readUserMessage(client, message)
 
-    if (autoDownloadUrl) {
-        prepareAutoDownload(botInfo, message, autoDownloadUrl)
+    if (downloadUrl) {
+        prepareAutoDownload(botInfo, message, downloadUrl)
         isCommand = true
     }
 
-    if (!isCommand && !isAutosticker && !autoDownloadUrl) {
+    if (!isCommand && !isAutosticker) {
         traceVoice('semantic_entered', message)
         const semantic = await routeSemanticCommand(client, botInfo, message, group)
         traceVoice('semantic_result', message, semantic.status === 'handled' ? `invoke=${semantic.invoke}` : 'not_applicable')
@@ -201,11 +194,6 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
     }
 
     if (isCommand || isAutosticker){
-        //Se a taxa de comandos estiver ativa e o usuário estiver limitado, retorne.
-        if (await procs.isUserLimitedByCommandRate(client, botInfo, message)) {
-            return false
-        }
-
         //Se o comando estiver bloqueado globalmente, retorne.
         if (await procs.isCommandBlockedGlobally(client, botInfo, message)) {
             return false
@@ -225,8 +213,6 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
 
         callCommand = true
     } else {
-        const autoReplied = await procs.autoReply(client, botInfo, group, message)
-
         // Tentar fuzzy match antes de marcar como callCommand = false
         if (hasUnknownPrefixedCommand) {
             console.log(`[UNKNOWN-GROUP] ⚠️ Comando não encontrado: "${message.command}"`)
@@ -250,8 +236,8 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
                 callCommand = false
 
                 // Sempre informar sobre comandos desconhecidos (removido bloqueio para admins)
-                // Apenas ignora mensagens do próprio bot e quando já teve autoReply
-                if (!message.isBotMessage && !autoReplied) {
+                // Apenas ignora mensagens do próprio bot
+                if (!message.isBotMessage) {
                     console.log(`[UNKNOWN-GROUP] 📝 Enviando sugestão do assistente...`)
                     let unknownCommandText = buildText(botTexts.unknown_command, message.command)
                     
@@ -271,7 +257,7 @@ export async function handleGroupMessage(client: WASocket, group: Group, botInfo
                     await waUtil.replyText(client, message.chat_id, unknownCommandText, message.wa_message, { expiration: message.expiration })
                     console.log(`[UNKNOWN-GROUP] 📤 Mensagem enviada`)
                 } else {
-                    console.log(`[UNKNOWN-GROUP] 🚫 Feedback bloqueado (isBotMessage: ${message.isBotMessage}, autoReplied: ${autoReplied})`)
+                    console.log(`[UNKNOWN-GROUP] 🚫 Feedback bloqueado (isBotMessage: ${message.isBotMessage})`)
                 }
             }
         } else {

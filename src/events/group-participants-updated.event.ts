@@ -4,7 +4,7 @@ import { Bot } from '../interfaces/bot.interface.js'
 import { Group } from '../interfaces/group.interface.js'
 import { GroupController } from '../controllers/group.controller.js'
 import botTexts from '../helpers/bot.texts.helper.js'
-import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, addWhatsappSuffix, normalizeWhatsappJid } from '../utils/whatsapp.util.js'
+import { removeParticipant, sendTextWithMentions, removeWhatsappSuffix, normalizeWhatsappJid } from '../utils/whatsapp.util.js'
 
 type ParticipantLike = GroupParticipant | string
 const participantEventQueues = new Map<string, Promise<void>>()
@@ -84,7 +84,6 @@ async function processParticipantsUpdate(client: WASocket, event: ParticipantsUp
                 }
 
                 if (await isParticipantBlacklisted(client, normalizedBotNumber, botInfo, group, participantId)) continue
-                if (await isParticipantFake(client, normalizedBotNumber, botInfo, group, participantId)) continue
 
                 await groupController.addParticipant(group.id, participantId, participant.admin != null)
                 await sendWelcome(client, group, botInfo, participantId)
@@ -151,35 +150,6 @@ async function isParticipantBlacklisted(client: WASocket, normalizedBotNumber: s
         await removeParticipant(client, group.id, normalizedUserId)
         await sendTextWithMentions(client, group.id, replyText, [normalizedUserId], {expiration: group.expiration})
         return true
-    }
-
-    return false
-}
-
-async function isParticipantFake(client: WASocket, normalizedBotNumber: string, botInfo: Bot, group: Group, userId: string){
-    const normalizedUserId = normalizeWhatsappJid(userId)
-
-    if (group.antifake.status){
-        const groupController = new GroupController()
-        const isBotAdmin = normalizedBotNumber ? await groupController.isParticipantAdmin(group.id, normalizedBotNumber) : false
-        const isGroupAdmin = normalizedUserId ? await groupController.isParticipantAdmin(group.id, normalizedUserId) : false
-        const isBotNumber = normalizedBotNumber ? normalizedUserId === normalizedBotNumber : false
-
-        if (isBotAdmin){
-            const allowedPrefixes = group.antifake.exceptions.prefixes
-            const allowedNumbers = group.antifake.exceptions.numbers
-            const isAllowedPrefix = normalizedUserId ? allowedPrefixes.filter(numberPrefix => normalizedUserId.startsWith(numberPrefix)).length ? true : false : false
-            const isAllowedNumber = normalizedUserId ? allowedNumbers.filter(userNumber => addWhatsappSuffix(userNumber) == normalizedUserId).length ? true : false : false
-
-            if (!isAllowedPrefix && !isAllowedNumber && !isBotNumber && !isGroupAdmin){
-                const replyText = buildText(botTexts.antifake_ban_message, removeWhatsappSuffix(normalizedUserId), botInfo.name)
-                await sendTextWithMentions(client, group.id, replyText , [normalizedUserId], {expiration: group.expiration})
-                await removeParticipant(client, group.id, normalizedUserId)
-                return true
-            }
-        } else {
-            await groupController.setAntiFake(group.id, false)
-        }
     }
 
     return false

@@ -23,7 +23,6 @@ session
 # Bun
 node_modules.bun
 bun.lockb
-bun.lock
 codex-scripts/
 
 # Local runtime data and generated files

@@ -2,5 +2,5 @@
  * Constantes globais do bot
  */
 
-// Prefixo dos comandos (hardcoded)
+// Prefixo inicial; alterações do dono são persistidas pelo BotService.
 export const BOT_PREFIX = '!'

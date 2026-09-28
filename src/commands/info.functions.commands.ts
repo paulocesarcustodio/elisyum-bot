@@ -3,7 +3,7 @@ import { Bot } from "../interfaces/bot.interface.js";
 import { Message } from "../interfaces/message.interface.js";
 import { Group } from "../interfaces/group.interface.js";
 import * as waUtil from "../utils/whatsapp.util.js";
-import { buildText, getCurrentBotVersion, messageErrorCommandUsage, timestampToDate } from "../utils/general.util.js";
+import { buildText } from "../utils/general.util.js";
 import { UserController } from "../controllers/user.controller.js";
 import * as menu from "../helpers/menu.builder.helper.js";
 import infoCommands from "./info.list.commands.js";
@@ -14,78 +14,6 @@ import { PermissionService } from "../services/permission.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-export async function infoCommand(client: WASocket, botInfo: Bot, message: Message, group: Group){
-    const userController = new UserController()
-    const blockedUsers = await waUtil.getBlockedContacts(client)
-
-    let version = getCurrentBotVersion()
-    let botStartedAt = timestampToDate(botInfo.started)
-    let replyText = buildText(infoCommands.info.msgs.reply_title, botInfo.name?.trim(), botStartedAt, version, botInfo.executed_cmds)
-
-    if(message.isBotOwner){
-        replyText += infoCommands.info.msgs.reply_title_resources
-        // AUTO-STICKER
-        replyText += (botInfo.autosticker) ? infoCommands.info.msgs.reply_item_autosticker_on: infoCommands.info.msgs.reply_item_autosticker_off
-        // PV LIBERADO
-        replyText += (botInfo.commands_pv) ? infoCommands.info.msgs.reply_item_commandspv_on : infoCommands.info.msgs.reply_item_commandspv_off
-        // TAXA DE COMANDOS POR MINUTO
-        replyText += (botInfo.command_rate.status) ? buildText(infoCommands.info.msgs.reply_item_commandsrate_on, botInfo.command_rate.max_cmds_minute, botInfo.command_rate.block_time) : infoCommands.info.msgs.reply_item_commandsrate_off
-        // BLOQUEIO DE COMANDOS
-        let blockedCommands = []
-
-        for(let commandName of botInfo.block_cmds){
-            blockedCommands.push(botInfo.prefix+commandName)
-        }
-        replyText += (botInfo.block_cmds.length != 0) ? buildText(infoCommands.info.msgs.reply_item_blockcmds_on, blockedCommands.toString()) : infoCommands.info.msgs.reply_item_blockcmds_off
-        //USUARIOS BLOQUEADOS
-        replyText += buildText(infoCommands.info.msgs.reply_item_blocked_count, blockedUsers.length)
-    }
-
-    //RESPOSTA
-    await waUtil.getProfilePicUrl(client, botInfo.host_number).then(async (pic)=>{
-        if (pic) {
-            await waUtil.replyFileFromUrl(client, message.chat_id, 'imageMessage', pic, replyText, message.wa_message, {expiration: message.expiration})
-        } else {
-            await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-        }
-    }).catch(async ()=>{
-        await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-    })
-}
-
-export async function reportarCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
-    if (!message.args.length) {
-        throw new Error(messageErrorCommandUsage(botInfo.prefix, message))
-    }
-
-    const admins = await new UserController().getUsers().then(users => users.filter(u => u.owner))
-
-    if (!admins.length) {
-        throw new Error(infoCommands.reportar.msgs.error)
-    }
-
-    admins.forEach(async (admin) => {
-        let replyAdmin = buildText(infoCommands.reportar.msgs.reply_admin, message.pushname, waUtil.removeWhatsappSuffix(message.sender), message.text_command)
-        await waUtil.sendText(client, admin.id, replyAdmin)
-    })
-
-    await waUtil.replyText(client, message.chat_id, infoCommands.reportar.msgs.reply, message.wa_message, {expiration: message.expiration})
-}
-
-export async function meusdadosCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
-    const userData = await new UserController().getUser(message.sender, message.senderAlt)
-
-    if (!userData) {
-        throw new Error(infoCommands.meusdados.msgs.error_not_found)
-    }
-
-    const userName = userData.name || '---'
-    const userType = userData.owner ? botTexts.user_types.owner : botTexts.user_types.user
-    let replyText = buildText(infoCommands.meusdados.msgs.reply, userType, userName, userData.commands)
-
-    await waUtil.replyText(client, message.chat_id, replyText, message.wa_message, {expiration: message.expiration})
-}
 
 export async function menuCommand(client: WASocket, botInfo: Bot, message: Message, group?: Group){
     const userController = new UserController()
@@ -123,12 +51,6 @@ export async function menuCommand(client: WASocket, botInfo: Bot, message: Messa
     } else {
         const commandText = message.text_command.trim()
         switch(commandText){
-            case "0": // INFO (apenas dono)
-                if (!isOwner) {
-                    throw new Error(botTexts.permission.owner)
-                }
-                replyText += menu.infoMenu(botInfo)
-                break
             case "1": // UTILIDADE (todos)
                 replyText += menu.utilityMenuUnified(botInfo)
                 break
@@ -139,7 +61,7 @@ export async function menuCommand(client: WASocket, botInfo: Bot, message: Messa
                 if (!message.isGroupMsg) {
                     throw new Error(botTexts.permission.group)
                 }
-                replyText += isGroupAdmin || isOwner ? menu.groupAdminMenu(botInfo) : menu.groupMenu(botInfo)
+                replyText += menu.groupAdminMenu(botInfo)
                 break
             case "3": // ADMIN (apenas dono)
                 if (!isOwner) {

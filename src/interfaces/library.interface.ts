@@ -67,6 +67,12 @@ export interface InstagramMedia {
     }[]
 }
 
+export interface PinterestMedia {
+    type: 'video' | 'image'
+    url: string
+    title: string
+}
+
 export interface SpotifyInfo {
     title: string
     artist: string
@@ -171,6 +177,7 @@ export interface AnimeRecognition {
 }
 
 export interface ImageSearch {
+    attribution?: string,
     id: string,
     url: string,
     width: number,

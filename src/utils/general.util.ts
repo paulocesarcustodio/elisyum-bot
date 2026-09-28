@@ -70,13 +70,13 @@ export function generateProgressBar(current: number, total: number, length: numb
 
 
 export function buildText(text : string, ...params : any[]){
+  for (let i = 0; i < params.length; i++){
+    text = text.replaceAll(`{$${i+1}}`, () => String(params[i]))
+  }
+
   if (text.includes('{$p}')) {
     const prefix = new BotController().getBot().prefix
     text = text.replaceAll('{$p}', prefix)
-  }
-
-  for (let i = 0; i < params.length; i++){
-    text = text.replaceAll(`{$${i+1}}`, params[i])
   }
 
   return text
@@ -176,9 +176,6 @@ export function getTextOrQuotedText(message: Message): string {
       return message.quotedMessage.media.url
     }
     if (message.quotedMessage.body || message.quotedMessage.caption) {
-      if (message.semanticTranscript && message.semanticSource === 'audio') {
-        return message.text_command || message.semanticTranscript
-      }
       const quotedText = message.quotedMessage.body || message.quotedMessage.caption || ''
       const urls = extractUrls(quotedText)
       if (urls.length > 0) return urls[0]
@@ -193,21 +190,33 @@ export function getTextOrQuotedText(message: Message): string {
 /**
  * Detecta a plataforma de uma URL
  */
-export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'spotify' | 'tiktok' | 'unknown' {
-  const urlLower = url.toLowerCase()
+export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'spotify' | 'tiktok' | 'pinterest' | 'unknown' {
+  let hostname: string
+  let pathname: string
+  try {
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) return 'unknown'
+    hostname = parsed.hostname.toLowerCase()
+    pathname = parsed.pathname
+  } catch { return 'unknown' }
+  const matches = (domain: string) => hostname === domain || hostname.endsWith(`.${domain}`)
   
-  if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+  if (matches('youtube.com') || matches('youtu.be')) {
     return 'youtube'
-  } else if (urlLower.includes('instagram.com')) {
+  } else if (matches('instagram.com')) {
     return 'instagram'
-  } else if (urlLower.includes('facebook.com') || urlLower.includes('fb.watch') || urlLower.includes('fb.com')) {
+  } else if (matches('facebook.com') || matches('fb.watch') || matches('fb.com')) {
     return 'facebook'
-  } else if (urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
+  } else if (matches('twitter.com') || matches('x.com')) {
     return 'twitter'
-  } else if (urlLower.includes('open.spotify.com') || urlLower.includes('spotify.link')) {
+  } else if (matches('open.spotify.com') || matches('spotify.link')) {
     return 'spotify'
-  } else if (urlLower.includes('tiktok.com')) {
+  } else if (matches('tiktok.com')) {
     return 'tiktok'
+  } else if ((hostname === 'pin.it' && /^\/[a-z\d]+\/?$/i.test(pathname)) ||
+    (/^(?:[a-z\d-]+\.)*pinterest\.(?:com|fr|de|ch|jp|cl|ca|it|co\.uk|nz|ru|com\.au|at|pt|co\.kr|es|com\.mx|dk|ph|th|com\.uy|co|nl|info|kr|ie|vn|com\.vn|ec|mx|in|pe|co\.at|hu|co\.in|co\.nz|id|com\.ec|com\.py|tw|be|uk|com\.bo|com\.pe)$/.test(hostname)
+      && /^\/pin\/(?:[\w-]+--)?\d+\/?$/.test(pathname))) {
+    return 'pinterest'
   }
   
   return 'unknown'

@@ -1,106 +1,301 @@
-## Recursos/Comandos do Bot
+# Comandos ativos
 
-### 🖼️ Figurinhas
-- Foto para sticker
-- Video/GIF para sticker
-- Sticker para foto
-- Renomear sticker
-- EmojiMix
-- Auto sticker
+Este arquivo é gerado por `bun run docs:commands`. Total: 34 comandos.
 
-### 📥 Downloads 
-- Links suportados com download automático
-- Youtube (video/audio)
-- Facebook (video)
-- Instagram (video/imagem)
-- X (video/imagem)
-- Tiktok (video)
-- Conversão para MP3 (`!mp3`)
-- Google (imagem)
+## Informação
 
-### ⚒️ Utilidades Gerais
-- Brasileirão A/B
-- Lista de animes atuais
-- Lista de mangás atuais
-- Têndencias de filmes/séries
-- Encurtar links
-- Upload de imagens
-- Efeitos de aúdio
-- Texto para voz
-- Áudio para texto
-- Letra de música
-- Reconhecimento de músicas
-- Detector de DDD
-- Consulta de clima e previsão do tempo
-- Conversão de moedas
-- Calculadora
-- Pesquisa web    
-- Detector de anime
-- Noticias atuais
-- Tradutor de texto
-- Revelar mensagens de visualização única
-- Reproduzir/listar áudios salvos com `!a`
-
-### 👾 Variado
-- Pedra, papel e tesoura
-- Cara e coroa
-- Viadômetro
-- Gadômetro
-- Bafômetro
-- Detector de mentira
-- Compartibilidade de par
-- Casal
-- Frases do WhatsApp Jr.
-- Chance
-- Top 5
-- Roleta Russa
+!menu — Mostrar menu e lista de comandos disponíveis.
+Ex: *!menu* - Exibe o menu de comandos gerais.
 
 
-### 👨‍👩‍👦‍👦 Administração de Grupo
-- Promover/rebaixar participante
-- Adicionar/remover participante
-- Marcar todos
-- Marcar participantes 
-- Marcar admins
-- Obter link do grupo
-- Redefinir link do grupo
-- Obter dono do grupo
-- Lista negra
-- Silenciar participante (responder ou marcar)
-- Mutar grupo para não usar comandos
-- Bem vindo
-- Auto sticker
-- Anti fake
-- Anti link
-- Anti flood
-- Filtro da palavras proibidas
-- Sistema de avisos (3 avisos e vai para a lista negra)
-- Contagem de mensagens
-- Ranking dos membros com mais mensagens do grupo
-- Marcar inativos 
-- Bloquear/desbloquear comandos no grupo
-- Apagar mensagens
-- Abrir/fechar grupo para admins
+
+## Utilidade
+
+!d — Baixar vídeo ou mídia de um link.
+Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X, TikTok e Pinterest.
+Ex: *!d* link - Continua funcionando manualmente quando você quiser forçar o download.
+Ex: *!d* musica - Busca por título no YouTube.
+
+Pedidos naturais (comece com “bot”): baixa esse vídeo; faz download desse link; salva essa mídia.
 
 
-### ⚙️ Administração de Dono
-- Entrar em grupo
-- Sair de grupo
-- Sair de todos os grupos
-- Anúncio para os grupos
-- Bloquear/desbloquear usuário
-- Bloquear/desbloquear comandos globalmente
-- Modo admin para apenas admins usarem comandos
-- Ligar/desligar comandos no privado do bot
-- Limitar comandos por minuto
-- Auto sticker em mensagens privadas
-- Obter usuários bloqueados
-- Modificar foto do bot
-- Modificar descrição/recado do bot
-- Modificar nome do bot
-- Promover/rebaixar usuários
+!play — Buscar e tocar uma música pelo nome.
+Atalhos: !p
+Ex: *!p* musica - Faz download de uma música do YouTube e envia como áudio.
+Ex: *!p* respondendo um link do YouTube - Converte para áudio.
+*Obs*: *!play* continua funcionando por compatibilidade.
 
-#### 🔇 !silenciar
 
-Use `!silenciar` respondendo a mensagem de alguém ou marcando o contato na mesma mensagem. O bot valida se o alvo não é admin e alterna entre mutar e desmutar o membro: ao silenciar, ele bloqueia comandos/mensagens enquanto estiver mutado; se o participante já estiver mutado, um novo `!silenciar` remove o bloqueio automaticamente.
-  
+
+!mp3 — Extrair o áudio de um vídeo, converter para mp3.
+Ex: *!mp3* musica - Busca no YouTube e envia só o áudio.
+Ex: *!mp3* link - Converte um link suportado em áudio.
+Ex: responda um vídeo com *!mp3* - Extrai o áudio do vídeo enviado no WhatsApp.
+
+Pedidos naturais (comece com “bot”): extrai o áudio desse vídeo; pega só o áudio; converte isso pra mp3.
+
+
+!img — Pesquisar imagens sobre um assunto.
+Ex: *!img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
+
+
+
+!s — Criar figurinha ou sticker de foto, vídeo ou texto.
+Ex: Envie/responda uma *IMAGEM/VIDEO* com *!s* - Transforma em sticker.
+Ex: Responda uma *MENSAGEM DE TEXTO* com *!s* - Transforma em sticker estilo WhatsApp.
+Ex: Envie/responda uma *IMAGEM* com *!s 1* - Transforma em sticker circular.
+Ex: Envie/responda uma *IMAGEM* com *!s 2* - Transforma em sticker sem perder a proporção.
+
+Pedidos naturais (comece com “bot”): faz figurinha disso; transforma isso em figurinha; cria um sticker dessa imagem.
+
+
+!simg — Converter uma figurinha em imagem.
+Ex: Responda um sticker com *!simg* - Transforma o sticker em imagem.
+
+*Obs*: Este comando funciona apenas com *STICKERS NÃO ANIMADOS*.
+
+
+
+!revelar — Revelar mídia de visualização única.
+Ex: Responda uma mensagem de *visualização única* com *!revelar* - Revela a imagem/vídeo de visualização única.
+
+*Obs*: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).
+
+
+
+!save — Salvar um áudio com um nome na biblioteca.
+Ex: Responda um *áudio* com *!save nome-do-audio* - Salva o áudio globalmente para todos usarem.
+
+*Obs*: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!audio — Reproduzir um áudio salvo pelo nome.
+Atalhos: !a, !á, !áudio
+Ex: *!a nome-do-audio* - Reproduz um áudio salvo.
+
+Ex: *!a* - Lista os áudios disponíveis.
+
+Ex: Responda uma mensagem com *!a nome-do-audio* - Reproduz o áudio como resposta.
+*Obs*: *!audio* continua funcionando por compatibilidade.
+
+
+
+!v — Criar vídeo com foto do membro e áudio salvo.
+Ex: Responda uma mensagem com *!v nome-do-audio* - Gera um vídeo com a foto de perfil + o áudio.
+
+*Obs*: Este comando funciona apenas respondendo mensagens.
+
+
+
+!audios — Listar os áudios salvos disponíveis.
+Atalhos: !áudios
+Ex: *!a* - Lista todos os áudios disponíveis (página 1).
+
+Ex: *!a 2* - Lista a página 2 dos áudios.
+*Obs*: *!audios* continua funcionando por compatibilidade.
+
+
+
+!delete — Excluir um áudio salvo da biblioteca.
+Ex: *!delete nome-do-audio* - Deleta permanentemente um áudio que você criou.
+
+*Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!rename — Renomear um áudio salvo.
+Ex: *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
+
+Use *|* para separar o nome antigo do novo.
+*Obs*: Só o criador pode renomear!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!vtnc — Enviar desenho ASCII para um membro.
+Ex: *!vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
+
+Ex: Responder com *!vtnc* - Manda o ASCII desejado para o membro respondido.
+
+
+
+!ask — Perguntar ao assistente como usar o bot.
+Ex: *!ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
+
+
+
+!config — Configurar o nível de ajuda nos erros.
+Ex: *!config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.
+
+*Opções de ajuda:*
+• *simple* - Apenas mensagem de erro
+• *detailed* - Erro + guia do comando (padrão)
+• *with-ai* - Erro + guia + assistente IA
+
+Ex: *!config ajuda* - Ver configuração atual
+
+
+## Grupos
+
+!silenciar — Silenciar ou desmutar um membro do grupo.
+Permissão: owner ou group_moderator.
+Ex: Responda alguém com *!silenciar* - Alterna o silêncio do membro respondido.
+Ex: Marque alguém com *!silenciar* - Alterna o silêncio do membro marcado.
+
+*Obs*: Use novamente para desmutar o membro.
+
+Pedidos naturais (comece com “bot”): silencia o membro; muta a pessoa; faz parar de falar; tira o membro do mute; dessilencia.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!addlista — Colocar pessoa na lista negra, bloquear sua entrada no grupo.
+Permissão: owner ou group_moderator.
+Ex: Responda alguém com *!addlista* - Adiciona o numero de quem foi respondido a lista negra e bane em seguida.
+
+Ex: Marque alguém com *!addlista* - Adiciona o numero de quem foi marcado a lista negra e bane em seguida.
+
+Ex: *!addlista* +55219xxxx-xxxx - Adiciona o número digitado a lista negra do grupo e bane em seguida.
+.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!rmlista — Remover membro da lista negra.
+Permissão: owner ou group_moderator.
+Ex: Digite *!rmlista 1* - Remove o usuário selecionado da lista negra.
+
+*Obs*: Para ver o ID dos usuários é necessário checar no comando *!listanegra*
+
+Você também pode remover da lista negra da seguinte forma:
+
+Ex: *!rmlista* +55219xxxx-xxxx - Remove o número digitado da lista negra do grupo.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!listanegra — Consultar a lista negra do grupo.
+Permissão: owner ou group_moderator.
+Ex: *!listanegra* - Exibe a lista negra do grupo.
+
+
+
+!add — Adicionar uma pessoa ao grupo pelo telefone.
+Permissão: owner ou group_moderator.
+Ex: *!add* +55219xxxx-xxxx - Digite o numero com o código do país para adicionar a pessoa.
+
+Ex: *!add* +55219xxxx-xxxx, +55119xxxx-xxxx - Digite os numeros com o código do país (adiciona mais de uma pessoa no grupo).
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!ban — Banir ou expulsar uma pessoa do grupo.
+Permissão: owner ou group_moderator.
+Ex: *!ban* @membro - Para banir um membro marcando ele.
+
+Ex: Responder alguém com *!ban* - Bane o membro que você respondeu.
+
+Pedidos naturais (comece com “bot”): remove o membro do grupo; expulsa a pessoa; tira esse membro daqui; bane o participante.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!promover — Promover uma pessoa a administrador.
+Permissão: owner ou group_moderator.
+Ex: *!promover* @membro - Promove o membro mencionado a *administrador*.
+
+Ex: Responder com *!promover* - Promove o usuário respondido a *administrador*.
+
+Pedidos naturais (comece com “bot”): promove o membro pra admin; torna a pessoa administradora; dá admin para o participante.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!rebaixar — Remover a administração, retirar o cargo de administrador de um membro.
+Permissão: owner ou group_moderator.
+Ex: *!rebaixar* @admin - Rebaixa o administrador mencionado a *membro*.
+
+Ex: Responder com *!rebaixar* - Rebaixa o administrador respondido a *membro*.
+
+Pedidos naturais (comece com “bot”): rebaixa o admin; tira ele de admin; remove o cargo de administrador.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!apg — Apagar a mensagem respondida.
+Permissão: owner ou group_moderator.
+Ex: Responder com *!apg* - Apaga a mensagem que foi respondida com esse comando.
+
+*Obs*: O bot precisa ser administrador.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+## Administração
+
+!admin — Mostrar o menu de administração do bot.
+Permissão: owner.
+Ex: *!admin* - Exibe o menu de administração do bot.
+
+
+
+!comandospv — Ativar ou desativar comandos em conversas privadas.
+Permissão: owner.
+Ex: *!comandospv* - Liga/desliga os comandos em MENSAGENS PRIVADAS.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!taxacomandos — Configurar limite de comandos por usuário.
+Permissão: owner.
+Ex: *!taxacomandos* 5 - Ativa a taxa limite de comandos para 5 comandos a cada minuto por usuário, com 60 segundos de bloqueio.
+Ex: *!taxacomandos* 10 80 - Ativa a taxa limite de comandos para 10 comandos a cada minuto por usuário, com 80 segundos de bloqueio.
+
+*Obs*: Digite *!taxacomandos* novamente para desativar a taxa limite de comandos.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!listablock — Listar os usuários bloqueados pelo bot.
+Permissão: owner.
+Ex: *!listablock* - Exibe a lista de usuários bloqueados pelo bot.
+
+
+
+!bloquear — Bloquear uma pessoa no bot.
+Permissão: owner.
+Ex: *!bloquear* @membro - Para o bot bloquear o membro mencionado.
+
+Ex: *!bloquear* +55 (xx) xxxxx-xxxx - Para o bot bloquear o número digitado.
+
+Ex: Responder alguém com *!bloquear* - Para o bot bloquear o membro que você respondeu.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!desbloquear — Desbloquear uma pessoa no bot.
+Permissão: owner.
+Ex: Digite *!desbloquear 1* - Desbloqueia o usuário selecionado da lista negra.
+
+*Obs*: Para ver o ID dos usuários é necessário checar no comando *!listablock*
+
+Você também pode desbloquear usuários das seguintes formas:
+
+Ex: *!desbloquear* @membro - Para o bot desbloquear o membro mencionado.
+
+Ex: *!desbloquear* +55 (xx) xxxxx-xxxx - Para o bot desbloquear o número digitado.
+
+Ex: Responder alguém com *!desbloquear* - Para o bot desbloquear o usuário que você respondeu.
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+
+!usuario — Consultar dados de outro usuário do bot.
+Permissão: owner.
+Ex: *!usuario* @usuario - Mostra os dados gerais do usuário mencionado.
+
+Ex: Responder com *!usuario* - Mostra os dados gerais do usuário respondido.
+
+Ex: *!usuario* 55219xxxxxxxx - Mostra os dados gerais do usuário com esse número.
+
+
+
+!ping — Medir tempo de resposta e desempenho do bot.
+Permissão: owner.
+Ex: *!ping* - Exibe as informações do sistema do BOT e o tempo de resposta dele.

@@ -1,3 +1,4 @@
+import { mediaProcessor,shouldQueueWork } from '../infrastructure/media-client.js'
 import { createCanvas, loadImage } from 'canvas'
 import fs from 'fs-extra'
 import axios from 'axios'
@@ -68,6 +69,7 @@ export async function createProfileBubbleVideo(
     profilePicBuffer: Buffer,
     audioBuffer: Buffer
 ): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('video.profile',[profilePicBuffer,audioBuffer],{timeoutMs:90_000})
     console.log('[VIDEO] Iniciando criação do vídeo...')
 
     const imageBuffer = await composeSpeechBubbleImage(profilePicBuffer)

@@ -1,179 +1,115 @@
-COMANDOS DO BOT ELISYUM
-================================================================================
+GUIA DE COMANDOS DO ELISYUM BOT
+Gerado pelo catálogo usado na execução. Linguagem natural exige a palavra “bot”.
+
+!menu — Mostrar menu e lista de comandos disponíveis.
+Ex: *!menu* - Exibe o menu de comandos gerais.
 
 
-### INFORMAÇÃO
---------------------------------------------------------------------------------
+!d — Baixar vídeo ou mídia de um link.
+Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X, TikTok e Pinterest.
+Ex: *!d* link - Continua funcionando manualmente quando você quiser forçar o download.
+Ex: *!d* musica - Busca por título no YouTube.
 
-COMANDO: !dbstats
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!dbstats* - Exibe estatísticas do banco de dados (contatos e comandos).
-PERMISSÃO: Usuário
+Pedidos naturais (comece com “bot”): baixa esse vídeo; faz download desse link; salva essa mídia.
 
-COMANDO: !logs
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!logs* [quantidade] - Exibe os últimos comandos executados.
-PERMISSÃO: Usuário
-
-COMANDO: !contatos
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!contatos* - Lista os contatos salvos no cache do banco de dados.
-PERMISSÃO: Usuário
-
-COMANDO: !menu
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!menu* - Exibe o menu de comandos gerais.
-PERMISSÃO: Usuário
-
-COMANDO: !reportar
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!reportar* mensagem - Reporta uma mensagem para a administração do Bot.
-PERMISSÃO: Usuário
-
-COMANDO: !meusdados
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!meusdados* - Exibe seus dados gerais como comandos, mensagens, tipo de usuário, etc.
-PERMISSÃO: Usuário
-
-COMANDO: !info
-CATEGORIA: INFORMAÇÃO
-USO:
-  • *!info* - Exibe as informações completas do bot, inclusive as configurações atuais.
-PERMISSÃO: Usuário
+!play — Buscar e tocar uma música pelo nome.
+Atalhos: !p
+Ex: *!p* musica - Faz download de uma música do YouTube e envia como áudio.
+Ex: *!p* respondendo um link do YouTube - Converte para áudio.
+*Obs*: *!play* continua funcionando por compatibilidade.
 
 
-### DOWNLOAD
---------------------------------------------------------------------------------
+!mp3 — Extrair o áudio de um vídeo, converter para mp3.
+Ex: *!mp3* musica - Busca no YouTube e envia só o áudio.
+Ex: *!mp3* link - Converte um link suportado em áudio.
+Ex: responda um vídeo com *!mp3* - Extrai o áudio do vídeo enviado no WhatsApp.
 
-COMANDO: !d
-CATEGORIA: DOWNLOAD
-USO:
-  • envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, TikTok e Twitter/X.
-  • *!d* link - Continua funcionando manualmente quando você quiser forçar o download.
-  • *!d* musica - Busca por título no YouTube.
-PERMISSÃO: Usuário
+Pedidos naturais (comece com “bot”): extrai o áudio desse vídeo; pega só o áudio; converte isso pra mp3.
 
-COMANDO: !play
-CATEGORIA: DOWNLOAD
-USO:
-  • *!p* musica - Faz download de uma música do YouTube e envia como áudio.
-  • *!p* respondendo um link do YouTube - Converte para áudio.
-DETALHES: OBS: *{$p}play* continua funcionando por compatibilidade.
-PERMISSÃO: Usuário
-
-COMANDO: !mp3
-CATEGORIA: DOWNLOAD
-USO:
-  • *!mp3* musica - Busca no YouTube e envia só o áudio.
-  • *!mp3* link - Converte um link suportado em áudio.
-  • responda um vídeo com *!mp3* - Extrai o áudio do vídeo enviado no WhatsApp.
-PERMISSÃO: Usuário
-
-COMANDO: !ask
-CATEGORIA: DOWNLOAD
-USO:
-  • *!ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
-PERMISSÃO: Usuário
+!img — Pesquisar imagens sobre um assunto.
+Ex: *!img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
 
 
-### UTILIDADE
---------------------------------------------------------------------------------
+!s — Criar figurinha ou sticker de foto, vídeo ou texto.
+Ex: Envie/responda uma *IMAGEM/VIDEO* com *!s* - Transforma em sticker.
+Ex: Responda uma *MENSAGEM DE TEXTO* com *!s* - Transforma em sticker estilo WhatsApp.
+Ex: Envie/responda uma *IMAGEM* com *!s 1* - Transforma em sticker circular.
+Ex: Envie/responda uma *IMAGEM* com *!s 2* - Transforma em sticker sem perder a proporção.
 
-COMANDO: !img
-CATEGORIA: UTILIDADE
-USO:
-  • *!img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
-PERMISSÃO: Usuário
+Pedidos naturais (comece com “bot”): faz figurinha disso; transforma isso em figurinha; cria um sticker dessa imagem.
 
-COMANDO: !revelar
-CATEGORIA: UTILIDADE
-USO:
-  • Responda uma mensagem de *visualização única* com *!revelar* - Revela a imagem/vídeo de visualização única.
-DETALHES: OBS: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).
-PERMISSÃO: Usuário
+!simg — Converter uma figurinha em imagem.
+Ex: Responda um sticker com *!simg* - Transforma o sticker em imagem.
 
-COMANDO: !save
-CATEGORIA: UTILIDADE
-USO:
-  • Responda um *áudio* com *!save nome-do-audio* - Salva o áudio globalmente para todos usarem.
-DETALHES: OBS: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
-PERMISSÃO: Usuário
-
-COMANDO: !audio
-CATEGORIA: UTILIDADE
-USO:
-  • *!a nome-do-audio* - Reproduz um áudio salvo.
-  • *!a* - Lista os áudios disponíveis.
-  • Responda uma mensagem com *!a nome-do-audio* - Reproduz o áudio como resposta.
-DETALHES: OBS: *{$p}audio* continua funcionando por compatibilidade.
-PERMISSÃO: Usuário
-
-COMANDO: !audios
-CATEGORIA: UTILIDADE
-USO:
-  • *!audios* - Lista todos os áudios disponíveis (página 1).
-  • *!audios 2* - Lista a página 2 dos áudios.
-PERMISSÃO: Usuário
-
-COMANDO: !delete
-CATEGORIA: UTILIDADE
-USO:
-  • *!delete nome-do-audio* - Deleta permanentemente um áudio que você criou.
-DETALHES: *Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
-PERMISSÃO: Usuário
-
-COMANDO: !rename
-CATEGORIA: UTILIDADE
-USO:
-  • *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
-DETALHES: Use *|* para separar o nome antigo do novo. OBS: Só o criador pode renomear!
-PERMISSÃO: Usuário
-
-COMANDO: !config
-CATEGORIA: UTILIDADE
-USO:
-  • *!config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.
-  • *!config ajuda* - Ver configuração atual
-DETALHES: *Opções de ajuda:* • *simple* - Apenas mensagem de erro • *detailed* - Erro + guia do comando (padrão) • *with-ai* - Erro + guia + assistente IA
-PERMISSÃO: Usuário
+*Obs*: Este comando funciona apenas com *STICKERS NÃO ANIMADOS*.
 
 
-### STICKER
---------------------------------------------------------------------------------
+!revelar — Revelar mídia de visualização única.
+Ex: Responda uma mensagem de *visualização única* com *!revelar* - Revela a imagem/vídeo de visualização única.
 
-COMANDO: !s
-CATEGORIA: STICKER
-USO:
-  • Envie/responda uma *IMAGEM/VIDEO* com *!s* - Transforma em sticker.
-  • Responda uma *MENSAGEM DE TEXTO* com *!s* - Transforma em sticker estilo WhatsApp.
-  • Envie/responda uma *IMAGEM* com *!s 1* - Transforma em sticker circular.
-  • Envie/responda uma *IMAGEM* com *!s 2* - Transforma em sticker sem perder a proporção.
-PERMISSÃO: Usuário
-
-COMANDO: !simg
-CATEGORIA: STICKER
-USO:
-  • Responda um sticker com *!simg* - Transforma o sticker em imagem.
-DETALHES: OBS: Este comando funciona apenas com *STICKERS NÃO ANIMADOS*.
-PERMISSÃO: Usuário
+*Obs*: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).
 
 
-### VARIADO
---------------------------------------------------------------------------------
+!save — Salvar um áudio com um nome na biblioteca.
+Ex: Responda um *áudio* com *!save nome-do-audio* - Salva o áudio globalmente para todos usarem.
 
-COMANDO: !vtnc
-CATEGORIA: VARIADO
-USO:
-  • *!vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
-  • Responder com *!vtnc* - Manda o ASCII desejado para o membro respondido.
-PERMISSÃO: Usuário
+*Obs*: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
+
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!audio — Reproduzir um áudio salvo pelo nome.
+Atalhos: !a, !á, !áudio
+Ex: *!a nome-do-audio* - Reproduz um áudio salvo.
+
+Ex: *!a* - Lista os áudios disponíveis.
+
+Ex: Responda uma mensagem com *!a nome-do-audio* - Reproduz o áudio como resposta.
+*Obs*: *!audio* continua funcionando por compatibilidade.
 
 
-================================================================================
-Total de comandos: 22
+!v — Criar vídeo com foto do membro e áudio salvo.
+Ex: Responda uma mensagem com *!v nome-do-audio* - Gera um vídeo com a foto de perfil + o áudio.
+
+*Obs*: Este comando funciona apenas respondendo mensagens.
+
+
+!audios — Listar os áudios salvos disponíveis.
+Atalhos: !áudios
+Ex: *!a* - Lista todos os áudios disponíveis (página 1).
+
+Ex: *!a 2* - Lista a página 2 dos áudios.
+*Obs*: *!audios* continua funcionando por compatibilidade.
+
+
+!delete — Excluir um áudio salvo da biblioteca.
+Ex: *!delete nome-do-audio* - Deleta permanentemente um áudio que você criou.
+
+*Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!rename — Renomear um áudio salvo.
+Ex: *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
+
+Use *|* para separar o nome antigo do novo.
+*Obs*: Só o criador pode renomear!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
+
+!vtnc — Enviar desenho ASCII para um membro.
+Ex: *!vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
+
+Ex: Responder com *!vtnc* - Manda o ASCII desejado para o membro respondido.
+
+
+!ask — Perguntar ao assistente como usar o bot.
+Ex: *!ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
+
+
+!config — Configurar o nível de ajuda nos erros.
+Ex: *!config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.
+
+*Opções de ajuda:*
+• *simple* - Apenas mensagem de erro
+• *detailed* - Erro + guia do comando (padrão)
+• *with-ai* - Erro + guia + assistente IA
+
+Ex: *!config ajuda* - Ver configuração atual

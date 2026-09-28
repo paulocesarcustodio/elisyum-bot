@@ -10,7 +10,7 @@ const utilityCommands = {
             description: 'Baixar a mídia de uma URL suportada ou de uma mensagem respondida.',
             examples: ['baixa esse vídeo', 'faz download desse link', 'salva essa mídia']
         },
-        guide: `Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X e TikTok.\n`+
+        guide: `Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X, TikTok e Pinterest.\n`+
         `Ex: *{$p}d* link - Continua funcionando manualmente quando você quiser forçar o download.\n`+
         `Ex: *{$p}d* musica - Busca por título no YouTube.\n`,
         msgs: {

@@ -1,0 +1,65 @@
+{
+  "bun": "1.4.0",
+  "bunArchive": {
+    "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-linux-x64.zip",
+    "sha256": "2d03fb5fb83ac8b567aca0a281b2ce1a1a19d488f56c2968d88c3f25e92fe452",
+    "member": "bun-linux-x64/bun"
+  },
+  "postgres": "18.6",
+  "llama": "b11222",
+  "openjevRevision": "a0ddd7d928298eccef2c17153b00b5636b6d996a",
+  "ytDlp": {
+    "version": "2026.07.04",
+    "sha256": "495be29ff4d9d4e9be7eabdfef225221e5d5282e77f2f505abc6dca80349f3fd",
+    "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp"
+  },
+  "ffmpeg": "6.1.1-3ubuntu5",
+  "python": "3.12.3",
+  "models": {
+    "qwen": {
+      "repository": "unsloth/Qwen3.5-4B-GGUF",
+      "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+      "files": [
+        {
+          "name": "Qwen3.5-4B-Q4_K_M.gguf",
+          "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+          "size": 2740937888
+        }
+      ],
+      "modelName": "qwen3.5-4b-local",
+      "threads": 4,
+      "contextSize": 6144,
+      "timeoutMs": 60000
+    },
+    "whisper": {
+      "repository": "Systran/faster-whisper-medium",
+      "revision": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+      "files": [
+        {
+          "name": "config.json",
+          "sha256": "3622a2ddc41ec0e0fd4e68c13c6830f03b90c38d89aaad184de02c8c642cf807",
+          "size": 2257
+        },
+        {
+          "name": "tokenizer.json",
+          "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+          "size": 2203239
+        },
+        {
+          "name": "model.bin",
+          "sha256": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae",
+          "size": 1527906378
+        },
+        {
+          "name": "vocabulary.txt",
+          "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+          "size": 459861
+        }
+      ],
+      "cpuThreads": 4,
+      "computeType": "int8",
+      "maxConcurrent": 1,
+      "timeoutMs": 120000
+    }
+  }
+}

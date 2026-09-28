@@ -1,19 +1,12 @@
+import { requireSession } from '@/lib/access';
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { user, account } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq } from "@/db/expressions";
 import { hashPassword } from "@better-auth/utils/password";
 
-const API_URL = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-
 async function getValidSession(request: NextRequest) {
-  const res = await fetch(`${API_URL}/api/auth/get-session`, {
-    headers: { cookie: request.headers.get("cookie") || "" },
-  });
-  if (!res.ok) return null;
-  const session = await res.json();
-  if (!session?.user) return null;
-  return session;
+  try { return await requireSession(request); } catch { return null; }
 }
 
 export async function PATCH(
@@ -24,11 +17,16 @@ export async function PATCH(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso restrito à administração.' }, { status: 403 });
+  }
 
   try {
     const { id } = await params;
     const body = await request.json();
-    const now = new Date().toISOString();
+    if(body.role !== undefined && !['user','admin'].includes(body.role))return NextResponse.json({error:'Perfil inválido.'},{status:400});
+    if(body.password && (typeof body.password !== 'string' || body.password.length < 10 || body.password.length > 128))return NextResponse.json({error:'A senha deve ter de 10 a 128 caracteres.'},{status:400});
+    const now = new Date();
 
     const updates: Record<string, any> = { updatedAt: now };
 
@@ -77,7 +75,7 @@ export async function PATCH(
     return NextResponse.json({ user: updated });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to update user" },
+      { error: "Não foi possível atualizar o usuário" },
       { status: Number(err.statusCode) || 400 }
     );
   }
@@ -91,6 +89,9 @@ export async function DELETE(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso restrito à administração.' }, { status: 403 });
+  }
 
   try {
     const { id } = await params;
@@ -101,7 +102,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to delete user" },
+      { error: "Não foi possível excluir o usuário" },
       { status: 500 }
     );
   }

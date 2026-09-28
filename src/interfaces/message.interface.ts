@@ -13,6 +13,8 @@ export interface MessageOptions {
 
 export interface Message {
     message_id: string,
+    operationId?: string,
+    confirmationId?: string,
     sender: string,
     senderAlt?: string,
     senderAddressingMode?: WAMessageAddressingMode,

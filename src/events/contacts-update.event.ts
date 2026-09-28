@@ -13,7 +13,7 @@ export async function contactsUpdate(contacts: Partial<Contact>[]) {
             
             const nameToSave = contact.notify || contact.name || contact.verifiedName
             const avatarUpdate = contact.imgUrl === 'changed' ? 'removed' : contact.imgUrl
-            updateContactInStore({ ...contact, imgUrl: avatarUpdate })
+            ;(await updateContactInStore({ ...contact, imgUrl: avatarUpdate }))
             invalidateProfilePictureCache(contact.id, contact.phoneNumber, contact.lid)
 
             // Prioridade de nomes: notify > name > verifiedName

@@ -1,8 +1,9 @@
+import { identityService } from '../services/identity.service.js'
 import { Contact } from "@whiskeysockets/baileys"
 import { normalizeWhatsappJid } from "../utils/whatsapp.util.js"
 import { contactsDb } from "../database/db.js"
 
-export function updateContactInStore(contact: Partial<Contact>) {
+export async function updateContactInStore(contact: Partial<Contact>) {
     if (!contact.id) return
 
     const identifiers = new Set<string>()
@@ -28,12 +29,13 @@ export function updateContactInStore(contact: Partial<Contact>) {
     addIdentifier(contact.lid)
 
     if (!identifiers.size) return
+    await identityService.resolve(contact.id,[...identifiers],'contact')
 
     // Salvar todos os identificadores no banco
     for (const identifier of identifiers) {
         if (!identifier) continue
 
-        contactsDb.upsert({
+        ;(await contactsDb.upsert({
             jid: identifier,
             name: contact.name,
             notify: contact.notify,
@@ -41,24 +43,24 @@ export function updateContactInStore(contact: Partial<Contact>) {
             phoneNumber: contact.phoneNumber,
             lid: contact.lid,
             imgUrl: contact.imgUrl
-        })
+        }))
     }
 }
 
-export function getContactFromStore(jid: string): Partial<Contact> | undefined {
+export async function getContactFromStore(jid: string): Promise<Partial<Contact> | undefined> {
     const normalizedJid = normalizeWhatsappJid(jid)
     
     // Buscar primeiro com JID normalizado
-    let contact = contactsDb.get(normalizedJid || jid)
+    let contact = (await contactsDb.get(normalizedJid || jid))
     
     if (!contact && normalizedJid !== jid) {
         // Tentar com JID original
-        contact = contactsDb.get(jid)
+        contact = (await contactsDb.get(jid))
     }
 
     if (!contact && normalizedJid) {
-        const [, user] = normalizedJid.split('@')
-        if (user) contact = contactsDb.get(user)
+        const [user] = normalizedJid.split('@')
+        if (user) contact = (await contactsDb.get(user))
     }
 
     if (!contact) return undefined

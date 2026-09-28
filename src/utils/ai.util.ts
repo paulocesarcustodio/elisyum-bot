@@ -5,6 +5,7 @@ import { aiConfig } from '../config/ai.config.js'
 import { showConsoleLibraryError } from './general.util.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 import { getCachedAnswer, setCachedAnswer } from '../helpers/ask.cache.helper.js'
+import { isExplicitStickerRequest } from './semantic-intent.util.js'
 
 // Cache para os documentos (carregar apenas uma vez)
 let userDocsCache: string | null = null
@@ -65,8 +66,8 @@ export async function askGemini(question: string, isBotOwner: boolean, isGroupAd
     const apiKey = process.env.GOOGLE_AI_API_KEY
     
     if (!apiKey) {
-        // Fallback quando não há API key
-        console.warn('[ASK] ⚠️ GOOGLE_AI_API_KEY não configurada. Usando fallback.')
+        const localHelp = await getLocalCommandHelp(question, isBotOwner, isGroupAdmin)
+        if (localHelp) return localHelp
         return getFallbackMessage()
     }
     
@@ -108,7 +109,7 @@ Ajude o usuário encontrando o comando certo para o que ele precisa.`
         
         // Salvar no cache
         try {
-            setCachedAnswer(question, answer, isBotOwner, isGroupAdmin)
+            ;(await setCachedAnswer(question, answer, isBotOwner, isGroupAdmin))
         } catch (error) {
             console.error('[ASK-CACHE] Erro ao salvar cache:', error)
             // Não falha se erro no cache
@@ -137,6 +138,35 @@ Ajude o usuário encontrando o comando certo para o que ele precisa.`
         console.warn('[ASK] ⚠️ Erro desconhecido na API. Usando fallback.')
         return getFallbackMessage()
     }
+}
+
+/** Use the same local intent model to select a verified command guide.
+ * This works without a cloud key and never invents command syntax.
+ */
+export async function getLocalCommandHelp(question: string, isBotOwner: boolean, isGroupAdmin: boolean): Promise<string | null> {
+    const [{getCommandRegistry,getCommandGuide}, {semanticDescriptions}, {SemanticCommandService}, {BotController}] = await Promise.all([
+        import('./commands.util.js'), import('../helpers/semantic.descriptions.js'),
+        import('../services/semantic-command.service.js'), import('../controllers/bot.controller.js')
+    ])
+    const registry = getCommandRegistry().filter(command => {
+        const roles = 'permissions' in command ? command.permissions?.roles : undefined
+        return !roles?.length || isBotOwner || (isGroupAdmin && roles.includes('group_moderator')) || roles.includes('member')
+    })
+    const prefix = new BotController().getBot().prefix
+    const explicit = registry.find(command => question.split(/\s+/).some(token => token.replace(/[?,;:]$/,'') === prefix+command.name))
+    let selected = explicit?.name
+    const request = question.replace(/^como\s+(?:eu\s+)?(?:(?:posso|fa[cç]o para|fazer para)\s+)?/i, '')
+    if (!selected && isExplicitStickerRequest(request)) selected = 's'
+    if (!selected && process.env.OPENJEV_MODEL?.endsWith('-local')) {
+        const candidates = registry.filter(command=>command.name!=='ask').map(command=>({
+            name:command.name,category:command.category,family:command.category,
+            description:semanticDescriptions[command.name]||command.guide,examples:[],destructive:false,replyContext:'none' as const
+        }))
+        const decision = await new SemanticCommandService().classify(question,candidates,'Identifique o comando que resolve a dúvida de uso.')
+        if (decision && decision.confidence >= 0.7) selected=decision.command
+    }
+    if (!selected || !registry.some(command=>command.name===selected)) return null
+    return `🤖 Use *${prefix}${selected}*.\n\n${getCommandGuide(prefix,prefix+selected)}`
 }
 
 /**

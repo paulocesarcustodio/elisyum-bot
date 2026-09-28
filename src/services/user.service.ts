@@ -1,3 +1,4 @@
+import { identityService } from './identity.service.js'
 import { db } from "../database/db.js";
 import { jidNormalizedUser } from "@whiskeysockets/baileys";
 import moment from "moment";
@@ -7,7 +8,7 @@ import { deepMerge } from "../utils/general.util.js";
 
 const getStmt = db.prepare('SELECT * FROM users WHERE id = ?')
 const getAllStmt = db.prepare('SELECT * FROM users')
-const insertStmt = db.prepare('INSERT OR IGNORE INTO users (id, name, commands, received_welcome, owner, command_rate_limited, command_rate_expire_limited, command_rate_cmds, command_rate_expire_cmds, help_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+const insertStmt = db.prepare('INSERT INTO users (id, name, commands, received_welcome, owner, command_rate_limited, command_rate_expire_limited, command_rate_cmds, command_rate_expire_cmds, help_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING')
 const getOwnerStmt = db.prepare('SELECT * FROM users WHERE owner = 1 LIMIT 1')
 
 export class UserService {
@@ -32,20 +33,20 @@ export class UserService {
     }
 
     public async migrateUsers(){
-        const users = getAllStmt.all() as any[]
+        const users = (await getAllStmt.all()) as any[]
 
         for (let user of users) {
             const oldUserData = user as any
             const updatedUserData : User = deepMerge(this.defaultUser, oldUserData)
-            this.updateStmt(updatedUserData, user.id)
+            await this.updateStmt(updatedUserData, user.id)
         }
     }
 
     public async getUser (userId : string, ...alternateIds: (string | null | undefined)[]){
-        const candidates = this.buildCandidateIds(userId, alternateIds)
+        const candidates = [...new Set([...(await identityService.aliases(userId)),...this.buildCandidateIds(userId, alternateIds)])]
 
         for (const candidate of candidates) {
-            const user = getStmt.get(candidate) as User | undefined
+            const user = (await getStmt.get(candidate)) as User | undefined
             if (user) {
                 return this.rowToUser(user)
             }
@@ -54,8 +55,8 @@ export class UserService {
         return null
     }
 
-    private updateStmt(data: User, id: string) {
-        db.prepare(`
+    private async updateStmt(data: User, id: string) {
+        ;(await db.prepare(`
             UPDATE users SET name = ?, commands = ?, received_welcome = ?, owner = ?,
                 command_rate_limited = ?, command_rate_expire_limited = ?, command_rate_cmds = ?, command_rate_expire_cmds = ?, help_level = ?
             WHERE id = ?
@@ -70,11 +71,11 @@ export class UserService {
             data.command_rate?.expire_cmds || 0,
             data.helpLevel || 'detailed',
             id
-        )
+        ))
     }
 
     public async getUsers(){
-        const rows = getAllStmt.all() as any[]
+        const rows = (await getAllStmt.all()) as any[]
         return rows.map(row => this.rowToUser(row))
     }
 
@@ -82,12 +83,16 @@ export class UserService {
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return 0
 
-        db.prepare('UPDATE users SET owner = 1 WHERE id = ?').run(user.id)
+        await db.transaction(async()=>{
+            await db.prepare('UPDATE users SET owner = 1 WHERE id = ?').run(user.id)
+            const identity=await identityService.resolve(user.id,alternateIds.filter((id):id is string=>!!id),'owner-registration')
+            await db.prepare("INSERT INTO role_grants(account_id,identity_id,scope,role) VALUES (?,?,'global','owner') ON CONFLICT DO NOTHING").run(process.env.BOT_ACCOUNT_ID || 'default',identity.id)
+        })
         return 1
     }
 
     public async getOwner(){
-        const row = getOwnerStmt.get() as any | undefined
+        const row = (await getOwnerStmt.get()) as any | undefined
         return row ? this.rowToUser(row) : null
     }
 
@@ -102,14 +107,14 @@ export class UserService {
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return
 
-        db.prepare('UPDATE users SET received_welcome = ? WHERE id = ?').run(status ? 1 : 0, user.id)
+        ;(await db.prepare('UPDATE users SET received_welcome = ? WHERE id = ?').run(status ? 1 : 0, user.id))
     }
 
     public async increaseUserCommandsCount(userId: string, ...alternateIds: (string | null | undefined)[]){
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return
 
-        db.prepare('UPDATE users SET commands = commands + 1 WHERE id = ?').run(user.id)
+        ;(await db.prepare('UPDATE users SET commands = commands + 1 WHERE id = ?').run(user.id))
     }
 
     public async expireCommandsRate(userId: string, currentTimestamp: number, ...alternateIds: (string | null | undefined)[]){
@@ -117,14 +122,14 @@ export class UserService {
         if (!user) return
 
         const expireTimestamp = currentTimestamp + 60
-        db.prepare('UPDATE users SET command_rate_expire_cmds = ?, command_rate_cmds = 1 WHERE id = ?').run(expireTimestamp, user.id)
+        ;(await db.prepare('UPDATE users SET command_rate_expire_cmds = ?, command_rate_cmds = 1 WHERE id = ?').run(expireTimestamp, user.id))
     }
 
     public async incrementCommandRate(userId: string, ...alternateIds: (string | null | undefined)[]){
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return
 
-        db.prepare('UPDATE users SET command_rate_cmds = command_rate_cmds + 1 WHERE id = ?').run(user.id)
+        ;(await db.prepare('UPDATE users SET command_rate_cmds = command_rate_cmds + 1 WHERE id = ?').run(user.id))
     }
 
     public async setLimitedUser(userId: string, isLimited: boolean, botInfo: Bot, currentTimestamp: number, ...alternateIds: (string | null | undefined)[]){
@@ -132,9 +137,9 @@ export class UserService {
         if (!user) return
 
         if (isLimited){
-            db.prepare('UPDATE users SET command_rate_limited = 1, command_rate_expire_limited = ? WHERE id = ?').run(currentTimestamp + botInfo.command_rate.block_time, user.id)
+            ;(await db.prepare('UPDATE users SET command_rate_limited = 1, command_rate_expire_limited = ? WHERE id = ?').run(currentTimestamp + botInfo.command_rate.block_time, user.id))
         } else {
-            db.prepare('UPDATE users SET command_rate_limited = 0, command_rate_expire_limited = 0, command_rate_cmds = 1, command_rate_expire_cmds = ? WHERE id = ?').run(currentTimestamp + 60, user.id)
+            ;(await db.prepare('UPDATE users SET command_rate_limited = 0, command_rate_expire_limited = 0, command_rate_cmds = 1, command_rate_expire_cmds = ? WHERE id = ?').run(currentTimestamp + 60, user.id))
         }
     }
 
@@ -142,7 +147,7 @@ export class UserService {
         const user = await this.ensureUserRecord(userId, alternateIds)
         if (!user) return
 
-        db.prepare('UPDATE users SET help_level = ? WHERE id = ?').run(level, user.id)
+        ;(await db.prepare('UPDATE users SET help_level = ? WHERE id = ?').run(level, user.id))
     }
 
     public async getHelpLevel(userId: string, ...alternateIds: (string | null | undefined)[]): Promise<'simple' | 'detailed' | 'with-ai'> {
@@ -246,7 +251,10 @@ export class UserService {
     }
 
     private async ensureUserRecord(userId: string, alternateIds: (string | null | undefined)[] = [], name?: string | null){
-        const candidates = this.buildCandidateIds(userId, alternateIds)
+        const supplied = this.buildCandidateIds(userId, alternateIds)
+        if (!supplied.length || !this.isValidUserId(supplied[0])) return null
+        const identity = await identityService.resolve(supplied[0],supplied.slice(1),'message-or-contact')
+        const candidates = [identity.primary,...identity.aliases.filter(alias=>alias!==identity.primary)]
 
         if (!candidates.length) {
             return null
@@ -259,40 +267,31 @@ export class UserService {
         }
 
         const normalizedName = name?.trim()
-        const canonicalUser = getStmt.get(canonicalId) as any | undefined
+        const canonicalUser = (await getStmt.get(canonicalId)) as any | undefined
 
         if (canonicalUser) {
             if (normalizedName && canonicalUser.name !== normalizedName) {
-                db.prepare('UPDATE users SET name = ? WHERE id = ?').run(normalizedName, canonicalId)
+                ;(await db.prepare('UPDATE users SET name = ? WHERE id = ?').run(normalizedName, canonicalId))
                 canonicalUser.name = normalizedName
             }
             return this.rowToUser(canonicalUser)
         }
 
         for (const alternateId of candidates.slice(1)) {
-            const fallbackRow = getStmt.get(alternateId) as any | undefined
+            const fallbackRow = (await getStmt.get(alternateId)) as any | undefined
             if (fallbackRow) {
-                if (normalizedName) {
-                    db.prepare('UPDATE users SET id = ?, name = ? WHERE id = ?').run(canonicalId, normalizedName, alternateId)
-                } else {
-                    db.prepare('UPDATE users SET id = ? WHERE id = ?').run(canonicalId, alternateId)
-                }
-                const migrated = getStmt.get(canonicalId) as any | undefined
-                if (migrated) return this.rowToUser(migrated)
-                const fallbackUser = this.rowToUser(fallbackRow)
-                if (normalizedName) fallbackUser.name = normalizedName
-                fallbackUser.id = canonicalId
-                return fallbackUser
+                if (normalizedName) await db.prepare('UPDATE users SET name=? WHERE id=?').run(normalizedName,alternateId)
+                return this.rowToUser({...fallbackRow,name:normalizedName || fallbackRow.name})
             }
         }
 
-        insertStmt.run(
+        ;(await insertStmt.run(
             canonicalId,
             normalizedName || '',
             0, 0, 0, 0, 0, 1,
             Math.round(moment.now()/1000) + 60,
             'detailed'
-        )
+        ))
 
         return {
             ...this.defaultUser,

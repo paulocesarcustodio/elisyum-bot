@@ -1,3 +1,6 @@
+import { pendingConfirmation, cancelConfirmation, saveConfirmation } from '../application/confirmations.js'
+import { admit } from '../application/admission.js'
+import { UserController } from '../controllers/user.controller.js'
 import type { Group } from '../interfaces/group.interface.js'
 import type { Message } from '../interfaces/message.interface.js'
 import type { Bot } from '../interfaces/bot.interface.js'
@@ -9,19 +12,13 @@ import { getContactFromStore } from './contacts.store.helper.js'
 import { normalizeWhatsappJid } from '../utils/whatsapp.util.js'
 import { extractUrls } from '../utils/general.util.js'
 import { transcribeVoiceMessage } from '../services/voice-transcription.service.js'
-import { isExplicitStickerRequest, matchExplicitIntent } from '../utils/semantic-intent.util.js'
+import { isExplicitStickerRequest, matchExplicitIntent, extractMediaRequestArguments, normalizeNaturalRequest, hasBotWakeWord, stripBotWakeWord } from '../utils/semantic-intent.util.js'
 import { traceVoice } from './voice-trace.helper.js'
+import { PermissionService } from '../services/permission.service.js'
+import type { RoleString } from '../types/permission.types.js'
 
 const semanticService = new SemanticCommandService()
-const pendingConfirmations = new Map<string, {
-    command: SemanticCommand
-    expiresAt: number
-    message: Message
-}>()
-const semanticCommandAttempts = new Map<string, number[]>()
 const confidenceThreshold = Number(process.env.SEMANTIC_COMMAND_THRESHOLD || 0.7)
-const confidenceFloor = Number(process.env.SEMANTIC_COMMAND_FLOOR || 0.15)
-const highRiskConfidence = Number(process.env.SEMANTIC_HIGH_RISK_CONFIDENCE || 0.92)
 const DEBUG_METRICS = process.env.SEMANTIC_COMMAND_METRICS === 'true'
 
 export type SemanticRouteResult =
@@ -39,65 +36,52 @@ export async function routeSemanticCommand(
     if (message.isBotMessage || message.isBroadcast) return {status: 'not-applicable'}
     if (message.command.startsWith(botInfo.prefix)) return {status: 'not-applicable'}
     if (!semanticEnabled && message.type === 'audioMessage') return {status: 'not-applicable'}
-    if (message.type === 'audioMessage' && (!message.media?.seconds || message.media.seconds >= 10)) {
+    if (message.type === 'audioMessage' && (message.media?.seconds ?? 0) > Number(process.env.WHISPER_MAX_DURATION_SECONDS || 15)) {
         traceVoice('duration_skipped', message, `seconds=${message.media?.seconds ?? 'unknown'}`)
         return {status: 'not-applicable'}
     }
-    const pendingKey = `${message.chat_id}:${message.sender}`
-    const pending = pendingConfirmations.get(pendingKey)
-    if (pending && pending.expiresAt <= Date.now()) pendingConfirmations.delete(pendingKey)
-    else if (pending) {
+    const pending = await pendingConfirmation(message)
+    if (pending) {
         let pendingReply = null
-        if (isVoiceMessageType(message.type) && process.env.VOICE_COMMANDS_ENABLED === 'true') {
+        if (isVoiceMessageType(message.type) && process.env.VOICE_COMMANDS_ENABLED === 'true' && !message.semanticTranscript) {
             pendingReply = await transcribeVoiceMessage(client, message)
+            if (pendingReply) {
+                message.semanticTranscript = pendingReply.text
+                message.semanticSource = 'audio'
+            }
         }
-        const confirmationText = pendingReply?.text || message.body
+        const rawConfirmation = message.semanticTranscript || message.body || message.caption
+        if (!hasBotWakeWord(rawConfirmation)) return {status:'not-applicable'}
+        const confirmationText = stripBotWakeWord(rawConfirmation)
         if (!confirmationText.trim()) {
-            await replyText(client, message, 'Responda com “confirmar” ou “cancelar” para decidir sobre a ação pendente.')
+            await replyText(client, message, 'Responda com “bot confirmar” ou “bot cancelar” para decidir sobre a ação pendente.')
             return {status: 'handled', invoke: false}
         }
         if (isRejection(confirmationText) || /\b(?:nao|nunca|nem)\b/i.test(normalizeName(confirmationText))) {
-            pendingConfirmations.delete(pendingKey)
+            await cancelConfirmation(pending.id)
             await replyText(client, message, 'Ação cancelada.')
             return {status: 'handled', invoke: false}
         }
         if (!isConfirmation(confirmationText)) {
-            pendingConfirmations.delete(pendingKey)
+            await cancelConfirmation(pending.id)
         } else {
-        pendingConfirmations.delete(pendingKey)
-        const pendingCommand = pending.command
-        if (isVoiceMessageType(message.type) && process.env.VOICE_COMMANDS_ENABLED === 'true') {
-            if (!pendingReply) {
-                await replyText(client, message, 'Não consegui validar a confirmação por áudio. Responda por texto com confirmar ou cancelar.')
-                return {status: 'handled', invoke: false}
-            }
-            message.semanticTranscript = pendingReply.text
-            message.semanticSource = 'audio'
-            message.body = pendingReply.text
-        }
-        const confirmationIntent = await semanticService.classify(
-            `O usuário recebeu um pedido para confirmar a ação ${pendingCommand.name}. Resposta: ${confirmationText}`,
-            [pendingCommand],
-            describeContext(message, group)
-        )
-        if (confirmationIntent?.command !== pendingCommand.name || confirmationIntent.confidence < confidenceThreshold) {
-            pendingConfirmations.delete(pendingKey)
-            await replyText(client, message, 'Não consegui validar a confirmação; a ação não foi executada.')
-            return {status: 'handled', invoke: false}
-        }
+        const pendingCommand = getSemanticCommand(pending.command)
+        if(!pendingCommand){await cancelConfirmation(pending.id);return {status:'handled',invoke:false}}
         const executionMessage = pending.message
+        executionMessage.operationId = message.operationId
+        executionMessage.isBotOwner = Boolean((await new UserController().getUser(message.sender))?.owner)
         if (group && executionMessage.isGroupMsg) {
             executionMessage.isGroupAdmin = await new GroupController().isParticipantAdmin(group.id, executionMessage.sender)
         }
         const permissionError = await validateExecutionGates(client, botInfo, executionMessage, group, pendingCommand)
         if (permissionError) {
-            pendingConfirmations.delete(pendingKey)
+            await cancelConfirmation(pending.id)
             await replyText(client, message, permissionError)
             return {status: 'handled', invoke: false}
         }
-        pendingConfirmations.delete(pendingKey)
-        await applySemanticCommandContext(client, executionMessage, group, pendingCommand)
-        applySemanticCommand(executionMessage, botInfo, pendingCommand)
+        // Execute exactly the saved arguments and target; the executor consumes
+        // the confirmation atomically after refreshing authorization.
+        executionMessage.confirmationId = pending.id
         Object.assign(message, executionMessage)
         return {status: 'handled', invoke: true}
         }
@@ -136,62 +120,63 @@ export async function routeSemanticCommand(
     }
     if (!(message.semanticTranscript || message.body || message.caption).trim()) return {status: 'not-applicable'}
     if (message.isGroupMsg && !group) return {status: 'not-applicable'}
-    const activated = !message.isGroupMsg || hasActivationSignal(message, botInfo)
+    const activated = hasActivationSignal(message, botInfo)
     traceVoice('activation_checked', message, activated ? 'active' : 'inactive')
+    if (!activated) return {status:'not-applicable'}
     const eligible = semanticCommands.filter(command => {
-        if (command.destructive && message.semanticSource === 'audio' && command.name === 'grupo') return false
+        if (!new PermissionService().hasPermission(message, command.roles as RoleString[] | undefined)) return false
         if (command.category === 'group' && !message.isGroupMsg) return false
         if (command.category === 'admin' && !message.isBotOwner) return false
         if (command.category === 'admin' && message.isGroupMsg) return false
-        if (command.category === 'info' && command.name === 'erros' && !message.isBotOwner) return false
         if (['bloquear', 'desbloquear', 'usuario'].includes(command.name) && !message.isBotOwner) return false
         return true
     })
     if (!eligible.length) return {status: 'not-applicable'}
-    const text = stripActivationPrefix(message, botInfo)
+    const text = normalizeNaturalRequest(message.semanticTranscript || message.body || message.caption)
     if (!text) return {status: 'not-applicable'}
 
     const hasStickerSource = message.isQuoted || message.type === 'imageMessage' || message.type === 'videoMessage'
-    const explicit = matchExplicitIntent(text, hasStickerSource)
+    const quotedText = message.quotedMessage?.body || message.quotedMessage?.caption || ''
+    const explicit = matchExplicitIntent(text, hasStickerSource, quotedText)
     traceVoice('explicit_checked', message, explicit ? `match=${explicit.command}` : 'no_match')
     if (!explicit && message.semanticSource === 'audio') {
         traceVoice('unmatched_transcript', message, `quoted=${message.isQuoted} text=${JSON.stringify(text.slice(0, 160))}`)
     }
-    if (explicit && (activated || explicit.command === 'play' || (hasStickerSource && explicit.command === 's'))
-        && eligible.some(command => command.name === explicit.command)) {
+    if (explicit && eligible.some(command => command.name === explicit.command)) {
         if (message.isGroupMsg && group?.block_cmds.includes(explicit.command) && !message.isGroupAdmin) return {status: 'not-applicable'}
         if (botInfo.block_cmds.includes(explicit.command) && !message.isBotOwner) return {status: 'not-applicable'}
+        if (explicit.command !== 's' && !explicit.args.length) {
+            await replyText(client, message, 'Diga o nome da música/vídeo ou responda à mensagem que contém o link para eu baixar.')
+            return {status:'handled',invoke:false}
+        }
+        message.semanticSource ||= 'text'
         message.command = `${botInfo.prefix}${explicit.command}`
         message.args = explicit.args
         message.text_command = explicit.args.join(' ')
         return {status: 'handled', invoke: true}
     }
-    if (activated && !explicit && isExplicitStickerRequest(text)) {
+    if (!explicit && isExplicitStickerRequest(text)) {
         await replyText(client, message, 'Para fazer a figurinha, responda a uma mensagem de texto, imagem ou vídeo, ou envie a imagem com o pedido na legenda.')
         return {status: 'handled', invoke: false}
     }
-    if (!activated) return {status: 'not-applicable'}
     if (!semanticEnabled) return {status: 'not-applicable'}
 
-    if (message.isBotOwner && !message.isGroupMsg && /\b(?:altere?|mude?|troque?|ligue?|desligue?|ative?|desative?|bloqueie?|desbloqueie?|configure?)\b/i.test(text)
-        && !/\b(?:bot|elisyum|eliseu|elysium|robo|robô)\b/i.test(text)) return {status: 'not-applicable'}
-
-    const rateKey = `${message.chat_id}:${message.sender}`
-    const now = Date.now()
-    const attempts = (semanticCommandAttempts.get(rateKey) || []).filter(timestamp => now - timestamp < 60_000)
-    if (attempts.length >= 8) return {status: 'not-applicable'}
-    attempts.push(now)
-    semanticCommandAttempts.set(rateKey, attempts)
-    if (semanticCommandAttempts.size > 2000) semanticCommandAttempts.delete(semanticCommandAttempts.keys().next().value!)
+    if(!await admit([{key:`intent:${message.chat_id}:${message.sender}`,limit:8},{key:'intent:global',limit:60}]))return {status:'not-applicable'}
 
     const decision = await classifyWithMetrics(text, eligible, describeContext(message, group))
     traceVoice('classified', message, decision ? `candidate=${decision.command} confidence=${decision.confidence.toFixed(3)}` : 'no_decision')
-    if (!decision) return {status: 'not-applicable'}
-
-    if (decision.confidence < confidenceFloor) return {status: 'not-applicable'}
+    if (!decision || decision.confidence < confidenceThreshold) {
+        await replyText(client, message, `Não consegui identificar o comando com segurança. Reformule o pedido ou use *${botInfo.prefix}menu* para ver os comandos.`)
+        return {status: 'handled', invoke: false}
+    }
 
     const command = getSemanticCommand(decision.command)
     if (!command) return {status: 'not-applicable'}
+    const gateError = await validateExecutionGates(client, botInfo, message, group, command)
+    if (gateError) {
+        await replyText(client, message, gateError)
+        return {status: 'handled', invoke: false}
+    }
 
     if (command.replyContext === 'target' && group && !message.mentioned.length && !message.isQuoted) {
         const resolution = await resolveTargetByName(message, group, command)
@@ -215,15 +200,17 @@ export async function routeSemanticCommand(
         await replyText(client, message, 'Marque ou responda à mensagem da pessoa para que eu possa identificar o alvo com segurança.')
         return {status: 'handled', invoke: false}
     }
-    if (command.replyContext === 'media' && !message.isQuoted && !message.media && !extractUrls(message.semanticTranscript || message.body).length) {
+    if (command.replyContext === 'media' && !message.isQuoted && (!message.media || message.semanticSource === 'audio') && !extractUrls(message.semanticTranscript || message.body).length) {
         await replyText(client, message, 'Envie a mídia ou responda à mensagem que deseja usar.')
         return {status: 'handled', invoke: false}
     }
 
     const needsConfirmation = command.destructive
     if (needsConfirmation) {
-        await replyText(client, message, `Entendi que você quer executar *${command.name}*. Confirme respondendo *confirmar* em até 30 segundos.`)
-        pendingConfirmations.set(pendingKey, {command, expiresAt: Date.now() + 30_000, message: {...message}})
+        await applySemanticCommandContext(client,message,group,command)
+        applySemanticCommand(message,botInfo,command)
+        await saveConfirmation(message,command.name)
+        await replyText(client, message, `Entendi que você quer executar *${command.name}*. Responda *bot confirmar* ou *bot cancelar* em até 30 segundos.`)
         return {status: 'handled', invoke: false}
     }
 
@@ -244,18 +231,18 @@ export async function routeSemanticCommand(
 }
 
 async function resolveTargetByName(message: Message, group: Group, command: SemanticCommand): Promise<'found' | 'ambiguous' | 'missing'> {
-    const query = extractTargetName(message.body, command.name)
+    const query = extractTargetName(message.semanticTranscript || message.body, command.name)
     if (!query || query.length < 2) return 'missing'
     const groupController = new GroupController()
     const participants = await groupController.getParticipants(group.id)
     const normalizedQuery = normalizeName(query)
-    const namedParticipants = participants.map(participant => {
-        const contact = getContactFromStore(participant.user_id)
+    const namedParticipants = await Promise.all(participants.map(async participant => {
+        const contact = (await getContactFromStore(participant.user_id))
         const names = [contact?.notify, contact?.name, contact?.verifiedName]
             .filter((name): name is string => !!name)
             .map(normalizeName)
         return {participant, names}
-    })
+    }))
     const exactMatches = namedParticipants.filter(({names}) => names.includes(normalizedQuery))
     const matches = exactMatches.length ? exactMatches : namedParticipants.filter(({names}) =>
         names.some(name => name.startsWith(`${normalizedQuery} `) || normalizedQuery.startsWith(`${name} `))
@@ -274,7 +261,7 @@ async function applySemanticCommandContext(
     command: SemanticCommand
 ): Promise<boolean> {
     if (message.isQuoted && message.quotedMessage) return true
-    if (command.replyContext === 'media' && message.media) {
+    if (command.replyContext === 'media' && message.media && message.semanticSource !== 'audio') {
         message.quotedMessage = {
             type: message.type,
             sender: message.sender,
@@ -300,8 +287,7 @@ async function applySemanticCommandContext(
             .some(id => normalizeWhatsappJid(id) === normalizeWhatsappJid(target))
     })
     if (!participant) return false
-    const displayName = participant.notify || participant.name || participant.verifiedName
-    if (!displayName) return false
+    const displayName = participant.notify || participant.name || participant.verifiedName || target.split('@')[0]
     const targetMessage = new (await import('@whiskeysockets/baileys')).proto.WebMessageInfo()
     targetMessage.key = {remoteJid: group.id, participant: target, id: `semantic-${message.message_id}`, fromMe: false}
     targetMessage.message = {conversation: displayName}
@@ -326,13 +312,16 @@ async function validateExecutionGates(
     group: Group | null,
     command: SemanticCommand
 ): Promise<string | null> {
+    if (!new PermissionService().hasPermission(message, command.roles as RoleString[] | undefined)) return 'Você não tem permissão para executar este comando.'
+    if (botInfo.block_cmds.includes(command.name) && !message.isBotOwner) return 'Este comando está bloqueado no bot.'
+    if (group?.block_cmds.includes(command.name) && !message.isGroupAdmin && !message.isBotOwner) return 'Este comando está bloqueado neste grupo.'
     if (command.category === 'admin' && (!message.isBotOwner || message.isGroupMsg)) return 'Este comando só pode ser usado pelo dono do bot no privado.'
     if (command.category === 'group' && (!group || !message.isGroupMsg)) return 'Este comando só pode ser usado em um grupo.'
     if (command.name === 'bloquear' || command.name === 'desbloquear' || command.name === 'usuario') {
         if (!message.isBotOwner) return 'Este comando só pode ser usado pelo dono do bot.'
     }
-    if (command.name === 's' && !message.isQuoted && !message.media && !message.semanticTranscript) return 'Envie uma imagem/vídeo ou responda ao conteúdo que deseja transformar em figurinha.'
-    if (command.name === 'mp3' && !message.isQuoted && !message.media && !extractUrls(message.semanticTranscript || message.body).length) return 'Responda a um vídeo ou envie um link para extrair o áudio.'
+    if (command.name === 's' && !message.isQuoted && (!message.media || message.semanticSource === 'audio')) return 'Envie uma imagem/vídeo ou responda ao conteúdo que deseja transformar em figurinha.'
+    if (command.name === 'mp3' && !message.isQuoted && (!message.media || message.semanticSource === 'audio') && !extractUrls(message.semanticTranscript || message.body).length) return 'Responda a um vídeo ou envie um link para extrair o áudio.'
     if (message.isGroupMsg && (command.name === 'ban' || command.name === 'silenciar' || command.name === 'promover' || command.name === 'rebaixar')) {
         if (!group) return 'Este comando só pode ser usado em um grupo.'
         const targeted = message.mentioned[0] || (message.isQuoted ? message.quotedMessage?.sender : undefined)
@@ -358,9 +347,6 @@ async function passesSemanticGroupGates(
 ): Promise<boolean> {
     const procedures = await import('./message.procedures.helper.js')
     if (await procedures.isBotLimitedByGroupRestricted(group, botInfo)) return false
-    if (await procedures.isDetectedByAntiLink(client, botInfo, group, message)) return false
-    if (await procedures.isDetectedByWordFilter(client, botInfo, group, message)) return false
-    if (await procedures.isDetectedByAntiFlood(client, botInfo, group, message)) return false
     return !(await procedures.isUserBlocked(client, message))
 }
 
@@ -386,87 +372,41 @@ function classifyWithMetrics(text: string, commands: SemanticCommand[], context:
     })
 }
 
-export function hasActivationSignal(message: Message, botInfo: Bot): boolean {
-    const body = message.semanticTranscript || message.body || message.caption
-    const normalizedBody = normalizeName(body)
-    const botNumber = botInfo.host_number.replace(/\D/g, '')
-    const directMention = message.hasBotMention === true || message.mentioned.some(mention => normalizeWhatsappJid(mention) === normalizeWhatsappJid(botInfo.host_number))
-    const wakeWord = startsWithWakeWord(message)
-    const replyToBot = isReplyToBot(message, botInfo)
-    const configuredWakeWord = (process.env.SEMANTIC_WAKE_WORDS || '').split(',').map(word => normalizeName(word)).filter(Boolean)
-    const configuredWake = configuredWakeWord.some(word => normalizedBody.startsWith(`${word} `))
-    return directMention || wakeWord || replyToBot || configuredWake || (!!botNumber && body.includes(`@${botNumber}`))
-}
-
-function startsWithWakeWord(message: Message): boolean {
-    const body = message.semanticTranscript || message.body || message.caption
-    if (/^(?:ei\s+)?(?:bot|robo|robô|elisyum|eliseu|elysium)[,:\s]+/i.test(body.trim())) return true
-    const configured = (process.env.SEMANTIC_WAKE_WORDS || '').split(',').map(normalizeName).filter(Boolean)
-    const normalized = normalizeName(body)
-    return configured.some(word => normalized.startsWith(`${word} `))
-}
-
-function isReplyToBot(message: Message, botInfo: Bot): boolean {
-    return message.isQuoted && !!message.quotedMessage && (
-        normalizeWhatsappJid(message.quotedMessage.sender) === normalizeWhatsappJid(botInfo.host_number)
-        || normalizeWhatsappJid(message.quotedMessage.senderAlt) === normalizeWhatsappJid(botInfo.host_number)
-    )
+export function hasActivationSignal(message: Message, _botInfo: Bot): boolean {
+    return hasBotWakeWord(message.semanticTranscript || message.body || message.caption)
 }
 
 function isVoiceMessageType(type: Message['type']): boolean {
     return type === 'audioMessage'
 }
 
-function hasDirectAddress(message: Message, botInfo: Bot): boolean {
-    const number = botInfo.host_number.replace(/\D/g, '')
-    return message.hasBotMention === true || message.mentioned.some(mention => normalizeWhatsappJid(mention) === normalizeWhatsappJid(botInfo.host_number))
-        || (!!number && message.body.includes(`@${number}`))
-}
-
-function stripActivationPrefix(message: Message, botInfo: Bot): string {
-    let text = message.semanticTranscript || message.body || message.caption
-    const number = botInfo.host_number.replace(/\D/g, '')
-    if (number) text = text.replace(new RegExp(`@${number}`, 'g'), ' ')
-    return text.replace(/^(?:ei\s+)?(?:bot|robo|robô|elisyum|eliseu|elysium)[,:\s]+/i, '').trim()
-}
-
 function applySemanticCommand(message: Message, botInfo: Bot, command: SemanticCommand): void {
     const isTraditionalCommand = message.command.startsWith(botInfo.prefix)
-    message.args = isTraditionalCommand ? message.args : extractSemanticArguments(message.semanticTranscript || message.body, command.name)
+    message.args = isTraditionalCommand ? message.args : extractSemanticArguments(message.semanticTranscript || message.body, command.name, message.quotedMessage?.body || message.quotedMessage?.caption || '')
     message.text_command = message.args.join(' ')
+    message.semanticSource ||= 'text'
     message.command = `${botInfo.prefix}${command.name}`
 }
 
-function extractSemanticArguments(text: string, commandName: string): string[] {
+export function extractSemanticArguments(text: string, commandName: string, quotedText = ''): string[] {
+    if (/^(menu|listanegra|audios|ping|ban|silenciar|promover|rebaixar|s|simg|apg)$/.test(commandName)) return []
+    const urls = extractUrls(text)
+    if (urls.length && ['d', 'play', 'mp3'].includes(commandName)) return [urls[0]]
+    if (commandName === 'd' || commandName === 'play') return extractMediaRequestArguments(text,quotedText)
     const patterns: Record<string, RegExp[]> = {
         d: [/\b(?:baix(?:a|ar)|faz|fazer|download|salv(?:a|ar))\b/gi],
         play: [/\b(?:toca|toque|baix(?:a|ar)|procura|busca|musica|audio|som)\b/gi],
         mp3: [/\b(?:extrai|extrair|pega|pegue|s[oó]|apenas|audio|mp3|som|video)\b/gi],
         img: [/\b(?:procura|pesquisa|busca|manda|envia|imagem|imagens|foto|fotos)\b/gi],
-        addfiltros: [/\b(?:adiciona|adicione|inclui|inclua|filtra)\b/gi],
-        rmfiltros: [/\b(?:remove|remova|tira|retira)\b/gi],
-        addresp: [/\b(?:adiciona|adicione|cria|configure)\b/gi],
-        rmresp: [/\b(?:remove|remova|apaga|apague|tira)\b/gi],
-        addexlink: [/\b(?:adiciona|adicione|libera|inclui)\b/gi],
-        rmexlink: [/\b(?:remove|remova|bloqueia|retira)\b/gi],
-        addexfake: [/\b(?:adiciona|adicione|libera|inclui)\b/gi],
-        rmexfake: [/\b(?:remove|remova|retira)\b/gi],
         taxacomandos: [/\b(?:limite|taxa|comandos?|por minuto)\b/gi],
-        prefixo: [/\b(?:muda|mude|troca|troque|prefixo|para|pra)\b/gi],
-        nomebot: [/\b(?:muda|mude|troca|troque|nome|bot|para|pra)\b/gi],
-        recado: [/\b(?:muda|mude|troca|troque|status|recado|bot|para|pra)\b/gi],
         ban: [/\b(?:bane|banir|expulsa|expulsar|remove|remover|tira|tirar)\b/gi],
         silenciar: [/\b(?:silencia|silenciar|muta|mutar|desmuta|dessilencia|tira|tirar)\b/gi],
         promover: [/\b(?:promove|promover|torna|transforma|admin|administrador|pra|para|em)\b/gi],
         rebaixar: [/\b(?:rebaixa|rebaixar|tira|tirar|admin|administrador|de)\b/gi],
-        grupo: [/\b(?:me|mostra|mostrar|exibe|exibir|informacoes|dados|do|da|desse|deste|grupo)\b/gi],
-        adms: [/\b(?:quem|quais|sao|os|as|admins?|administradores|marca)\b/gi],
-        dono: [/\b(?:quem|qual|e|o|a|dono|dona|do|da|grupo)\b/gi],
-        link: [/\b(?:me|passa|manda|mostra|qual|link|do|da|grupo)\b/gi]
     }
-    let residual = text
+    let residual = text.replace(/^(?:ei\s+)?(?:bot|robo|robô|elisyum|eliseu|elysium)[,.!?:;\s]+/i, '')
     for (const pattern of patterns[commandName] || []) residual = residual.replace(pattern, ' ')
-    residual = residual.replace(/@\d+/g, ' ').replace(/[?!.,;:]+/g, ' ').replace(/\s+/g, ' ').trim()
+    residual = residual.replace(/@\d+/g, ' ').replace(/\s+/g, ' ').trim()
     return residual ? [residual] : []
 }
 
@@ -479,10 +419,6 @@ function stripCommandPhrase(text: string, command: string): string {
         s: /\b(?:faz|cria|transforma|converte)\b.{0,25}\b(?:figurinha|sticker|adesivo)s?\b/i,
         mp3: /\b(?:extrai|extrair|pega|baix(?:a|ar))\b.{0,25}\b(?:audio|mp3|som)\b/i,
         d: /\b(?:baix(?:a|ar)|faz|fazer)\b.{0,15}\b(?:download|video|midia)\b/i,
-        grupo: /\b(?:mostra|mostrar|me mostra|exibe|quais|informacoes|dados)\b/i,
-        adms: /\b(?:quem|quais|mostra|lista|marca)\b/i,
-        link: /\b(?:me passa|manda|mostra|qual|pega|quero)\b/i,
-        dono: /\b(?:quem|qual|me fala|mostra)\b/i
     }
     const pattern = patterns[command]
     return pattern ? text.replace(pattern, '').replace(/\b(?:bot|por favor|pra mim|para mim|disso|dessa|desse|isso|esse|essa)\b/gi, '').trim() : text.trim()
@@ -496,7 +432,7 @@ function describeContext(message: Message, group: Group | null): string {
     ].filter(Boolean).join(' ')
 }
 
-function extractTargetName(text: string, commandName: string): string {
+export function extractTargetName(text: string, commandName: string): string {
     const withoutIntent = stripCommandPhrase(text, commandName)
         .replace(/^(?:bot|por favor|o|a|os|as|do|da|de|pra|para)\s+/i, '')
         .replace(/\b(?:do grupo|do mute|de admin|pra admin|administrador|admin)\b/gi, '')

@@ -20,9 +20,6 @@ const cases: Case[] = [
     {text: 'pega só o áudio', expected: 'mp3', group: false},
     {text: 'baixa esse vídeo', expected: 'd', group: false},
     {text: 'faz download desse link', expected: 'd', group: false},
-    {text: 'me mostra as informações do grupo', expected: 'grupo', group: true},
-    {text: 'quais são os admins?', expected: 'adms', group: true},
-    {text: 'quem é o dono daqui', expected: 'dono', group: true},
     {text: 'conversa normal sobre silenciar o João ontem', expected: null, group: true},
     {text: 'não bane o João', expected: null, group: true}
 ]

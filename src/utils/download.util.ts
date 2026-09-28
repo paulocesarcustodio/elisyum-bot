@@ -1,22 +1,26 @@
+import {runProcess,workSignal} from '../infrastructure/subprocess.js'
+import {mediaProcessor,shouldQueueWork} from '../infrastructure/media-client.js'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
-import {formatSeconds, showConsoleLibraryError} from './general.util.js'
+import {detectPlatform, formatSeconds, showConsoleLibraryError} from './general.util.js'
 import { getFbVideoInfo } from 'fb-downloader-scrapper'
 import axios from 'axios'
 import yts from 'yt-search'
 import { YtDlp } from 'ytdlp-nodejs'
 import Tiktok from "@tobyg74/tiktok-api-dl"
 
-import { FacebookMedia, InstagramMedia, SpotifyInfo, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
+import { FacebookMedia, InstagramMedia, PinterestMedia, SpotifyInfo, TiktokMedia, XMedia, YTInfo } from '../interfaces/library.interface.js'
 import botTexts from '../helpers/bot.texts.helper.js'
 import { YOUTUBE_QUALITY_LIMIT } from '../config/youtube.config.js'
 import NodeCache from 'node-cache'
+import { ytDlpProgress, YTDLP_PROGRESS_TEMPLATE } from './progress.util.js'
 
 const DOWNLOAD_CACHE_MAX_BYTES = 16 * 1024 * 1024
 const DOWNLOAD_CACHE_MAX_ITEM_BYTES = 8 * 1024 * 1024
 const downloadCache = new NodeCache({ stdTTL: 300, checkperiod: 60, maxKeys: 8, useClones: false })
-const inflightDownloads = new Map<string, Promise<Buffer>>()
+type SharedDownload={promise:Promise<Buffer>;listeners:Set<(percent:number)=>void>;progress:number}
+const inflightDownloads = new Map<string, SharedDownload>()
 const cachedDownloadSizes = new Map<string, number>()
 let cachedDownloadBytes = 0
 const MAX_CONCURRENT_DOWNLOADS = 2
@@ -50,6 +54,23 @@ async function withDownloadSlot<T>(download: () => Promise<T>): Promise<T> {
     }
 }
 
+async function sharedDownload(key:string,onProgress:((percent:number)=>void)|undefined,download:(report:(percent:number)=>void)=>Promise<Buffer>) {
+    let work=inflightDownloads.get(key)
+    if(!work){
+        const created:SharedDownload={promise:undefined as unknown as Promise<Buffer>,listeners:new Set(),progress:0}
+        created.promise=Promise.resolve().then(()=>withDownloadSlot(()=>download(percent=>{
+            if(percent<=created.progress)return
+            created.progress=percent
+            for(const listener of created.listeners)listener(percent)
+        }))).finally(()=>inflightDownloads.delete(key))
+        inflightDownloads.set(key,created)
+        work=created
+    }
+    if(onProgress){work.listeners.add(onProgress);if(work.progress>0)onProgress(work.progress)}
+    try{return await work.promise}
+    finally{if(onProgress)work.listeners.delete(onProgress)}
+}
+
 downloadCache.on('del', key => {
     cachedDownloadBytes -= cachedDownloadSizes.get(key) ?? 0
     cachedDownloadSizes.delete(key)
@@ -80,40 +101,7 @@ const resolveYtDlpBinary = () => {
     return path.join(projectRoot, 'bin', binaryName)
 }
 
-const resolveBunBinary = () => {
-    const { execSync } = require('child_process')
-    try {
-        // Tenta encontrar bun no PATH
-        const bunPath = execSync('which bun', { encoding: 'utf-8' }).trim()
-        if (bunPath) {
-            console.log(`[resolveBunBinary] ✅ Bun encontrado em: ${bunPath}`)
-            return bunPath
-        }
-    } catch (error) {
-        console.warn('[resolveBunBinary] ⚠️ Erro ao executar which bun:', error)
-    }
-    
-    // Fallback: tenta caminhos comuns
-    const commonPaths = [
-        '/root/.bun/bin/bun',
-        '/usr/local/bin/bun',
-        '/usr/bin/bun',
-        process.env.HOME + '/.bun/bin/bun'
-    ]
-    
-    const fs = require('fs')
-    for (const path of commonPaths) {
-        try {
-            if (fs.existsSync(path)) {
-                console.log(`[resolveBunBinary] ✅ Bun encontrado em fallback: ${path}`)
-                return path
-            }
-        } catch { }
-    }
-    
-    console.warn('[resolveBunBinary] ⚠️ Bun não encontrado, usando "bun" como último fallback')
-    return 'bun'
-}
+const resolveBunBinary = () => process.env.BUN_PATH || (process.versions.bun ? process.execPath : 'bun')
 
 // Inicializa ytdlp-nodejs com o binário customizado
 const ytDlpPath = resolveYtDlpBinary()
@@ -123,7 +111,8 @@ const ytdlp = new YtDlp({ binaryPath: ytDlpPath })
 
 const X_DOWNLOADABLE_MEDIA_TYPES = new Set(['video', 'gif'])
 
-export async function xMedia (url: string){
+export async function xMedia (url: string):Promise<XMedia | null>{
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.xMedia',[url],{timeoutMs:240_000})
     try {
         const newURL = url.replace(/twitter\.com|x\.com/g, 'api.vxtwitter.com')
         const {data : xResponse} = await axios.get(newURL)
@@ -160,6 +149,7 @@ export async function xMedia (url: string){
 }
 
 export async function tiktokMedia (url : string): Promise<TiktokMedia>{
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.tiktokMedia',[url],{timeoutMs:240_000})
     try {
         const response = await Tiktok.Downloader(url, { version: "v1" })
 
@@ -199,6 +189,7 @@ export async function tiktokMedia (url : string): Promise<TiktokMedia>{
 }
 
 export async function facebookMedia(url : string) {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.facebookMedia',[url],{timeoutMs:240_000})
     try {
         const facebookResponse = await getFbVideoInfo(url)
         const facebookMedia : FacebookMedia = {
@@ -218,18 +209,7 @@ export async function facebookMedia(url : string) {
 }
 
 async function extractInstagramWithYtDlp(url: string): Promise<InstagramMedia> {
-    const { execSync } = require('child_process')
-
-    const ytDlpPath = resolveYtDlpBinary()
-    const args = ['--dump-json', '--no-download', '--no-check-certificate']
-
-    args.push(url)
-
-    const result = execSync(`"${ytDlpPath}" ${args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`, {
-        encoding: 'utf-8',
-        timeout: 30000,
-        maxBuffer: 5 * 1024 * 1024
-    })
+    const result = (await runProcess(resolveYtDlpBinary(),['--dump-json','--no-download','--no-playlist','--',url],{timeoutMs:30_000,maxOutputBytes:5*1024*1024})).toString()
 
     const metadata = JSON.parse(result.trim())
 
@@ -273,7 +253,8 @@ async function extractInstagramWithYtDlp(url: string): Promise<InstagramMedia> {
     }
 }
 
-export async function instagramMedia (url: string){
+export async function instagramMedia (url: string):Promise<InstagramMedia | null>{
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.instagramMedia',[url],{timeoutMs:240_000})
     try {
         const cached = downloadMetadataCache.get<InstagramMedia>(`igmeta:${url}`)
         if (cached) return cached
@@ -299,7 +280,43 @@ export async function instagramMedia (url: string){
     }
 }
 
+export async function pinterestMedia(url: string): Promise<PinterestMedia> {
+    if(shouldQueueWork())return mediaProcessor.execute<PinterestMedia>('download.pinterestMedia',[url],{timeoutMs:60_000})
+    if(detectPlatform(url)!=='pinterest')throw new Error('Informe o link de um Pin público do Pinterest.')
+    if(new URL(url).hostname==='pin.it'){
+        const response=await axios.head(url,{timeout:15_000,maxRedirects:5,signal:workSignal.getStore()})
+        url=response.request?.res?.responseUrl || response.request?.responseURL || ''
+    }
+    if(detectPlatform(url)!=='pinterest' || new URL(url).hostname==='pin.it')throw new Error('O link não aponta para um Pin público do Pinterest.')
+    const id=new URL(url).pathname.match(/(?:\/|--)(\d+)\/?$/)?.[1]
+    if(!id)throw new Error('Não foi possível identificar o Pin.')
+    const canonical=`https://www.pinterest.com/pin/${id}/`
+    const output=await runProcess(ytDlpPath,['--skip-download','--dump-single-json','--ignore-no-formats-error','--no-playlist','--socket-timeout','15','--retries','0','--',canonical],{timeoutMs:30_000,maxOutputBytes:2*1024*1024})
+    const metadata=JSON.parse(output.toString())
+    if(metadata._type==='playlist')throw new Error('Envie um Pin individual, em vez de uma pasta.')
+    if(Array.isArray(metadata.formats) && metadata.formats.some((format:any)=>format.url && format.vcodec!=='none')){
+        return {type:'video',url:canonical,title:metadata.title || ''}
+    }
+    const images=(metadata.thumbnails || []).filter((image:any)=>typeof image.url==='string' && /^https:\/\/(?:[a-z\d-]+\.)*pinimg\.com\//i.test(image.url))
+    images.sort((a:any,b:any)=>(b.width || 0)*(b.height || 0)-(a.width || 0)*(a.height || 0))
+    if(!images.length)throw new Error('Este Pin não contém imagem ou vídeo disponível publicamente.')
+    return {type:'image',url:images[0].url,title:metadata.title || ''}
+}
+
+export async function downloadPinterestVideo(url: string,onProgress?: (percent:number)=>void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('download.downloadPinterestVideo',[url],{timeoutMs:240_000,onProgress})
+    const key=`pinterest:${url}`
+    const cached=downloadCache.get<Buffer>(key)
+    if(cached){onProgress?.(100);return cached}
+    return sharedDownload(key,onProgress,async report=>{
+        const buffer=await downloadWithYtDlp(url,['-f',`best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[ext=mp4]`],'mp4',48*1024*1024,report)
+        cacheDownload(key,buffer)
+        return buffer
+    })
+}
+
 export async function youtubeMedia (text: string){
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.youtubeMedia',[text],{timeoutMs:240_000})
     try {
         console.log('[youtubeMedia] 📝 Texto recebido:', text)
         
@@ -432,43 +449,40 @@ export async function spotifyMedia(url: string): Promise<SpotifyInfo | null> {
 }
 
 export async function downloadFromUrl(url: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.downloadFromUrl',[url],{timeoutMs:240_000,onProgress})
+    return downloadBytesFromUrl(url,8*1024*1024,onProgress)
+}
+
+export async function downloadVideoFromUrl(url: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<Buffer>('download.downloadVideoFromUrl',[url],{timeoutMs:240_000,onProgress})
+    return downloadBytesFromUrl(url,48*1024*1024,onProgress)
+}
+
+async function downloadBytesFromUrl(url: string,maxBytes: number,onProgress?: (percent: number) => void): Promise<Buffer> {
     return withDownloadSlot(async () => {
     try {
-        let simulatedProgress = 0
-        let progressInterval: NodeJS.Timeout | null = null
-
-            if (onProgress) {
-                const incrementInterval = (12 * 1000) / 95
-                progressInterval = setInterval(() => {
-                    if (simulatedProgress < 95) onProgress(++simulatedProgress)
-                }, incrementInterval)
-            }
-
-            try {
             const response = await axios.get(url, {
-                responseType: 'stream',
+                responseType: 'stream', signal: workSignal.getStore(),
                 timeout: 60000,
-                maxContentLength: 8 * 1024 * 1024,
-                maxBodyLength: 8 * 1024 * 1024
+                maxContentLength: maxBytes,
+                maxBodyLength: maxBytes
             })
 
-            if (progressInterval) clearInterval(progressInterval)
-            if (onProgress) onProgress(100)
+            const contentLength=Number(response.headers['content-length'])
+            const knownLength=!response.headers['content-encoding'] && Number.isFinite(contentLength) && contentLength>0
             const chunks: Buffer[] = []
             let totalBytes = 0
             for await (const chunk of response.data as AsyncIterable<Buffer>) {
                 totalBytes += chunk.length
-                if (totalBytes > 8 * 1024 * 1024) {
-                    response.data.destroy(new Error('Mídia excede o limite de 8 MB'))
-                    throw new Error('Mídia excede o limite de 8 MB')
+                if (totalBytes > maxBytes) {
+                    response.data.destroy()
+                    throw new Error(`Mídia excede o limite de ${maxBytes/1024/1024} MB`)
                 }
                 chunks.push(chunk)
+                if(knownLength)onProgress?.(Math.min(99,Math.floor(totalBytes/contentLength*100)))
             }
+            await onProgress?.(100)
             return Buffer.concat(chunks, totalBytes)
-            } catch (error) {
-                if (progressInterval) clearInterval(progressInterval)
-                throw error
-            }
         } catch(err) {
             showConsoleLibraryError(err, 'downloadFromUrl')
             throw new Error(botTexts.library_error)
@@ -477,6 +491,7 @@ export async function downloadFromUrl(url: string, onProgress?: (percent: number
 }
 
 export async function downloadInstagramMedia(url: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.downloadInstagramMedia',[url],{timeoutMs:240_000,onProgress})
     const cached = downloadCache.get<Buffer>(`igvideo:${url}`)
     if (cached) {
         console.log('[downloadInstagramMedia] ✅ Cache hit:', url)
@@ -484,32 +499,17 @@ export async function downloadInstagramMedia(url: string, onProgress?: (percent:
         return cached
     }
 
-    const inflightKey = `igvideo:${url}`
-    const inflight = inflightDownloads.get(inflightKey)
-    if (inflight) {
-        console.log('[downloadInstagramMedia] 🔄 Download em andamento, aguardando...')
-        return inflight
-    }
-
-    const promise = withDownloadSlot(() => doDownloadInstagramMedia(url, onProgress))
-    inflightDownloads.set(inflightKey, promise)
-    try {
-        return await promise
-    } finally {
-        inflightDownloads.delete(inflightKey)
-    }
+    return sharedDownload(`igvideo:${url}`,onProgress,report=>doDownloadInstagramMedia(url,report))
 }
 
 export async function downloadInstagramImage(url: string): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.downloadInstagramImage',[url],{timeoutMs:240_000})
     const key = `igimage:${url}`
     const cached = downloadCache.get<Buffer>(key)
     if (cached) return cached
-    const inflight = inflightDownloads.get(key)
-    if (inflight) return inflight
-
-    const promise = withDownloadSlot(async () => {
+    return sharedDownload(key,undefined,async () => {
         const response = await axios.get(url, {
-            responseType: 'arraybuffer',
+            responseType: 'arraybuffer', signal: workSignal.getStore(),
             timeout: 60000,
             maxContentLength: 8 * 1024 * 1024,
             maxBodyLength: 8 * 1024 * 1024
@@ -518,12 +518,6 @@ export async function downloadInstagramImage(url: string): Promise<Buffer> {
         cacheDownload(key, buffer)
         return buffer
     })
-    inflightDownloads.set(key, promise)
-    try {
-        return await promise
-    } finally {
-        inflightDownloads.delete(key)
-    }
 }
 
 const inflightEmojiMixes = new Map<string, Promise<Buffer | null>>()
@@ -538,7 +532,7 @@ export async function getEmojiMixBuffer(url: string): Promise<Buffer | null> {
     const promise = withDownloadSlot(async () => {
         try {
             const response = await axios.get(url, {
-                responseType: 'arraybuffer',
+                responseType: 'arraybuffer', signal: workSignal.getStore(),
                 timeout: 15000,
                 maxContentLength: 2 * 1024 * 1024
             })
@@ -558,117 +552,13 @@ export async function getEmojiMixBuffer(url: string): Promise<Buffer | null> {
 }
 
 async function doDownloadInstagramMedia(url: string, onProgress?: (percent: number) => void): Promise<Buffer> {
-    const startTime = Date.now()
-    const { spawn } = require('child_process')
-    const fsp = require('fs').promises
-
-    const tempFilePath = path.join('/tmp', `ig-${process.pid}-${randomUUID()}.mp4`)
-
-    return new Promise((resolve, reject) => {
-        const args = [
-            url,
-            '-o', tempFilePath,
-            '--newline',
-            '--progress',
-            '-f', `bv*[height<=1080]+ba/b[height<=1080]/b`,
-            '--merge-output-format', 'mp4',
-            '--no-playlist',
-            '--no-check-certificate',
-            '--prefer-free-formats',
-            '--concurrent-fragments', '1',
-            '--buffer-size', '128K',
-            '--http-chunk-size', '5M',
-            '--socket-timeout', '30000',
-            '--retries', '10',
-            '--fragment-retries', '10',
-            '--js-runtimes', `bun:${bunPath}`
-        ]
-
-        const ytDlpProcess = spawn(ytDlpPath, args)
-
-        let totalFragments = 0
-        let currentFragment = 0
-        let lastReportedProgress = 0
-
-        ytDlpProcess.stdout?.on('data', (data: Buffer) => {
-            const output = data.toString()
-
-            const fragmentsMatch = output.match(/Total fragments:\s*(\d+)/)
-            if (fragmentsMatch) {
-                totalFragments = parseInt(fragmentsMatch[1])
-            }
-
-            const currentFragmentMatch = output.match(/\(frag\s+(\d+)\/\d+\)/)
-            if (currentFragmentMatch) {
-                const newFragment = parseInt(currentFragmentMatch[1])
-                if (newFragment > currentFragment && totalFragments > 0) {
-                    currentFragment = newFragment
-                    const progress = Math.min(Math.floor((currentFragment / totalFragments) * 95), 95)
-                    if (progress > lastReportedProgress && onProgress) {
-                        lastReportedProgress = progress
-                        onProgress(progress)
-                    }
-                }
-            }
-        })
-
-        const timeout = setTimeout(() => {
-            ytDlpProcess.kill()
-            fsp.unlink(tempFilePath).catch(() => {})
-            reject(new Error('Download timeout após 5 minutos'))
-        }, 300000)
-
-        const maxSizeInterval = setInterval(() => {
-            fsp.stat(tempFilePath).then((stat: { size: number }) => {
-                if (stat.size > 48 * 1024 * 1024) {
-                    ytDlpProcess.kill()
-                    clearInterval(maxSizeInterval)
-                    fsp.unlink(tempFilePath).catch(() => {})
-                    reject(new Error('A mídia do Instagram excede o limite de 48 MB'))
-                }
-            }).catch(() => {})
-        }, 1000)
-        maxSizeInterval.unref()
-
-        ytDlpProcess.on('close', async (code: number | null) => {
-            clearTimeout(timeout)
-            clearInterval(maxSizeInterval)
-
-            if (code === 0) {
-                try {
-                    const fileStat = await fsp.stat(tempFilePath)
-                    if (fileStat.size > 48 * 1024 * 1024) {
-                        await fsp.unlink(tempFilePath)
-                        reject(new Error('A mídia do Instagram excede o limite de 48 MB'))
-                        return
-                    }
-                    if (onProgress) onProgress(100)
-                    const buffer = await fsp.readFile(tempFilePath)
-                    await fsp.unlink(tempFilePath)
-                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-                    console.log(`[downloadInstagramMedia] ✅ ${elapsed}s, ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
-                    cacheDownload(`igvideo:${url}`, buffer)
-                    resolve(buffer)
-                } catch (err: any) {
-                    showConsoleLibraryError(err, 'downloadInstagramMedia')
-                    reject(new Error(botTexts.library_error))
-                }
-            } else {
-                fsp.unlink(tempFilePath).catch(() => {})
-                reject(new Error(`yt-dlp falhou com código ${code}`))
-            }
-        })
-
-        ytDlpProcess.on('error', (err: Error) => {
-            clearTimeout(timeout)
-            fsp.unlink(tempFilePath).catch(() => {})
-            showConsoleLibraryError(err, 'downloadInstagramMedia')
-            reject(new Error(botTexts.library_error))
-        })
-    })
+    const buffer=await downloadWithYtDlp(url,['-f','bv*[height<=1080]+ba/b[height<=1080]/b','--merge-output-format','mp4'],'mp4',48*1024*1024,onProgress)
+    cacheDownload(`igvideo:${url}`,buffer)
+    return buffer
 }
 
 export async function downloadYouTubeAudio(videoUrl: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.downloadYouTubeAudio',[videoUrl],{timeoutMs:240_000,onProgress})
     const cached = downloadCache.get<Buffer>(`audio:${videoUrl}`)
     if (cached) {
         console.log('[downloadYouTubeAudio] ✅ Cache hit:', videoUrl)
@@ -676,121 +566,17 @@ export async function downloadYouTubeAudio(videoUrl: string, onProgress?: (perce
         return cached
     }
 
-    const inflightKey = `audio:${videoUrl}`
-    const inflight = inflightDownloads.get(inflightKey)
-    if (inflight) {
-        console.log('[downloadYouTubeAudio] 🔄 Download em andamento, aguardando...')
-        return inflight
-    }
-
-    const promise = withDownloadSlot(() => doDownloadYouTubeAudio(videoUrl, onProgress))
-    inflightDownloads.set(inflightKey, promise)
-    try {
-        const result = await promise
-        return result
-    } finally {
-        inflightDownloads.delete(inflightKey)
-    }
+    return sharedDownload(`audio:${videoUrl}`,onProgress,report=>doDownloadYouTubeAudio(videoUrl,report))
 }
 
 async function doDownloadYouTubeAudio(videoUrl: string, onProgress?: (percent: number) => void): Promise<Buffer> {
-    const startTime = Date.now()
-    const { spawn } = require('child_process')
-    const fsp = require('fs').promises
-
-    const baseName = path.join('/tmp', `yta-${process.pid}-${randomUUID()}`)
-    const outputTemplate = `${baseName}.%(ext)s`
-
-    return new Promise((resolve, reject) => {
-        const ytDlpProcess = spawn(ytDlpPath, [
-            videoUrl,
-            '-x', '--audio-format', 'mp3',
-            '--audio-quality', '0',
-            '-f', 'bestaudio',
-            '-o', outputTemplate,
-            '--no-playlist',
-            '--no-check-certificate',
-            '--concurrent-fragments', '1',
-            '--socket-timeout', '30000',
-            '--retries', '5',
-            '--fragment-retries', '5',
-            '--extractor-args', 'youtube:player_client=web_embedded',
-            '--js-runtimes', `bun:${bunPath}`
-        ])
-
-        const timeout = setTimeout(() => {
-            ytDlpProcess.kill()
-            fsp.unlink(`${baseName}.mp3`).catch(() => {})
-            reject(new Error('Download de áudio timeout após 3 minutos'))
-        }, 180000)
-
-        const maxSizeInterval = setInterval(() => {
-            fsp.stat(`${baseName}.mp3`).then((stat: { size: number }) => {
-                if (stat.size > 32 * 1024 * 1024) {
-                    ytDlpProcess.kill()
-                    clearInterval(maxSizeInterval)
-                    fsp.unlink(`${baseName}.mp3`).catch(() => {})
-                    reject(new Error('O áudio do YouTube excede o limite de 32 MB'))
-                }
-            }).catch(() => {})
-        }, 1000)
-        maxSizeInterval.unref()
-
-        ytDlpProcess.stderr?.on('data', (data: Buffer) => {
-            const output = data.toString()
-            const match = output.match(/(\d+\.?\d*)%/)
-            if (match && onProgress) {
-                onProgress(Math.min(Math.floor(parseFloat(match[1])), 100))
-            }
-        })
-
-        ytDlpProcess.on('close', async (code: number | null) => {
-            clearTimeout(timeout)
-            clearInterval(maxSizeInterval)
-            if (code !== 0) {
-                try {
-                    const dir = '/tmp'
-                    const prefix = path.basename(baseName)
-                    const files = (await fsp.readdir(dir)).filter((f: string) => f.startsWith(prefix))
-                    await Promise.all(files.map((f: string) => fsp.unlink(path.join(dir, f)).catch(() => {})))
-                } catch {}
-                reject(new Error(`yt-dlp áudio falhou com código ${code}`))
-                return
-            }
-            try {
-                const mp3File = `${baseName}.mp3`
-                try { await fsp.access(mp3File) } catch {
-                    reject(new Error('Arquivo de áudio não encontrado após extração'))
-                    return
-                }
-                const audioStat = await fsp.stat(mp3File)
-                if (audioStat.size > 32 * 1024 * 1024) {
-                    await fsp.unlink(mp3File)
-                    reject(new Error('O áudio do YouTube excede o limite de 32 MB'))
-                    return
-                }
-                const buffer = await fsp.readFile(mp3File)
-                await fsp.unlink(mp3File)
-                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-                console.log(`[downloadYouTubeAudio] ✅ ${elapsed}s, ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
-                if (onProgress) onProgress(100)
-                cacheDownload(`audio:${videoUrl}`, buffer)
-                resolve(buffer)
-            } catch (err) {
-                reject(err)
-            }
-        })
-
-        ytDlpProcess.on('error', (err: Error) => {
-            clearTimeout(timeout)
-            clearInterval(maxSizeInterval)
-            fsp.unlink(`${baseName}.mp3`).catch(() => {})
-            reject(err)
-        })
-    })
+    const buffer=await downloadWithYtDlp(videoUrl,['-x','--audio-format','mp3','--audio-quality','0','-f','bestaudio','--extractor-args','youtube:player_client=web_embedded'],'mp3',32*1024*1024,onProgress)
+    cacheDownload(`audio:${videoUrl}`,buffer)
+    return buffer
 }
 
 export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (percent: number) => void): Promise<Buffer> {
+    if(shouldQueueWork())return mediaProcessor.execute<any>('download.downloadYouTubeVideo',[videoUrl],{timeoutMs:240_000,onProgress})
     const cached = downloadCache.get<Buffer>(`video:${videoUrl}`)
     if (cached) {
         console.log('[downloadYouTubeVideo] ✅ Cache hit:', videoUrl)
@@ -798,128 +584,42 @@ export async function downloadYouTubeVideo(videoUrl: string, onProgress?: (perce
         return cached
     }
 
-    const inflightKey = `video:${videoUrl}`
-    const inflight = inflightDownloads.get(inflightKey)
-    if (inflight) {
-        console.log('[downloadYouTubeVideo] 🔄 Download em andamento, aguardando...')
-        return inflight
-    }
-
-    const promise = withDownloadSlot(() => doDownloadYouTubeVideo(videoUrl, onProgress))
-    inflightDownloads.set(inflightKey, promise)
-    try {
-        const result = await promise
-        return result
-    } finally {
-        inflightDownloads.delete(inflightKey)
-    }
+    return sharedDownload(`video:${videoUrl}`,onProgress,report=>doDownloadYouTubeVideo(videoUrl,report))
 }
 
 async function doDownloadYouTubeVideo(videoUrl: string, onProgress?: (percent: number) => void): Promise<Buffer> {
-    const startTime = Date.now()
-    const { spawn } = require('child_process')
-    const fsp = require('fs').promises
+    const buffer=await downloadWithYtDlp(videoUrl,['-f',`best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[ext=mp4]/best`,'--extractor-args','youtube:player_client=web_embedded'],'mp4',48*1024*1024,onProgress)
+    cacheDownload(`video:${videoUrl}`,buffer)
+    return buffer
+}
 
-    const tempFilePath = path.join('/tmp', `yt-${process.pid}-${randomUUID()}.mp4`)
-
-    return new Promise((resolve, reject) => {
-        const ytDlpProcess = spawn(ytDlpPath, [
-            videoUrl,
-            '-o', tempFilePath,
-            '--newline',
-            '--progress',
-            '-f', `best[height<=${YOUTUBE_QUALITY_LIMIT}][ext=mp4]/best[ext=mp4]/best`,
-            '--no-playlist',
-            '--no-check-certificate',
-            '--prefer-free-formats',
-            '--concurrent-fragments', '1',
-            '--buffer-size', '128K',
-            '--http-chunk-size', '5M',
-            '--socket-timeout', '30000',
-            '--retries', '10',
-            '--fragment-retries', '10',
-            '--extractor-args', 'youtube:player_client=web_embedded',
-            '--js-runtimes', `bun:${bunPath}`
-        ])
-
-        let totalFragments = 0
-        let currentFragment = 0
-        let lastReportedProgress = 0
-        
-        ytDlpProcess.stdout?.on('data', (data: Buffer) => {
-            const output = data.toString()
-            
-            const fragmentsMatch = output.match(/Total fragments:\s*(\d+)/)
-            if (fragmentsMatch) {
-                totalFragments = parseInt(fragmentsMatch[1])
-            }
-            
-            const currentFragmentMatch = output.match(/\(frag\s+(\d+)\/\d+\)/)
-            if (currentFragmentMatch) {
-                const newFragment = parseInt(currentFragmentMatch[1])
-                if (newFragment > currentFragment && totalFragments > 0) {
-                    currentFragment = newFragment
-                    const progress = Math.min(Math.floor((currentFragment / totalFragments) * 95), 95)
-                    if (progress > lastReportedProgress && onProgress) {
-                        lastReportedProgress = progress
-                        onProgress(progress)
-                    }
-                }
-            }
+async function downloadWithYtDlp(url:string,formatArgs:string[],extension:string,maxBytes:number,onProgress?:(percent:number)=>void):Promise<Buffer>{
+    const fsp=await import('node:fs/promises')
+    const directory=await fsp.mkdtemp(path.join('/tmp','elysium-download-'))
+    const controller=new AbortController()
+    const inherited=workSignal.getStore()
+    const signal=inherited?AbortSignal.any([inherited,controller.signal]):controller.signal
+    let checking=false
+    const monitor=setInterval(async()=>{
+        if(checking)return;checking=true
+        try{
+            let size=0
+            for(const name of await fsp.readdir(directory))size+=(await fsp.stat(path.join(directory,name))).size
+            if(size>maxBytes*3)controller.abort(new Error('Download excede o limite de espaço temporário.'))
+        }catch{}finally{checking=false}
+    },500)
+    try{
+        const report=onProgress || (()=>{})
+        await runProcess(ytDlpPath,[...formatArgs,'-o',path.join(directory,'media.%(ext)s'),'--no-playlist','--newline','--progress','--progress-delta','0.25','--progress-template',YTDLP_PROGRESS_TEMPLATE,'--concurrent-fragments','1','--socket-timeout','30','--retries','2','--fragment-retries','2','--max-filesize',String(maxBytes),'--js-runtimes',`bun:${bunPath}`,'--',url],{
+            timeoutMs:180_000,maxOutputBytes:1024*1024,signal,onStdout:ytDlpProgress(report),onStderr:ytDlpProgress(report)
         })
-
-        const timeout = setTimeout(() => {
-            ytDlpProcess.kill()
-            fsp.unlink(tempFilePath).catch(() => {})
-            reject(new Error('Download timeout após 5 minutos'))
-        }, 300000)
-
-        const maxSizeInterval = setInterval(() => {
-            fsp.stat(tempFilePath).then((stat: { size: number }) => {
-                if (stat.size > 48 * 1024 * 1024) {
-                    ytDlpProcess.kill()
-                    clearInterval(maxSizeInterval)
-                    fsp.unlink(tempFilePath).catch(() => {})
-                    reject(new Error('A mídia do YouTube excede o limite de 48 MB'))
-                }
-            }).catch(() => {})
-        }, 1000)
-        maxSizeInterval.unref()
-
-        ytDlpProcess.on('close', async (code: number | null) => {
-            clearTimeout(timeout)
-            clearInterval(maxSizeInterval)
-            
-            if (code === 0) {
-                try {
-                    const fileStat = await fsp.stat(tempFilePath)
-                    if (fileStat.size > 48 * 1024 * 1024) {
-                        await fsp.unlink(tempFilePath)
-                        reject(new Error('A mídia do YouTube excede o limite de 48 MB'))
-                        return
-                    }
-                    if (onProgress) onProgress(100)
-                    const buffer = await fsp.readFile(tempFilePath)
-                    await fsp.unlink(tempFilePath)
-                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-                    console.log(`[downloadYouTubeVideo] ✅ ${elapsed}s, ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
-                    cacheDownload(`video:${videoUrl}`, buffer)
-                    resolve(buffer)
-                } catch (err: any) {
-                    showConsoleLibraryError(err, 'downloadYouTubeVideo')
-                    reject(new Error(botTexts.library_error))
-                }
-            } else {
-                fsp.unlink(tempFilePath).catch(() => {})
-                reject(new Error(`yt-dlp falhou com código ${code}`))
-            }
-        })
-
-        ytDlpProcess.on('error', (err: Error) => {
-            clearTimeout(timeout)
-            fsp.unlink(tempFilePath).catch(() => {})
-            showConsoleLibraryError(err, 'downloadYouTubeVideo')
-            reject(new Error(botTexts.library_error))
-        })
-    })
+        const expected=path.join(directory,'media.'+extension)
+        const found=await fsp.stat(expected).catch(()=>null)
+        const file=found?expected:path.join(directory,(await fsp.readdir(directory)).find(name=>name.startsWith('media.')&&!/\.(?:part|ytdl|temp)$/.test(name)) || 'missing')
+        const stat=await fsp.stat(file)
+        if(!stat.size || stat.size>maxBytes)throw new Error('Mídia vazia ou maior que o limite permitido.')
+        const buffer=await fsp.readFile(file)
+        onProgress?.(100)
+        return buffer
+    }finally{clearInterval(monitor);await fsp.rm(directory,{recursive:true,force:true})}
 }

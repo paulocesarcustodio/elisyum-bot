@@ -1,3 +1,4 @@
+import { identityService } from '../services/identity.service.js'
 import { WASocket } from "@whiskeysockets/baileys";
 import { Bot } from "../interfaces/bot.interface.js";
 import { Group } from "../interfaces/group.interface.js";
@@ -5,7 +6,7 @@ import { Message } from "../interfaces/message.interface.js";
 import { UserController } from "../controllers/user.controller.js";
 import botTexts from "../helpers/bot.texts.helper.js";
 import { GroupController } from "../controllers/group.controller.js";
-import { buildText, removeFormatting } from "../utils/general.util.js";
+import { buildText } from "../utils/general.util.js";
 import { BotController } from "../controllers/bot.controller.js";
 import * as waUtil  from "../utils/whatsapp.util.js"
 import moment from "moment";
@@ -19,13 +20,13 @@ export async function isUserBlocked(client: WASocket, message: Message){
     const cachedContacts = getBlockedContactsFromCache()
 
     if (cachedContacts){
-        return cachedContacts.includes(message.sender)
+        return (await identityService.aliases(message.sender)).some(id=>cachedContacts.includes(id))
     }
 
     const blockedContacts = await waUtil.getBlockedContacts(client)
     setBlockedContactsCache(blockedContacts)
 
-    return blockedContacts.includes(message.sender)
+    return (await identityService.aliases(message.sender)).some(id=>blockedContacts.includes(id))
 }
 
 export async function isOwnerRegister(client: WASocket, botInfo: Bot, message: Message){
@@ -49,7 +50,7 @@ export async function incrementUserCommandsCount(message: Message){
 }
 
 export function incrementBotCommandsCount(){
-    botController.incrementExecutedCommands()
+    return botController.incrementExecutedCommands()
 }
 
 export async function incrementGroupCommandsCount(group: Group){
@@ -85,7 +86,7 @@ export async function deleteMessageIfMutedMember(
 ){
     const mutedMembers = Array.isArray(group.muted_members) ? group.muted_members : []
 
-    if (!mutedMembers.length || !mutedMembers.includes(message.sender) || !message.wa_message) {
+    if (!mutedMembers.length || !message.wa_message || !(await identityService.aliases(message.sender)).some(id=>mutedMembers.includes(id))) {
         return false
     }
 
@@ -174,103 +175,3 @@ export async function isCommandBlockedGroup(client: WASocket, group: Group, botI
 
     return false
 }
-
-export async function isDetectedByWordFilter(client: WASocket, botInfo: Bot, group: Group, message: Message){
-    const { isGroupAdmin, body, caption } = message
-    const groupAdmins = await groupController.getAdminsIds(group.id)
-    const isBotAdmin = groupAdmins.includes(botInfo.host_number)
-    const userText = body || caption
-    const userTextNoFormatting = removeFormatting(userText)
-    const userWords = userTextNoFormatting.split(' ')
-    const wordsFiltered = userWords.filter(userWord => group.word_filter.includes(removeFormatting(userWord.toLowerCase())) == true)
-
-    if (wordsFiltered.length && isBotAdmin && !isGroupAdmin) {
-        await waUtil.deleteMessage(client, message.wa_message, false)
-        return true
-    }
-
-    return false
-}
-
-export async function autoReply(client: WASocket, botInfo: Bot, group: Group, message: Message){
-    if (group.auto_reply.status) {
-        const { body, caption } = message
-        const groupAdmins = await groupController.getAdminsIds(group.id)
-        const isBotGroupAdmin = groupAdmins.includes(botInfo.host_number)
-        const userText = body || caption
-        const userTextNoFormatting = removeFormatting(userText)
-        const userWords = userTextNoFormatting.split(' ').map(word => word.toLowerCase())
-        const wordsDetected = userWords.filter(userWord => group.auto_reply.config.find(config => config.word == userWord))
-
-        if (wordsDetected.length && isBotGroupAdmin) {
-            const configWord = group.auto_reply.config.find(config => config.word == wordsDetected[0])
-
-            if (configWord) {
-                await waUtil.replyText(client, message.chat_id, configWord?.reply, message.wa_message, { expiration: message.expiration })
-                return true
-            }
-        }
-    }
-
-    return false
-}
-
-export async function isDetectedByAntiLink(client: WASocket, botInfo: Bot, group: Group, message: Message){
-    const { body, caption, isGroupAdmin} = message
-    const userText = body || caption
-    const groupAdmins = await groupController.getAdminsIds(group.id)
-    const isBotAdmin = groupAdmins.includes(botInfo.host_number)
-
-    if (group.antilink.status && !isBotAdmin) {
-        await groupController.setAntiLink(group.id, false)
-    } else if (group.antilink.status && !isGroupAdmin) {
-        const detectedURLS = userText.match(new RegExp(/(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/[^\s]*)?/img))
-        
-        if (detectedURLS) {
-            let needDeleteMessage = false
-
-            if (group.antilink.exceptions.length) {
-                const allowedURLS = detectedURLS.map(url => url.toLowerCase()).filter(url => group.antilink.exceptions.filter(exception => url.includes(exception.toLowerCase())).length)
-                needDeleteMessage = detectedURLS.length != allowedURLS.length
-            } else {
-                needDeleteMessage = true
-            }
-
-            if (needDeleteMessage) {
-                const replyText = buildText(botTexts.detected_link, waUtil.removeWhatsappSuffix(message.sender))
-                await waUtil.deleteMessage(client, message.wa_message, false)
-                await waUtil.sendTextWithMentions(client, message.chat_id, replyText, [message.sender], {expiration: message.expiration})
-                return true
-            }
-        } 
-    }
-
-    return false
-}
-
-export async function isDetectedByAntiFlood(client: WASocket, botInfo: Bot, group: Group, message: Message){
-    const currentTimestamp = Math.round(moment.now()/1000)
-    const { isGroupAdmin } = message
-    const participant = await groupController.getParticipant(group.id, message.sender)
-
-    if (!participant || isGroupAdmin || !group.antiflood.status) return false
-    
-    const hasExpiredMessages = currentTimestamp > participant.antiflood.expire
-
-    if (hasExpiredMessages) {
-        const expireTimestamp = currentTimestamp + group.antiflood.interval
-        await groupController.expireParticipantAntiFlood(group.id, message.sender, expireTimestamp)
-    } else {
-        await groupController.incrementAntiFloodMessage(group.id, message.sender)
-    }
-
-    if (!hasExpiredMessages && participant.antiflood.msgs >= group.antiflood.max_messages) {
-        const replyText = buildText(botTexts.antiflood_ban_messages, waUtil.removeWhatsappSuffix(message.sender), botInfo.name)
-        await waUtil.removeParticipant(client, message.chat_id, message.sender)
-        await waUtil.sendTextWithMentions(client, message.chat_id, replyText, [message.sender], {expiration: message.expiration})
-        return true
-    } else {
-        return false
-    }
-}
-

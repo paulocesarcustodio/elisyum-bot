@@ -1,6 +1,10 @@
+import { mediaProcessor,shouldQueueWork } from '../infrastructure/media-client.js'
+import { workSignal } from '../infrastructure/subprocess.js'
 import { performance } from 'node:perf_hooks'
 import axios from 'axios'
 import type { SemanticCommand } from '../helpers/semantic.registry.helper.js'
+import { semanticFamilyDescriptions } from '../helpers/semantic.descriptions.js'
+import { isPastEventReport } from '../utils/semantic-intent.util.js'
 
 export interface SemanticDecision {
     command: string
@@ -19,7 +23,7 @@ interface OpenJevChoiceResponse {
     }>
 }
 
-const REQUEST_TIMEOUT_MS = 4000
+const REQUEST_TIMEOUT_MS = Number(process.env.OPENJEV_TIMEOUT_MS || 15_000)
 
 export class SemanticCommandService {
     private readonly httpsAgent = new (require('node:https').Agent)({keepAlive: true, maxSockets: 2})
@@ -27,6 +31,9 @@ export class SemanticCommandService {
 
     public async classify(text: string, commands: SemanticCommand[], context = ''): Promise<SemanticDecision | null> {
         if (!commands.length) return null
+        if (/^(?:(?:bot|por favor)[,\s]+)*(?:n[aã]o|nunca|nem)\b/i.test(text.trim())) return null
+        if (isPastEventReport(text)) return null
+        if(shouldQueueWork())return mediaProcessor.execute<SemanticDecision | null>('intent.openjev',[text,commands,context],{timeoutMs:REQUEST_TIMEOUT_MS+10_000})
         const endpoint = process.env.OPENJEV_URL || 'http://127.0.0.1:8080'
         const model = process.env.OPENJEV_MODEL || 'verdict-1.4'
         const maxOptions = model.startsWith('verdict') ? 24 : 255
@@ -56,7 +63,7 @@ export class SemanticCommandService {
     private async classifyFlat(text: string, commands: SemanticCommand[], endpoint: string, model: string, context: string) {
         const answer = (await this.ask(text, {
             intent: makeQuestion(commands.map(command => ({name: command.name, description: describeCommand(command)})),
-                'Escolha o comando existente que melhor atende um pedido explícito. Caso não seja comando claro, escolha none.')
+                'Qual comando atende ao pedido?')
         }, endpoint, model, context)).intent
         if (!answer || answer.name === 'none' || !commands.some(command => command.name === answer.name)) return null
         return {...answer, stages: 1}
@@ -81,21 +88,21 @@ export class SemanticCommandService {
         const familyAnswer = (await this.ask(text, {
             family: makeQuestion([...families.entries()].map(([name, family]) => ({
                 name,
-                description: `${name}: ${family.map(command => command.description).join('; ')}`
-            })), 'Escolha a família do pedido. Se for conversa, negação ou intenção incerta, escolha none.')
+                description: semanticFamilyDescriptions[name] || family.map(command => command.name).join(', ')
+            })), 'Qual categoria atende ao pedido?')
         }, endpoint, model, context)).family
         if (!familyAnswer || familyAnswer.name === 'none') return null
         const family = families.get(familyAnswer.name)
         if (!family) return null
         const commandAnswer = (await this.ask(text, {
             command: makeQuestion(family.map(command => ({name: command.name, description: describeCommand(command)})),
-                `Escolha o comando da família ${familyAnswer.name}; se houver dúvida, escolha none.`)
+                'Qual comando atende ao pedido?')
         }, endpoint, model, context)).command
         if (!commandAnswer || commandAnswer.name === 'none' || !family.some(command => command.name === commandAnswer.name)) return null
         const commandEntropyConfidence = scoreEntropy(Object.values(commandAnswer.probabilities))
         return {
             ...commandAnswer,
-            confidence: Math.min(commandEntropyConfidence, 1 - (1 - familyAnswer.confidence) * (1 - commandAnswer.confidence)),
+            confidence: Math.min(commandEntropyConfidence, familyAnswer.confidence, commandAnswer.confidence),
             stages: 2
         }
     }
@@ -112,10 +119,11 @@ export class SemanticCommandService {
         if (process.env.OPENJEV_API_KEY) headers.authorization = `Bearer ${process.env.OPENJEV_API_KEY}`
         const response = await axios.post(`${base}/v1/systemone`, {
             model,
-            state: `${context ? `${context}\n` : ''}Mensagem do usuário: ${text}`,
+            state: `Pedido: ${text}${context ? `\n${context}` : ''}`,
             questions
         }, {
             headers,
+            signal:workSignal.getStore(),
             timeout: REQUEST_TIMEOUT_MS,
             httpAgent: this.httpAgent,
             httpsAgent: this.httpsAgent,
@@ -149,16 +157,16 @@ function entropyScore(probabilities: number[]): number {
 function makeQuestion(choices: Array<{name: string, description: string}>, instructions: string) {
     return {
         type: 'choice' as const,
-        instructions: `${instructions} Não resolva entidades, não invente identificadores, não avalie permissões e não execute ações.`,
+        instructions,
         criteria: {
-            none: 'Conversa normal, afirmação sobre terceiros, relato, opinião, negação ou intenção incerta.',
+            none: 'Nenhum destes comandos; conversa ou negação.',
             ...Object.fromEntries(choices.map(choice => [choice.name, choice.description]))
         }
     }
 }
 
 function describeCommand(command: SemanticCommand) {
-    return `${command.description}${command.examples.length ? `. Exemplos: ${command.examples.join('; ')}` : ''}`
+    return command.description
 }
 
 function normalizeProbabilities(probabilities: Record<string, number>): Record<string, number> {

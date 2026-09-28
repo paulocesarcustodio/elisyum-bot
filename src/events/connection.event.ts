@@ -6,7 +6,7 @@ import botTexts from '../helpers/bot.texts.helper.js'
 import { UserController } from '../controllers/user.controller.js'
 import { getHostNumber } from '../utils/whatsapp.util.js'
 import qrcode from 'qrcode-terminal'
-import { cleanCreds } from '../helpers/session.auth.helper.js'
+
 
 export async function connectionQr(qr: string){
     if (qr) {
@@ -28,12 +28,12 @@ export async function connectionPairingCode(client: WASocket){
 export async function connectionOpen(client: WASocket){
     try{
         const botController = new BotController()
-        botController.startBot(getHostNumber(client))
+        await botController.startBot(getHostNumber(client))
         console.log(colorText(botTexts.bot_data))
         await checkOwnerRegister()
     } catch(err: any) {
         showConsoleError(err, "CONNECTION")
-        client.end(new Error("fatal_error"))
+        throw err
     }
 }
 
@@ -42,10 +42,6 @@ export async function connectionClose(connectionState : Partial<ConnectionState>
         const { lastDisconnect } = connectionState
         let needReconnect = false
         const err: any = lastDisconnect?.error
-        console.log('[DEBUG 405] lastDisconnect:', JSON.stringify(lastDisconnect, null, 2))
-        console.log('[DEBUG 405] error obj:', err)
-        console.log('[DEBUG 405] error isBoom:', err?.isBoom)
-        console.log('[DEBUG 405] error output:', err?.output)
         const boom = err?.isBoom ? err : new Boom(err)
         const errorCode = boom.output.statusCode
 
@@ -53,14 +49,16 @@ export async function connectionClose(connectionState : Partial<ConnectionState>
             showConsoleError(new Error(botTexts.disconnected.command), 'CONNECTION')
         } else if (lastDisconnect?.error?.message == "fatal_error"){
             showConsoleError(new Error(botTexts.disconnected.fatal_error), 'CONNECTION')
+        } else if (["gateway_lease_lost","gateway_shutdown"].includes(lastDisconnect?.error?.message || "")){
+            return false
         } else {
             if (errorCode == DisconnectReason?.loggedOut){
-                await cleanCreds()
+
                 showConsoleError(new Error(botTexts.disconnected.logout), 'CONNECTION')
             } else if (errorCode == 405) {
-                await cleanCreds()
+
                 needReconnect = true
-                showConsoleError(new Error('Sessão rejeitada com código 405. As credenciais foram limpas para gerar um novo QR Code.'), 'CONNECTION')
+                showConsoleError(new Error('Conexão rejeitada com código 405; as credenciais foram preservadas.'), 'CONNECTION')
             } else if (errorCode == DisconnectReason?.restartRequired){
                 needReconnect = true
                 showConsoleError(new Error(botTexts.disconnected.restart), 'CONNECTION')

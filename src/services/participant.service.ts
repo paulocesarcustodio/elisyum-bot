@@ -1,4 +1,5 @@
-import { Participant, Group } from "../interfaces/group.interface.js";
+import { identityService } from './identity.service.js'
+import { Participant } from "../interfaces/group.interface.js";
 import { MessageTypes } from "../interfaces/message.interface.js";
 import { deepMerge, timestampToDate } from '../utils/general.util.js'
 import { normalizeWhatsappJid } from '../utils/whatsapp.util.js'
@@ -15,14 +16,13 @@ const getByGroupStmt = db.prepare('SELECT * FROM participants WHERE group_id = ?
 const getAllStmt = db.prepare('SELECT * FROM participants')
 const getAdminsStmt = db.prepare('SELECT * FROM participants WHERE group_id = ? AND admin = 1')
 const getAdminsIdsStmt = db.prepare('SELECT user_id FROM participants WHERE group_id = ? AND admin = 1')
-const getInactiveStmt = (limit: number) => db.prepare('SELECT * FROM participants WHERE group_id = ? AND msgs < ? ORDER BY msgs DESC')
-const getRankingStmt = (limit: number) => db.prepare('SELECT * FROM participants WHERE group_id = ? ORDER BY msgs DESC LIMIT ?')
-const insertStmt = db.prepare('INSERT OR IGNORE INTO participants (group_id, user_id, registered_since, admin) VALUES (?, ?, ?, ?)')
+const insertStmt = db.prepare('INSERT INTO participants (group_id, user_id, registered_since, admin) VALUES (?, ?, ?, ?) ON CONFLICT (group_id, user_id) DO NOTHING')
 const deleteStmt = db.prepare('DELETE FROM participants WHERE group_id = ? AND user_id = ?')
 const deleteByGroupStmt = db.prepare('DELETE FROM participants WHERE group_id = ?')
+const adminsCache = new NodeCache({ stdTTL: 30, checkperiod: 10 })
 
 export class ParticipantService {
-    private adminsCache = new NodeCache({ stdTTL: 30, checkperiod: 10 })
+    private adminsCache = adminsCache
     private defaultParticipant : Participant = {
         group_id : '',
         user_id: '',
@@ -45,6 +45,14 @@ export class ParticipantService {
 
     private normalizeUserId(userId: string){
         return normalizeWhatsappJid(userId)
+    }
+
+    private async resolveUserId(groupId:string,userId:string) {
+        const normalized=this.normalizeUserId(userId)
+        if(!normalized)return ''
+        const aliases=await identityService.aliases(normalized)
+        const row=await db.prepare('SELECT user_id FROM participants WHERE group_id=? AND user_id=ANY(?::text[]) ORDER BY (user_id=?) DESC LIMIT 1').get(groupId,aliases,normalized)
+        return row?.user_id || normalized
     }
 
     private resolveRegisteredSince(existing?: string, incoming?: string): string {
@@ -132,74 +140,59 @@ export class ParticipantService {
     }
 
     private async ensureParticipantRecord(groupId: string, normalizedUserId: string): Promise<Participant> {
-        const existingRow = getOneStmt.get(groupId, normalizedUserId) as any | undefined
+        const existingRow = (await getOneStmt.get(groupId, normalizedUserId)) as any | undefined
 
         if (existingRow) {
             return this.rowToParticipant(existingRow)
         }
 
-        insertStmt.run(groupId, normalizedUserId, this.defaultParticipant.registered_since, 0)
+        ;(await insertStmt.run(groupId, normalizedUserId, this.defaultParticipant.registered_since, 0))
         return { ...this.defaultParticipant, group_id: groupId, user_id: normalizedUserId }
     }
 
+    private async updateRole(groupId:string,userId:string,status:boolean){
+        const identity=await identityService.resolve(userId)
+        const account=process.env.BOT_ACCOUNT_ID || 'default'
+        await db.prepare("DELETE FROM role_grants WHERE account_id=? AND identity_id=? AND scope=? AND role='group_moderator'").run(account,identity.id,groupId)
+        if(status)await db.prepare("INSERT INTO role_grants(account_id,identity_id,scope,role) VALUES(?,?,?,'group_moderator') ON CONFLICT DO NOTHING").run(account,identity.id,groupId)
+    }
+
     public async syncParticipants(groupMeta: GroupMetadata){
-        let adminsChanged = false
-        for (const participant of groupMeta.participants) {
-            const participantData = participant as typeof participant & { phoneNumber?: string; lid?: string }
-            const participantIds = [...new Set([
-                this.normalizeUserId(participant.id),
-                this.normalizeUserId(participantData.phoneNumber || ''),
-                this.normalizeUserId(participantData.lid || '')
-            ].filter(Boolean))]
-            const existingParticipant = participantIds
-                .map(id => getOneStmt.get(groupMeta.id, id) as { user_id: string } | undefined)
-                .find((row): row is { user_id: string } => !!row)
-            const normalizedParticipantId = existingParticipant?.user_id || participantIds[0]
-            if (!normalizedParticipantId) continue
-            const isAdmin = participant.admin ? true : false
-            const isGroupParticipant = await this.isGroupParticipant(groupMeta.id, normalizedParticipantId)
-
-            if (!isGroupParticipant) {
-                await this.addParticipant(groupMeta.id, normalizedParticipantId, isAdmin)
-            } else {
-                db.prepare('UPDATE participants SET admin = ? WHERE group_id = ? AND user_id = ?').run(isAdmin ? 1 : 0, groupMeta.id, normalizedParticipantId)
+        await db.transaction(async()=>{
+            const activeAliases=new Set<string>()
+            for(const participant of groupMeta.participants){
+                const data=participant as typeof participant & {phoneNumber?:string;lid?:string}
+                const ids=[participant.id,data.phoneNumber,data.lid].filter((value):value is string=>!!value)
+                if(!ids.length)continue
+                const identity=await identityService.resolve(ids[0],ids.slice(1),'group-metadata')
+                identity.aliases.forEach(alias=>activeAliases.add(alias))
+                const existing=await db.prepare('SELECT user_id FROM participants WHERE group_id=? AND user_id=ANY(?::text[]) LIMIT 1').get(groupMeta.id,identity.aliases)
+                const id=existing?.user_id || identity.primary
+                await this.ensureParticipantRecord(groupMeta.id,id)
+                await db.prepare('UPDATE participants SET admin=? WHERE group_id=? AND user_id=ANY(?::text[])').run(participant.admin ? 1:0,groupMeta.id,identity.aliases)
+                await this.updateRole(groupMeta.id,id,!!participant.admin)
             }
-            adminsChanged = true
-        }
-
-        const normalizedParticipantIds = new Set(
-            groupMeta.participants.flatMap(participant => {
-                const participantData = participant as typeof participant & { phoneNumber?: string; lid?: string }
-                return [participant.id, participantData.phoneNumber, participantData.lid]
-                    .map(id => this.normalizeUserId(id || ''))
-                    .filter(Boolean)
-            })
-        )
-        const currentParticipants = await this.getParticipantsFromGroup(groupMeta.id)
-
-        for (const participant of currentParticipants) {
-            if (!normalizedParticipantIds.has(participant.user_id)) {
-                await this.removeParticipant(groupMeta.id, participant.user_id, { normalize: false })
+            for(const participant of await this.getParticipantsFromGroup(groupMeta.id)){
+                if(!activeAliases.has(participant.user_id))await this.removeParticipant(groupMeta.id,participant.user_id,{normalize:false})
             }
-        }
-
-        if (adminsChanged) this.invalidateAdminsCache(groupMeta.id)
+        })
+        this.invalidateAdminsCache(groupMeta.id)
     }
 
     public async addParticipant(groupId: string, userId: string, isAdmin: boolean){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return
-
-        const existing = getOneStmt.get(groupId, normalizedUserId) as any | undefined
+        await this.updateRole(groupId,normalizedUserId,isAdmin)
+        const existing = (await getOneStmt.get(groupId, normalizedUserId)) as any | undefined
         if (existing) {
             if (isAdmin && existing.admin !== 1) {
-                db.prepare('UPDATE participants SET admin = 1 WHERE group_id = ? AND user_id = ?').run(groupId, normalizedUserId)
+                ;(await db.prepare('UPDATE participants SET admin = 1 WHERE group_id = ? AND user_id = ?').run(groupId, normalizedUserId))
                 this.invalidateAdminsCache(groupId)
             }
             return
         }
 
-        insertStmt.run(groupId, normalizedUserId, this.defaultParticipant.registered_since, isAdmin ? 1 : 0)
+        ;(await insertStmt.run(groupId, normalizedUserId, this.defaultParticipant.registered_since, isAdmin ? 1 : 0))
         this.invalidateAdminsCache(groupId)
     }
 
@@ -210,19 +203,19 @@ export class ParticipantService {
             const normalizedUserId = this.normalizeUserId(participant.user_id)
 
             if (!normalizedUserId) {
-                deleteStmt.run(participant.group_id, participant.user_id)
+                ;(await deleteStmt.run(participant.group_id, participant.user_id))
                 continue
             }
 
             const normalizedParticipant = { ...participant as any, user_id: normalizedUserId }
             const updatedParticipantData: Participant = deepMerge(this.defaultParticipant, normalizedParticipant)
-            const existingRow = getOneStmt.get(participant.group_id, normalizedUserId) as any | undefined
+            const existingRow = (await getOneStmt.get(participant.group_id, normalizedUserId)) as any | undefined
 
             if (existingRow) {
                 const existingParticipant = this.rowToParticipant(existingRow)
                 const merged = this.mergeParticipantRecords(existingParticipant, updatedParticipantData)
                 const textCount = typeof merged.text === 'number' ? merged.text : (merged as any).text_count || 0
-                db.prepare(`
+                ;(await db.prepare(`
                     UPDATE participants SET registered_since = ?, commands = ?, admin = ?, msgs = ?,
                         image = ?, audio = ?, sticker = ?, video = ?, text_count = ?, other = ?, warnings = ?,
                         antiflood_expire = ?, antiflood_msgs = ?
@@ -242,13 +235,13 @@ export class ParticipantService {
                     merged.antiflood?.expire || 0,
                     merged.antiflood?.msgs || 0,
                     participant.group_id, normalizedUserId
-                )
+                ))
             } else {
                 const textCount = typeof updatedParticipantData.text === 'number' ? updatedParticipantData.text : (updatedParticipantData as any).text_count || 0
-                db.prepare(`
-                    INSERT OR REPLACE INTO participants (group_id, user_id, registered_since, commands, admin,
+                ;(await db.prepare(`
+                    INSERT INTO participants (group_id, user_id, registered_since, commands, admin,
                         msgs, image, audio, sticker, video, text_count, other, warnings, antiflood_expire, antiflood_msgs)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (group_id, user_id) DO NOTHING
                 `).run(
                     participant.group_id, normalizedUserId,
                     updatedParticipantData.registered_since || null,
@@ -264,63 +257,66 @@ export class ParticipantService {
                     updatedParticipantData.warnings || 0,
                     updatedParticipantData.antiflood?.expire || 0,
                     updatedParticipantData.antiflood?.msgs || 0
-                )
+                ))
             }
 
             if (normalizedUserId !== participant.user_id) {
-                deleteStmt.run(participant.group_id, participant.user_id)
+                ;(await deleteStmt.run(participant.group_id, participant.user_id))
             }
         }
     }
 
     public async removeParticipant(groupId: string, userId: string, options: { normalize?: boolean } = {}){
         const shouldNormalize = options.normalize ?? true
-        const targetUserId = shouldNormalize ? this.normalizeUserId(userId) : userId
+        const targetUserId = shouldNormalize ? await this.resolveUserId(groupId,userId) : userId
         if (!targetUserId) return
 
-        deleteStmt.run(groupId, targetUserId)
+        await this.updateRole(groupId,targetUserId,false)
+        ;(await deleteStmt.run(groupId, targetUserId))
         this.invalidateAdminsCache(groupId)
     }
 
     public async removeParticipants(groupId: string){
-        deleteByGroupStmt.run(groupId)
+        await db.prepare('DELETE FROM role_grants WHERE account_id=? AND scope=?').run(process.env.BOT_ACCOUNT_ID || 'default',groupId)
+        ;(await deleteByGroupStmt.run(groupId))
         this.invalidateAdminsCache(groupId)
     }
 
     public async setAdmin(groupId: string, userId: string, status: boolean){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return
 
         await this.ensureParticipantRecord(groupId, normalizedUserId)
-        db.prepare('UPDATE participants SET admin = ? WHERE group_id = ? AND user_id = ?').run(status ? 1 : 0, groupId, normalizedUserId)
+        await this.updateRole(groupId,normalizedUserId,status)
+        ;(await db.prepare('UPDATE participants SET admin = ? WHERE group_id = ? AND user_id = ?').run(status ? 1 : 0, groupId, normalizedUserId))
         this.invalidateAdminsCache(groupId)
     }
 
     public async getParticipantFromGroup(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return null
 
-        const row = getOneStmt.get(groupId, normalizedUserId) as any | undefined
+        const row = (await getOneStmt.get(groupId, normalizedUserId)) as any | undefined
         return row ? this.rowToParticipant(row) : null
     }
 
     public async getParticipantsFromGroup(groupId: string){
-        const rows = getByGroupStmt.all(groupId) as any[]
+        const rows = (await getByGroupStmt.all(groupId)) as any[]
         return rows.map(row => this.rowToParticipant(row))
     }
 
     public async getAllParticipants() {
-        const rows = getAllStmt.all() as any[]
+        const rows = (await getAllStmt.all()) as any[]
         return rows.map(row => this.rowToParticipant(row))
     }
 
     public async getParticipantsIdsFromGroup(groupId: string){
-        const rows = getByGroupStmt.all(groupId) as any[]
+        const rows = (await getByGroupStmt.all(groupId)) as any[]
         return rows.map(row => row.user_id)
     }
 
     public async getAdminsFromGroup(groupId: string){
-        const rows = getAdminsStmt.all(groupId) as any[]
+        const rows = (await getAdminsStmt.all(groupId)) as any[]
         return rows.map(row => this.rowToParticipant(row))
     }
 
@@ -328,7 +324,7 @@ export class ParticipantService {
         const cached = this.adminsCache.get<string[]>(`admins:${groupId}`)
         if (cached !== undefined) return cached
 
-        const rows = getAdminsIdsStmt.all(groupId) as any[]
+        const rows = (await getAdminsIdsStmt.all(groupId)) as any[]
         const adminIds = rows.map(row => row.user_id)
         setBoundedCache(this.adminsCache, `admins:${groupId}`, adminIds, 500)
         return adminIds
@@ -339,23 +335,23 @@ export class ParticipantService {
     }
 
     public async isGroupParticipant(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return false
 
-        const row = getOneStmt.get(groupId, normalizedUserId) as any | undefined
+        const row = (await getOneStmt.get(groupId, normalizedUserId)) as any | undefined
         return !!row
     }
 
     public async isGroupAdmin(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return false
 
-        const row = db.prepare('SELECT admin FROM participants WHERE group_id = ? AND user_id = ?').get(groupId, normalizedUserId) as { admin: number } | undefined
+        const row = (await db.prepare('SELECT admin FROM participants WHERE group_id = ? AND user_id = ?').get(groupId, normalizedUserId)) as { admin: number } | undefined
         return row?.admin === 1
     }
 
     public async incrementParticipantActivity(groupId: string, userId: string, type: MessageTypes, isCommand: boolean){
-        const normalizedUserId = this.normalizeUserId(userId)
+        const normalizedUserId = await this.resolveUserId(groupId,userId)
         if (!normalizedUserId) return
 
         await this.ensureParticipantRecord(groupId, normalizedUserId)
@@ -385,52 +381,8 @@ export class ParticipantService {
                 break
         }
 
-        db.prepare(`UPDATE participants SET ${incParts.join(', ')} WHERE group_id = ? AND user_id = ?`).run(groupId, normalizedUserId)
+        ;(await db.prepare(`UPDATE participants SET ${incParts.join(', ')} WHERE group_id = ? AND user_id = ?`).run(groupId, normalizedUserId))
     }
 
-    public async getParticipantActivityLowerThan(group: Group, num : number){
-        const rows = getInactiveStmt(num).all(group.id, num) as any[]
-        return rows.map(row => this.rowToParticipant(row))
-    }
 
-    public async getParticipantsActivityRanking(group: Group, qty: number){
-        const rows = getRankingStmt(qty).all(group.id, qty) as any[]
-        return rows.map(row => this.rowToParticipant(row))
-    }
-
-    public async addWarning(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
-        if (!normalizedUserId) return
-
-        await this.ensureParticipantRecord(groupId, normalizedUserId)
-        db.prepare('UPDATE participants SET warnings = warnings + 1 WHERE group_id = ? AND user_id = ?').run(groupId, normalizedUserId)
-    }
-
-    public async removeWarning(groupId: string, userId: string, currentWarnings: number){
-        const normalizedUserId = this.normalizeUserId(userId)
-        if (!normalizedUserId) return
-
-        await this.ensureParticipantRecord(groupId, normalizedUserId)
-        db.prepare('UPDATE participants SET warnings = ? WHERE group_id = ? AND user_id = ?').run(Math.max(0, currentWarnings - 1), groupId, normalizedUserId)
-    }
-
-    public async removeParticipantsWarnings(groupId: string){
-        db.prepare('UPDATE participants SET warnings = 0 WHERE group_id = ?').run(groupId)
-    }
-
-    public async expireParticipantAntiFlood(groupId: string, userId: string, newExpireTimestamp: number){
-        const normalizedUserId = this.normalizeUserId(userId)
-        if (!normalizedUserId) return
-
-        await this.ensureParticipantRecord(groupId, normalizedUserId)
-        db.prepare('UPDATE participants SET antiflood_expire = ?, antiflood_msgs = 1 WHERE group_id = ? AND user_id = ?').run(newExpireTimestamp, groupId, normalizedUserId)
-    }
-
-    public async incrementAntiFloodMessage(groupId: string, userId: string){
-        const normalizedUserId = this.normalizeUserId(userId)
-        if (!normalizedUserId) return
-
-        await this.ensureParticipantRecord(groupId, normalizedUserId)
-        db.prepare('UPDATE participants SET antiflood_msgs = antiflood_msgs + 1 WHERE group_id = ? AND user_id = ?').run(groupId, normalizedUserId)
-    }
 }

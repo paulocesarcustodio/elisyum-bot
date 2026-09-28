@@ -1,340 +1,195 @@
-GUIA COMPLETO DE COMANDOS DO BOT ELISYUM
-Este documento foi criado para ajudar você a encontrar o comando certo para o que você precisa.
+GUIA DE COMANDOS DO ELISYUM BOT
+Gerado pelo catálogo usado na execução. Linguagem natural exige a palavra “bot”.
 
-═══════════════════════════════════════════════════════════════════
+!menu — Mostrar menu e lista de comandos disponíveis.
+Ex: *!menu* - Exibe o menu de comandos gerais.
 
-COMO BAIXAR VÍDEOS, ÁUDIOS E IMAGENS
-──────────────────────────────────────────────────────────────────────
 
-Se você quer baixar vídeo, áudio ou imagem de redes sociais, basta enviar o link suportado no chat.
+!d — Baixar vídeo ou mídia de um link.
+Ex: envie uma mensagem com link suportado - O bot baixa automaticamente mídias do YouTube, Instagram, Facebook, Twitter/X, TikTok e Pinterest.
+Ex: *!d* link - Continua funcionando manualmente quando você quiser forçar o download.
+Ex: *!d* musica - Busca por título no YouTube.
 
-Funciona com:
-• YouTube - vídeos, shorts, músicas
-• Instagram - reels, posts, stories
-• TikTok - vídeos
-• Facebook - vídeos
-• Twitter/X - vídeos e GIFs
+Pedidos naturais (comece com “bot”): baixa esse vídeo; faz download desse link; salva essa mídia.
 
-Como usar:
-• Envie o link direto - o bot detecta e baixa automaticamente
-• *!d* seguido do link - continua funcionando como atalho manual
-• Responder uma mensagem que tenha link com *!d*
-• *!d* seguido do título para buscar no YouTube - exemplo: !d nome da música
+!play — Buscar e tocar uma música pelo nome.
+Atalhos: !p
+Ex: *!p* musica - Faz download de uma música do YouTube e envia como áudio.
+Ex: *!p* respondendo um link do YouTube - Converte para áudio.
+*Obs*: *!play* continua funcionando por compatibilidade.
 
-O bot identifica automaticamente a plataforma e baixa o melhor formato disponível.
 
-🔍 Palavras-chave: baixar vídeo, download vídeo, pegar vídeo, salvar vídeo, fazer download, youtube, instagram, tiktok, facebook, twitter, mídia, reel, story, shorts
+!mp3 — Extrair o áudio de um vídeo, converter para mp3.
+Ex: *!mp3* musica - Busca no YouTube e envia só o áudio.
+Ex: *!mp3* link - Converte um link suportado em áudio.
+Ex: responda um vídeo com *!mp3* - Extrai o áudio do vídeo enviado no WhatsApp.
 
-═══════════════════════════════════════════════════════════════════
+Pedidos naturais (comece com “bot”): extrai o áudio desse vídeo; pega só o áudio; converte isso pra mp3.
 
-COMO BAIXAR MÚSICA/ÁUDIO DO YOUTUBE
-──────────────────────────────────────────────────────────────────────
+!img — Pesquisar imagens sobre um assunto.
+Ex: *!img* tema - Envia 2 imagens relacionadas ao tema pesquisado.
 
-Para baixar apenas o áudio de vídeos do YouTube (música), use *!p*
 
-Como usar:
-• *!p* seguido do nome da música - exemplo: !p imagine dragons
-• *!p* com link do YouTube - exemplo: !p https://youtube.com/watch?v=...
-• Responder mensagem com link do YouTube e digitar *!p*
-• *!play* continua funcionando por compatibilidade
+!s — Criar figurinha ou sticker de foto, vídeo ou texto.
+Ex: Envie/responda uma *IMAGEM/VIDEO* com *!s* - Transforma em sticker.
+Ex: Responda uma *MENSAGEM DE TEXTO* com *!s* - Transforma em sticker estilo WhatsApp.
+Ex: Envie/responda uma *IMAGEM* com *!s 1* - Transforma em sticker circular.
+Ex: Envie/responda uma *IMAGEM* com *!s 2* - Transforma em sticker sem perder a proporção.
 
-O bot vai buscar a música no YouTube, baixar e enviar como áudio. O vídeo pode ter no máximo 9 minutos.
+Pedidos naturais (comece com “bot”): faz figurinha disso; transforma isso em figurinha; cria um sticker dessa imagem.
 
-Diferença do auto-download: o *!p* só funciona com YouTube e envia como áudio.
+!simg — Converter uma figurinha em imagem.
+Ex: Responda um sticker com *!simg* - Transforma o sticker em imagem.
 
-🔍 Palavras-chave: música, musica, audio, áudio, som, mp3, baixar música, download música, play, p, youtube música, canção
+*Obs*: Este comando funciona apenas com *STICKERS NÃO ANIMADOS*.
 
-═══════════════════════════════════════════════════════════════════
 
-COMO CONVERTER VÍDEO EM MP3
-──────────────────────────────────────────────────────────────────────
+!revelar — Revelar mídia de visualização única.
+Ex: Responda uma mensagem de *visualização única* com *!revelar* - Revela a imagem/vídeo de visualização única.
 
-Para transformar vídeos em áudio, use *!mp3*
+*Obs*: Este comando funciona apenas com mensagens de *VISUALIZAÇÃO ÚNICA* (view once).
 
-Como usar:
-• *!mp3* seguido do nome da música - busca no YouTube
-• *!mp3* com link suportado - converte o vídeo em áudio
-• Responder um link com *!mp3*
-• Responder um vídeo enviado no WhatsApp com *!mp3*
 
-O comando baixa o vídeo quando necessário e envia apenas o áudio em MP3.
+!save — Salvar um áudio com um nome na biblioteca.
+Ex: Responda um *áudio* com *!save nome-do-audio* - Salva o áudio globalmente para todos usarem.
 
-🔍 Palavras-chave: mp3, converter video em audio, extrair audio, tirar audio do video, converter video, musica, audio
+*Obs*: Este comando funciona apenas com *ÁUDIOS*. O áudio ficará disponível para todos!
 
-═══════════════════════════════════════════════════════════════════
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-COMO BUSCAR IMAGENS
-──────────────────────────────────────────────────────────────────────
+!audio — Reproduzir um áudio salvo pelo nome.
+Atalhos: !a, !á, !áudio
+Ex: *!a nome-do-audio* - Reproduz um áudio salvo.
 
-Para buscar imagens sobre qualquer tema, use *!img*
+Ex: *!a* - Lista os áudios disponíveis.
 
-Como usar:
-• *!img* seguido do tema - exemplo: !img gato fofo
+Ex: Responda uma mensagem com *!a nome-do-audio* - Reproduz o áudio como resposta.
+*Obs*: *!audio* continua funcionando por compatibilidade.
 
-O bot vai buscar e enviar 2 imagens relacionadas ao tema que você pediu.
 
-🔍 Palavras-chave: imagem, foto, picture, buscar imagem, pesquisar imagem, procurar imagem
+!v — Criar vídeo com foto do membro e áudio salvo.
+Ex: Responda uma mensagem com *!v nome-do-audio* - Gera um vídeo com a foto de perfil + o áudio.
 
-═══════════════════════════════════════════════════════════════════
+*Obs*: Este comando funciona apenas respondendo mensagens.
 
-COMO CRIAR FIGURINHAS (STICKERS)
-──────────────────────────────────────────────────────────────────────
 
-Para transformar imagens, vídeos ou textos em figurinha, use *!s*
+!audios — Listar os áudios salvos disponíveis.
+Atalhos: !áudios
+Ex: *!a* - Lista todos os áudios disponíveis (página 1).
 
-Formas de usar:
-• Enviar ou responder uma IMAGEM/VÍDEO com *!s* - cria figurinha normal
-• Responder uma MENSAGEM DE TEXTO com *!s* - cria figurinha estilo WhatsApp (texto em fundo branco)
-• Usar *!s 1* com imagem - cria figurinha CIRCULAR (recorta círculo)
-• Usar *!s 2* com imagem - cria figurinha mantendo PROPORÇÃO original
+Ex: *!a 2* - Lista a página 2 dos áudios.
+*Obs*: *!audios* continua funcionando por compatibilidade.
 
-Exemplos:
-• Mandar uma foto e escrever !s
-• Responder mensagem "oi sumido" com !s para criar figurinha de texto
-• Mandar imagem e escrever !s 1 para figurinha redonda
 
-Vídeos viram GIF animado (máximo 8 segundos).
+!delete — Excluir um áudio salvo da biblioteca.
+Ex: *!delete nome-do-audio* - Deleta permanentemente um áudio que você criou.
 
-🔍 Palavras-chave: figurinha, sticker, criar figurinha, fazer figurinha, transformar em figurinha, gif, gif animado, sticker redondo, sticker circular, figurinha de texto
+*Atenção*: Só o criador pode deletar! Esta ação não pode ser desfeita!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-═══════════════════════════════════════════════════════════════════
+!rename — Renomear um áudio salvo.
+Ex: *!rename nome-antigo | nome-novo* - Renomeia um áudio que você criou.
 
-COMO TRANSFORMAR FIGURINHA EM IMAGEM
-──────────────────────────────────────────────────────────────────────
+Use *|* para separar o nome antigo do novo.
+*Obs*: Só o criador pode renomear!
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-Para converter uma figurinha em imagem normal, use *!simg*
+!vtnc — Enviar desenho ASCII para um membro.
+Ex: *!vtnc* @membro - Manda o ASCII desejado pro membro mencionado.
 
-Como usar:
-• Responder uma figurinha com *!simg*
+Ex: Responder com *!vtnc* - Manda o ASCII desejado para o membro respondido.
 
-ATENÇÃO: Só funciona com figurinhas NÃO ANIMADAS (estáticas).
 
-🔍 Palavras-chave: figurinha para imagem, sticker para foto, converter figurinha, transformar figurinha em foto
+!ask — Perguntar ao assistente como usar o bot.
+Ex: *!ask* qual comando faz download de vídeo? - Pergunta sobre comandos disponíveis usando inteligência artificial.
 
-═══════════════════════════════════════════════════════════════════
 
-COMO SALVAR ÁUDIO/MEME DE VOZ
-──────────────────────────────────────────────────────────────────────
+!config — Configurar o nível de ajuda nos erros.
+Ex: *!config ajuda detailed* - Configura o nível de ajuda que você recebe em erros.
 
-Para salvar um áudio e poder reproduzir depois com comando, use *!save*
+*Opções de ajuda:*
+• *simple* - Apenas mensagem de erro
+• *detailed* - Erro + guia do comando (padrão)
+• *with-ai* - Erro + guia + assistente IA
 
-Como usar:
-• Responder um ÁUDIO com *!save nome-do-audio*
+Ex: *!config ajuda* - Ver configuração atual
 
-Exemplo: responder áudio do "eita" com !save eita
+!silenciar — Silenciar ou desmutar um membro do grupo.
+Permissão: owner ou group_moderator.
+Ex: Responda alguém com *!silenciar* - Alterna o silêncio do membro respondido.
+Ex: Marque alguém com *!silenciar* - Alterna o silêncio do membro marcado.
 
-O áudio fica salvo GLOBALMENTE - todos do grupo podem usar!
-Depois use *!a eita* para reproduzir.
+*Obs*: Use novamente para desmutar o membro.
 
-🔍 Palavras-chave: salvar áudio, salvar audio, gravar áudio, guardar áudio, meme de áudio, meme de voz, salvar som
+Pedidos naturais (comece com “bot”): silencia o membro; muta a pessoa; faz parar de falar; tira o membro do mute; dessilencia.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-═══════════════════════════════════════════════════════════════════
+!addlista — Colocar pessoa na lista negra, bloquear sua entrada no grupo.
+Permissão: owner ou group_moderator.
+Ex: Responda alguém com *!addlista* - Adiciona o numero de quem foi respondido a lista negra e bane em seguida.
 
-COMO REPRODUZIR ÁUDIO SALVO
-──────────────────────────────────────────────────────────────────────
+Ex: Marque alguém com *!addlista* - Adiciona o numero de quem foi marcado a lista negra e bane em seguida.
 
-Para reproduzir um áudio que foi salvo, use *!a*
+Ex: *!addlista* +55219xxxx-xxxx - Adiciona o número digitado a lista negra do grupo e bane em seguida.
+.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-Como usar:
-• *!a nome-do-audio* - exemplo: !a eita
-• *!a* sem parâmetro - mostra a lista de áudios
-• Responder uma mensagem com *!a nome-do-audio* - reproduz como resposta
-• *!audio* continua funcionando por compatibilidade
+!rmlista — Remover membro da lista negra.
+Permissão: owner ou group_moderator.
+Ex: Digite *!rmlista 1* - Remove o usuário selecionado da lista negra.
 
-Para ver todos os áudios disponíveis, use *!a* ou *!audios*
+*Obs*: Para ver o ID dos usuários é necessário checar no comando *!listanegra*
 
-🔍 Palavras-chave: tocar áudio, reproduzir áudio, meme de áudio, som salvo, áudio salvo, voice, voz, a
+Você também pode remover da lista negra da seguinte forma:
 
-═══════════════════════════════════════════════════════════════════
+Ex: *!rmlista* +55219xxxx-xxxx - Remove o número digitado da lista negra do grupo.
 
-COMO VER LISTA DE ÁUDIOS SALVOS
-──────────────────────────────────────────────────────────────────────
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-Para ver todos os áudios disponíveis, use *!a* ou *!audios*
+!listanegra — Consultar a lista negra do grupo.
+Permissão: owner ou group_moderator.
+Ex: *!listanegra* - Exibe a lista negra do grupo.
 
-Como usar:
-• *!a* - mostra a primeira página
-• *!audios* - mostra primeira página
-• *!audios 2* - mostra página 2
 
-A lista mostra todos os áudios salvos que podem ser usados com !a
+!add — Adicionar uma pessoa ao grupo pelo telefone.
+Permissão: owner ou group_moderator.
+Ex: *!add* +55219xxxx-xxxx - Digite o numero com o código do país para adicionar a pessoa.
 
-🔍 Palavras-chave: lista de áudios, ver áudios, áudios disponíveis, listar áudios, memes de áudio
+Ex: *!add* +55219xxxx-xxxx, +55119xxxx-xxxx - Digite os numeros com o código do país (adiciona mais de uma pessoa no grupo).
 
-═══════════════════════════════════════════════════════════════════
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-COMO DELETAR ÁUDIO SALVO
-──────────────────────────────────────────────────────────────────────
+!ban — Banir ou expulsar uma pessoa do grupo.
+Permissão: owner ou group_moderator.
+Ex: *!ban* @membro - Para banir um membro marcando ele.
 
-Para deletar permanentemente um áudio que você criou, use *!delete*
+Ex: Responder alguém com *!ban* - Bane o membro que você respondeu.
 
-Como usar:
-• *!delete nome-do-audio* - exemplo: !delete eita
+Pedidos naturais (comece com “bot”): remove o membro do grupo; expulsa a pessoa; tira esse membro daqui; bane o participante.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-ATENÇÃO: Só o criador do áudio pode deletar! Esta ação não pode ser desfeita!
+!promover — Promover uma pessoa a administrador.
+Permissão: owner ou group_moderator.
+Ex: *!promover* @membro - Promove o membro mencionado a *administrador*.
 
-🔍 Palavras-chave: deletar áudio, apagar áudio, remover áudio, excluir áudio
+Ex: Responder com *!promover* - Promove o usuário respondido a *administrador*.
 
-═══════════════════════════════════════════════════════════════════
+Pedidos naturais (comece com “bot”): promove o membro pra admin; torna a pessoa administradora; dá admin para o participante.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-COMO RENOMEAR ÁUDIO SALVO
-──────────────────────────────────────────────────────────────────────
+!rebaixar — Remover a administração, retirar o cargo de administrador de um membro.
+Permissão: owner ou group_moderator.
+Ex: *!rebaixar* @admin - Rebaixa o administrador mencionado a *membro*.
 
-Para mudar o nome de um áudio que você criou, use *!rename*
+Ex: Responder com *!rebaixar* - Rebaixa o administrador respondido a *membro*.
 
-Como usar:
-• *!rename nome-antigo | nome-novo*
+Pedidos naturais (comece com “bot”): rebaixa o admin; tira ele de admin; remove o cargo de administrador.
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
 
-Exemplo: !rename eita | eita-preula
+!apg — Apagar a mensagem respondida.
+Permissão: owner ou group_moderator.
+Ex: Responder com *!apg* - Apaga a mensagem que foi respondida com esse comando.
 
-Use o símbolo *|* para separar o nome antigo do novo.
-ATENÇÃO: Só o criador pode renomear!
+*Obs*: O bot precisa ser administrador.
 
-🔍 Palavras-chave: renomear áudio, mudar nome áudio, trocar nome áudio
-
-═══════════════════════════════════════════════════════════════════
-
-COMO REVELAR FOTO/VÍDEO DE VISUALIZAÇÃO ÚNICA
-──────────────────────────────────────────────────────────────────────
-
-Para ver foto ou vídeo de visualização única (view once) sem limite, use *!revelar*
-
-Como usar:
-• Responder a mensagem de visualização única com *!revelar*
-
-O bot vai revelar o conteúdo e enviar para você ver quantas vezes quiser.
-
-🔍 Palavras-chave: revelar view once, ver visualização única, foto visualização única, view once
-
-═══════════════════════════════════════════════════════════════════
-
-COMO VER O MENU DE COMANDOS
-──────────────────────────────────────────────────────────────────────
-
-Para ver todos os comandos disponíveis, use *!menu*
-
-Como usar:
-• Digite *!menu*
-
-Mostra a lista completa de comandos que você pode usar.
-
-🔍 Palavras-chave: menu, comandos, ajuda, help, lista de comandos
-
-═══════════════════════════════════════════════════════════════════
-
-COMO PERGUNTAR SOBRE COMANDOS
-──────────────────────────────────────────────────────────────────────
-
-Para tirar dúvidas sobre comandos do bot usando IA, use *!ask*
-
-Como usar:
-• *!ask* seguido da sua pergunta
-
-Exemplos:
-• !ask como baixar vídeo?
-• !ask como criar figurinha?
-• !ask qual comando salva áudio?
-
-O bot usa inteligência artificial para te ajudar!
-
-🔍 Palavras-chave: perguntar, ajuda, dúvida, como usar, explicar comando, ia, inteligência artificial
-
-═══════════════════════════════════════════════════════════════════
-
-COMO VER INFORMAÇÕES DO BOT
-──────────────────────────────────────────────────────────────────────
-
-Para ver informações completas e configurações do bot, use *!info*
-
-Mostra versão, estatísticas e configurações atuais.
-
-🔍 Palavras-chave: informações, info, sobre o bot, versão, configurações
-
-═══════════════════════════════════════════════════════════════════
-
-COMO VER SEUS DADOS E ESTATÍSTICAS
-──────────────────────────────────────────────────────────────────────
-
-Para ver suas estatísticas e dados no bot, use *!meusdados*
-
-Mostra quantos comandos você executou, mensagens enviadas, tipo de usuário, etc.
-
-🔍 Palavras-chave: meus dados, minhas estatísticas, meu perfil, estatísticas
-
-═══════════════════════════════════════════════════════════════════
-
-
-
-🔐 COMANDOS DE ADMINISTRAÇÃO DE GRUPOS
-Os comandos abaixo são exclusivos para administradores de grupos.
-
-═══════════════════════════════════════════════════════════════════
-
-GERENCIAR MEMBROS DO GRUPO
-
-Para adicionar pessoas: *!add* número (ou responder mensagem)
-Para remover/banir: *!ban* @mencionar ou responder mensagem
-Para promover a admin: *!promover* @mencionar ou responder mensagem  
-Para remover admin: *!rebaixar* @mencionar ou responder mensagem
-
-🔍 Palavras-chave: adicionar membro, remover membro, kick, ban, banir, expulsar, promover admin, rebaixar admin, tirar admin, moderador
-
-═══════════════════════════════════════════════════════════════════
-
-SILENCIAR E CONTROLAR MEMBROS
-
-Para silenciar uma PESSOA específica (impedir de falar no grupo):
-• *!silenciar* @mencionar ou responder mensagem
-• Use novamente para desmutar a pessoa
-
-Para dar avisos/advertências:
-• *!aviso* @mencionar - adiciona aviso
-• *!rmaviso* @mencionar - remove aviso
-• *!zeraravisos* @mencionar - zera todos avisos
-
-🔍 Palavras-chave: silenciar, mutar pessoa, calar, impedir falar, avisos, advertir, advertência, warning
-
-═══════════════════════════════════════════════════════════════════
-
-CONFIGURAR GRUPO
-
-Para mudar foto do grupo: Enviar imagem com *!fotogrupo*
-Para fechar grupo (só admins falam): *!restrito* (ativa/desativa)
-Para ver link do grupo: *!link*
-Para resetar link: *!rlink*
-
-Para desabilitar comandos do bot para membros: *!mutar* (só admins usam comandos)
-Para ativar/desativar bem-vindo: *!bemvindo*
-Para ativar/desativar anti-link: *!antilink*
-Para ativar/desativar anti-fake: *!antifake*
-Para ativar/desativar anti-flood: *!antiflood*
-Para ativar/desativar auto-sticker: *!autosticker*
-
-🔍 Palavras-chave: configurar grupo, fechar grupo, abrir grupo, restringir grupo, bem vindo, bemvindo, antilink, antifake, antiflood, foto grupo, link grupo, mutar comandos, desabilitar comandos
-
-═══════════════════════════════════════════════════════════════════
-
-MARCAR E MENCIONAR
-
-Para marcar TODOS (membros + admins): *!mt* mensagem
-Para marcar só MEMBROS: *!mm* mensagem
-Para marcar só ADMINS: *!adms* mensagem
-
-🔍 Palavras-chave: marcar todos, mencionar todos, everyone, marcar membros, marcar admins, mencionar admins
-
-═══════════════════════════════════════════════════════════════════
-
-OUTROS COMANDOS DE GRUPO
-
-Para ver dados do grupo: *!grupo*
-Para ver quem é dono: *!dono*
-Para apagar mensagem: *!apg* (respondendo mensagem)
-Para ver membros ativos: *!topativos*
-Para ver inativos: *!inativos*
-Para ver dados de membro: *!membro* @mencionar
-
-Para bloquear comandos: *!bcmd* comando1,comando2
-Para desbloquear: *!dcmd* comando1,comando2
-
-🔍 Palavras-chave: info grupo, informações grupo, dados grupo, dono grupo, apagar mensagem, deletar mensagem, membros ativos, ranking, inativos, bloquear comando
-
+Pedidos naturais exigem confirmação com “bot confirmar”; cancele com “bot cancelar”.
